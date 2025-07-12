@@ -13,6 +13,7 @@ interface User {
 }
 
 interface Wallet {
+  id: string;
   address: string
   balance: {
     eth: string

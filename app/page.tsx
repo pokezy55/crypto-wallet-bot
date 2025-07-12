@@ -23,7 +23,8 @@ interface User {
 }
 
 interface Wallet {
-  address: string
+  id: string;
+  address: string;
   balance: {
     eth: string
     usdt: string

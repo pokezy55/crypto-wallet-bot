@@ -5,6 +5,7 @@ import { X, Download, Copy, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Wallet {
+  id: string;
   address: string
   balance: {
     eth: string
@@ -56,6 +57,7 @@ export default function CreateWalletModal({ isOpen, onClose, onWalletCreated, us
 
     // Save wallet to localStorage (in real app, this would be saved to database)
     const newWallet: Wallet = {
+      id: `wallet_${userId}_${Date.now()}`, // Generate a unique ID
       address: walletAddress,
       balance: {
         eth: '0.0',

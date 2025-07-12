@@ -5,6 +5,7 @@ import { X, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Wallet {
+  id: string;
   address: string
   balance: {
     eth: string
@@ -44,6 +45,7 @@ export default function ImportWalletModal({ isOpen, onClose, onWalletImported, u
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       const importedWallet: Wallet = {
+        id: 'wallet_' + Math.random().toString(16).substr(2, 10), // Generate a unique ID
         address: '0x' + Math.random().toString(16).substr(2, 40),
         balance: {
           eth: '0.0',
