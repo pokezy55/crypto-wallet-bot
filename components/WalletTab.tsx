@@ -48,7 +48,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   const [showAddToken, setShowAddToken] = useState(false);
   const [newToken, setNewToken] = useState({ network: 'ETH', contract: '' });
   const [customTokens, setCustomTokens] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'token' | 'nft' | 'tools'>('token');
+  const [activeTab, setActiveTab] = useState<'token' | 'nft' | 'history'>('token');
   const [sendError, setSendError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -61,7 +61,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       name: 'Ethereum', 
       icon: <Eth />, 
       price: tokenPrices.ETH?.price || 1850.45, 
-      change: tokenPrices.ETH?.change24h || 2.5, 
+      change: tokenPrices.ETH?.change24h || 2.15, 
       amount: parseFloat(wallet.balance.eth || '0'), 
       fiat: parseFloat(wallet.balance.eth || '0') * (tokenPrices.ETH?.price || 1850.45) 
     },
@@ -70,7 +70,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       name: 'Tether', 
       icon: <Usdt />, 
       price: tokenPrices.USDT?.price || 1.001, 
-      change: tokenPrices.USDT?.change24h || 0.1, 
+      change: tokenPrices.USDT?.change24h || 0.05, 
       amount: parseFloat(wallet.balance.usdt || '0'), 
       fiat: parseFloat(wallet.balance.usdt || '0') * (tokenPrices.USDT?.price || 1.001) 
     },
@@ -79,7 +79,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       name: 'Binance Coin', 
       icon: <Bnb />, 
       price: tokenPrices.BNB?.price || 245.67, 
-      change: tokenPrices.BNB?.change24h || -1.2, 
+      change: tokenPrices.BNB?.change24h || -1.23, 
       amount: parseFloat(wallet.balance.bnb || '0'), 
       fiat: parseFloat(wallet.balance.bnb || '0') * (tokenPrices.BNB?.price || 245.67) 
     },
@@ -88,7 +88,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       name: 'Polygon', 
       icon: <Pol />, 
       price: tokenPrices.POL?.price || 0.234, 
-      change: tokenPrices.POL?.change24h || -2.62, 
+      change: tokenPrices.POL?.change24h || -2.67, 
       amount: parseFloat(wallet.balance.pol || '0'), 
       fiat: parseFloat(wallet.balance.pol || '0') * (tokenPrices.POL?.price || 0.234) 
     },
@@ -97,7 +97,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       name: 'Base', 
       icon: <Base />, 
       price: tokenPrices.ETH?.price || 0.152, // Base uses ETH price
-      change: tokenPrices.ETH?.change24h || 5.8, 
+      change: tokenPrices.ETH?.change24h || 5.42, 
       amount: parseFloat(wallet.balance.base || '0'), 
       fiat: parseFloat(wallet.balance.base || '0') * (tokenPrices.ETH?.price || 0.152) 
     }
@@ -192,7 +192,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       // }
       
       toast.success('Transaction sent successfully!')
-      setActiveSection('main')
+        setActiveSection('main')
       setSendForm({ address: '', amount: '', token: 'ETH' })
     } catch (error) {
       toast.error('Network error')
@@ -212,9 +212,9 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Here you would implement the actual swap logic
+    // Here you would implement the actual swap logic
       toast.success('Swap executed successfully!')
-      setActiveSection('main')
+    setActiveSection('main')
       setSwapForm({ fromToken: 'ETH', toToken: 'USDT', amount: '' })
     } catch (error) {
       toast.error('Swap failed')
@@ -443,9 +443,9 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
             >
               <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
-            <button onClick={copyAddress} className="p-1 bg-gray-700 rounded hover:bg-primary-700">
-              <Copy className="w-4 h-4 text-white" />
-            </button>
+          <button onClick={copyAddress} className="p-1 bg-gray-700 rounded hover:bg-primary-700">
+            <Copy className="w-4 h-4 text-white" />
+          </button>
           </div>
         </div>
         {/* Total Worth */}
@@ -472,14 +472,14 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
             className="flex flex-col items-center hover:text-primary-500 transition-colors"
           >
             <Send className="w-6 h-6" />
-            <span className="text-xs mt-1">Kirim</span>
+            <span className="text-xs mt-1">Send</span>
           </button>
           <button 
             onClick={() => setActiveSection('receive')}
             className="flex flex-col items-center hover:text-primary-500 transition-colors"
           >
             <Download className="w-6 h-6" />
-            <span className="text-xs mt-1">Terima</span>
+            <span className="text-xs mt-1">Receive</span>
           </button>
           <button 
             onClick={() => setActiveSection('swap')}
@@ -493,14 +493,14 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
             className="flex flex-col items-center hover:text-primary-500 transition-colors"
           >
             <Plus className="w-6 h-6" />
-            <span className="text-xs mt-1">Tambah</span>
+            <span className="text-xs mt-1">Add</span>
           </button>
         </div>
-        {/* Tab Token/NFT/Alat */}
+        {/* Tab Token/NFT/History */}
         <div className="flex gap-4 border-b border-gray-700 mb-2">
           <button className={`pb-2 px-2 text-sm ${activeTab === 'token' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('token')}>Token</button>
           <button className={`pb-2 px-2 text-sm ${activeTab === 'nft' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('nft')}>NFT</button>
-          <button className={`pb-2 px-2 text-sm ${activeTab === 'tools' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('tools')}>Alat</button>
+          <button className={`pb-2 px-2 text-sm ${activeTab === 'history' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('history')}>History</button>
         </div>
         {/* Token List */}
         {activeTab === 'token' && (
@@ -517,7 +517,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-300">${token.price.toLocaleString()}</span>
                       <span className={`text-xs ${token.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {token.change >= 0 ? '+' : ''}{token.change}%
+                        {token.change >= 0 ? '+' : ''}{token.change.toFixed(2)}%
                       </span>
                     </div>
                   </div>
@@ -537,7 +537,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
             )}
           </div>
         )}
-        {/* NFT & Tools tab */}
+        {/* NFT & History tab */}
         {activeTab === 'nft' && (
           <div className="text-center text-gray-500 py-8">
             <div className="mb-4">
@@ -547,20 +547,8 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
             <p className="text-sm mt-2">Your NFT collection will appear here</p>
           </div>
         )}
-        {activeTab === 'tools' && (
+        {activeTab === 'history' && (
           <div className="space-y-3 mt-2">
-            <div className="p-3 bg-crypto-card rounded-lg border border-crypto-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <QrCode className="w-6 h-6 text-primary-500" />
-                  <div>
-                    <div className="font-medium text-white">Export Private Key</div>
-                    <div className="text-xs text-gray-400">Backup your wallet</div>
-                  </div>
-                </div>
-                <button className="text-primary-500 text-sm">Export</button>
-              </div>
-            </div>
             <div className="p-3 bg-crypto-card rounded-lg border border-crypto-border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -571,6 +559,18 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                   </div>
                 </div>
                 <button className="text-primary-500 text-sm">View</button>
+              </div>
+            </div>
+            <div className="p-3 bg-crypto-card rounded-lg border border-crypto-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <QrCode className="w-6 h-6 text-primary-500" />
+                  <div>
+                    <div className="font-medium text-white">Export Private Key</div>
+                    <div className="text-xs text-gray-400">Backup your wallet</div>
+                  </div>
+                </div>
+                <button className="text-primary-500 text-sm">Export</button>
               </div>
             </div>
             <div className="p-3 bg-crypto-card rounded-lg border border-crypto-border">

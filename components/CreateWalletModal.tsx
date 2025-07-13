@@ -4,13 +4,18 @@ import { useState } from 'react'
 import { X, Download, Copy, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatAddress, isValidAddress } from '@/lib/address'
+import { ethers } from 'ethers'
 
 interface Wallet {
   id: string;
-  address: string
+  address: string;
+  seedPhrase: string;
   balance: {
     eth: string
     usdt: string
+    bnb?: string;
+    pol?: string;
+    base?: string;
   }
 }
 
@@ -25,50 +30,97 @@ export default function CreateWalletModal({ isOpen, onClose, onWalletCreated, us
   const [step, setStep] = useState<'create' | 'backup'>('create')
   const [showSeedPhrase, setShowSeedPhrase] = useState(false)
   const [confirmedBackup, setConfirmedBackup] = useState(false)
-
-  const seedPhrase = 'abandon ability able about above absent absorb abstract absurd abuse access accident'
-  // Ganti walletAddress dengan address acak valid (dummy EVM address untuk demo)
-  const walletAddress = '0x' + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join('');
+  const [generatedWallet, setGeneratedWallet] = useState<{ seedPhrase: string; address: string } | null>(null)
 
   const handleCreateWallet = () => {
-    // In a real app, this would generate a new wallet using ethers.js
-    setStep('backup')
+    try {
+      // Generate new wallet using ethers.js
+      const wallet = ethers.Wallet.createRandom()
+      const walletData = {
+        seedPhrase: wallet.mnemonic?.phrase || '',
+        address: wallet.address
+      }
+      
+      setGeneratedWallet(walletData)
+      setStep('backup')
+    } catch (error) {
+      console.error('Error creating wallet:', error)
+      toast.error('Failed to create wallet')
+    }
   }
 
   const copySeedPhrase = () => {
-    navigator.clipboard.writeText(seedPhrase)
-    toast.success('Seed phrase copied!')
+    if (generatedWallet?.seedPhrase) {
+      navigator.clipboard.writeText(generatedWallet.seedPhrase)
+      toast.success('Seed phrase copied!')
+    }
   }
 
   const downloadSeedPhrase = () => {
-    const blob = new Blob([seedPhrase], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'seed-phrase.txt'
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success('Seed phrase downloaded!')
+    if (generatedWallet?.seedPhrase) {
+      const blob = new Blob([generatedWallet.seedPhrase], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'seed-phrase.txt'
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Seed phrase downloaded!')
+    }
   }
 
-  const handleConfirmBackup = () => {
+  const handleConfirmBackup = async () => {
     if (!confirmedBackup) {
       toast.error('Please confirm that you have backed up your seed phrase')
       return
     }
 
-    // Save wallet to localStorage (in real app, this would be saved to database)
-    const newWallet: Wallet = {
-      id: `wallet_${userId}_${Date.now()}`, // Generate a unique ID
-      address: walletAddress,
-      balance: {
-        eth: '0.0',
-        usdt: '0.00'
-      }
+    if (!generatedWallet) {
+      toast.error('No wallet generated')
+      return
     }
-    
-    localStorage.setItem(`wallet_${userId}`, JSON.stringify(newWallet))
-    onWalletCreated(newWallet)
+
+    try {
+      // Save wallet to database via API
+      const response = await fetch('/api/wallet/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          address: generatedWallet.address,
+          seedPhrase: generatedWallet.seedPhrase
+        })
+      })
+
+      if (response.ok) {
+        const walletData = await response.json()
+        
+        // Save to localStorage for immediate use
+        const newWallet: Wallet = {
+          id: walletData.id || `wallet_${userId}_${Date.now()}`,
+          address: generatedWallet.address,
+          seedPhrase: generatedWallet.seedPhrase,
+          balance: {
+            eth: '0.0',
+            usdt: '0.00',
+            bnb: '0.0',
+            pol: '0.0',
+            base: '0.0'
+          }
+        }
+        
+        localStorage.setItem(`wallet_${userId}`, JSON.stringify(newWallet))
+        onWalletCreated(newWallet)
+        toast.success('Wallet created successfully!')
+      } else {
+        toast.error('Failed to save wallet to database')
+      }
+    } catch (error) {
+      console.error('Error saving wallet:', error)
+      toast.error('Failed to save wallet')
+    }
   }
 
   if (!isOpen) return null
@@ -178,7 +230,7 @@ export default function CreateWalletModal({ isOpen, onClose, onWalletCreated, us
               
               {showSeedPhrase ? (
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  {seedPhrase.split(' ').map((word, index) => (
+                  {generatedWallet?.seedPhrase?.split(' ').map((word: string, index: number) => (
                     <div key={index} className="flex items-center gap-2">
                       <span className="text-gray-500 text-xs">{index + 1}.</span>
                       <span className="font-mono">{word}</span>

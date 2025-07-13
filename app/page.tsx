@@ -28,9 +28,13 @@ interface User {
 interface Wallet {
   id: string;
   address: string;
+  seedPhrase?: string;
   balance: {
     eth: string
     usdt: string
+    bnb?: string;
+    pol?: string;
+    base?: string;
   }
 }
 
@@ -61,29 +65,32 @@ export default function Home() {
 
   const checkUserWallet = async (userId: number) => {
     try {
-      // This would be an API call to check if user has wallet
-      // For now, we'll simulate it with dummy data
-      const hasWallet = localStorage.getItem(`wallet_${userId}`)
-      if (hasWallet) {
-        setWallet(JSON.parse(hasWallet))
+      // Check localStorage first for immediate access
+      const cachedWallet = localStorage.getItem(`wallet_${userId}`)
+      if (cachedWallet) {
+        setWallet(JSON.parse(cachedWallet))
+        return
+      }
+
+      // Fetch wallet from database
+      const response = await fetch(`/api/wallet/${userId}`)
+      
+      if (response.ok) {
+        const walletData = await response.json()
+        
+        // Cache wallet data in localStorage
+        localStorage.setItem(`wallet_${userId}`, JSON.stringify(walletData))
+        setWallet(walletData)
+      } else if (response.status === 404) {
+        // User doesn't have a wallet yet
+        setWallet(null)
       } else {
-        // Create dummy wallet data for demo
-        const dummyWallet = {
-          id: `wallet_${userId}`,
-          address: '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
-          balance: {
-            eth: '0.0275',
-            usdt: '150.00',
-            bnb: '0.5',
-            pol: '100.0',
-            base: '25.0'
-          }
-        }
-        localStorage.setItem(`wallet_${userId}`, JSON.stringify(dummyWallet))
-        setWallet(dummyWallet)
+        console.error('Error fetching wallet from database')
+        setWallet(null)
       }
     } catch (error) {
       console.error('Error checking wallet:', error)
+      setWallet(null)
     }
   }
 
