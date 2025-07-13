@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Send, Download, ArrowLeftRight, Copy, QrCode } from 'lucide-react'
 import toast from 'react-hot-toast'
 import QRCode from 'qrcode.react'
+import { formatAddress, isValidAddress } from '@/lib/address'
 
 interface User {
   id: number
@@ -41,8 +42,12 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   })
 
   const copyAddress = () => {
-    navigator.clipboard.writeText(wallet.address)
-    toast.success('Address copied to clipboard!')
+    if (isValidAddress(wallet.address)) {
+      navigator.clipboard.writeText(wallet.address)
+      toast.success('Address copied to clipboard!')
+    } else {
+      toast.error('Invalid wallet address!')
+    }
   }
 
   const handleSend = async () => {
@@ -108,7 +113,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
             <p className="text-sm text-gray-400 mb-2">Your Wallet Address</p>
             <div className="flex items-center justify-center gap-2">
               <code className="text-sm bg-crypto-dark px-3 py-2 rounded-lg flex-1 break-all">
-                {wallet.address}
+                {formatAddress(wallet.address)}
               </code>
               <button
                 onClick={copyAddress}
@@ -310,7 +315,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
         <h3 className="text-sm font-medium mb-3">Wallet Address</h3>
         <div className="flex items-center gap-2">
           <code className="text-sm bg-crypto-dark px-3 py-2 rounded-lg flex-1 break-all">
-            {wallet.address}
+            {formatAddress(wallet.address)}
           </code>
           <button
             onClick={copyAddress}

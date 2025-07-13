@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { User, Shield, Eye, Key, MessageCircle, Copy, LogOut } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { formatAddress, isValidAddress } from '@/lib/address'
 
 interface User {
   id: number
@@ -32,8 +33,12 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
   const [pin, setPin] = useState('')
 
   const copyAddress = () => {
-    navigator.clipboard.writeText(wallet.address)
-    toast.success('Address copied!')
+    if (isValidAddress(wallet.address)) {
+      navigator.clipboard.writeText(wallet.address)
+      toast.success('Address copied!')
+    } else {
+      toast.error('Invalid wallet address!')
+    }
   }
 
   const handleViewSeedPhrase = () => {
@@ -103,7 +108,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
             <span className="text-gray-400">Wallet Address</span>
             <div className="flex items-center gap-2">
               <code className="text-sm bg-crypto-dark px-2 py-1 rounded">
-                {wallet.address.slice(0, 8)}...{wallet.address.slice(-6)}
+                {formatAddress(wallet.address)}
               </code>
               <button
                 onClick={copyAddress}

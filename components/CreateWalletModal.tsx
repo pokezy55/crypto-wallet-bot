@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X, Download, Copy, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { formatAddress, isValidAddress } from '@/lib/address'
 
 interface Wallet {
   id: string;
@@ -26,7 +27,8 @@ export default function CreateWalletModal({ isOpen, onClose, onWalletCreated, us
   const [confirmedBackup, setConfirmedBackup] = useState(false)
 
   const seedPhrase = 'abandon ability able about above absent absorb abstract absurd abuse access accident'
-  const walletAddress = '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6'
+  // Ganti walletAddress dengan address acak valid (dummy EVM address untuk demo)
+  const walletAddress = '0x' + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join('');
 
   const handleCreateWallet = () => {
     // In a real app, this would generate a new wallet using ethers.js

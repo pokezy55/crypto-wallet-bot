@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getUserReferrals, getReferralStats } from '@/lib/database';
+import { getUserReferralData } from '@/lib/database';
 
 export async function GET(req, { params }) {
   const { userId } = params;
-  const [stats, referrals] = await Promise.all([
-    getReferralStats(Number(userId)),
-    getUserReferrals(Number(userId))
-  ]);
-  return NextResponse.json({ stats, referrals });
+  const data = await getUserReferralData(userId);
+  return NextResponse.json(data);
 } 

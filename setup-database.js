@@ -25,6 +25,7 @@ async function setupDatabase() {
         first_name VARCHAR(255) NOT NULL,
         last_name VARCHAR(255),
         photo_url TEXT,
+        banned BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );

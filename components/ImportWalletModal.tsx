@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { formatAddress, isValidAddress } from '@/lib/address'
 
 interface Wallet {
   id: string;
@@ -46,7 +47,7 @@ export default function ImportWalletModal({ isOpen, onClose, onWalletImported, u
 
       const importedWallet: Wallet = {
         id: 'wallet_' + Math.random().toString(16).substr(2, 10), // Generate a unique ID
-        address: '0x' + Math.random().toString(16).substr(2, 40),
+        address: '0x' + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join(''),
         balance: {
           eth: '0.0',
           usdt: '0.00'
