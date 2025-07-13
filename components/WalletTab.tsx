@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Send, Download, ArrowLeftRight, Copy, QrCode, Plus, Settings, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import QRCode from 'qrcode.react'
 import { formatAddress, isValidAddress } from '@/lib/address'
+import { getCachedTokenPrices } from '@/lib/crypto-prices'
 import { Eth, Bnb, Pol, Base, Usdt } from './TokenIcons';
 
 interface User {
@@ -51,63 +52,87 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   const [sendError, setSendError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // Token list dengan data dummy untuk demo
+  const [tokenPrices, setTokenPrices] = useState<Record<string, { price: number; change24h: number; lastUpdated: number }>>({});
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
+  // Token list dengan data real-time
   const tokenList = [
     { 
       symbol: 'ETH', 
       name: 'Ethereum', 
       icon: <Eth />, 
-      price: 1850.45, 
-      change: 2.5, 
+      price: tokenPrices.ETH?.price || 1850.45, 
+      change: tokenPrices.ETH?.change24h || 2.5, 
       amount: parseFloat(wallet.balance.eth || '0'), 
-      fiat: parseFloat(wallet.balance.eth || '0') * 1850.45 
+      fiat: parseFloat(wallet.balance.eth || '0') * (tokenPrices.ETH?.price || 1850.45) 
     },
     { 
       symbol: 'USDT', 
       name: 'Tether', 
       icon: <Usdt />, 
-      price: 1.001, 
-      change: 0.1, 
+      price: tokenPrices.USDT?.price || 1.001, 
+      change: tokenPrices.USDT?.change24h || 0.1, 
       amount: parseFloat(wallet.balance.usdt || '0'), 
-      fiat: parseFloat(wallet.balance.usdt || '0') * 1.001 
+      fiat: parseFloat(wallet.balance.usdt || '0') * (tokenPrices.USDT?.price || 1.001) 
     },
     { 
       symbol: 'BNB', 
       name: 'Binance Coin', 
       icon: <Bnb />, 
-      price: 245.67, 
-      change: -1.2, 
+      price: tokenPrices.BNB?.price || 245.67, 
+      change: tokenPrices.BNB?.change24h || -1.2, 
       amount: parseFloat(wallet.balance.bnb || '0'), 
-      fiat: parseFloat(wallet.balance.bnb || '0') * 245.67 
+      fiat: parseFloat(wallet.balance.bnb || '0') * (tokenPrices.BNB?.price || 245.67) 
     },
     { 
       symbol: 'POL', 
       name: 'Polygon', 
       icon: <Pol />, 
-      price: 0.234, 
-      change: -2.62, 
+      price: tokenPrices.POL?.price || 0.234, 
+      change: tokenPrices.POL?.change24h || -2.62, 
       amount: parseFloat(wallet.balance.pol || '0'), 
-      fiat: parseFloat(wallet.balance.pol || '0') * 0.234 
+      fiat: parseFloat(wallet.balance.pol || '0') * (tokenPrices.POL?.price || 0.234) 
     },
     { 
       symbol: 'BASE', 
       name: 'Base', 
       icon: <Base />, 
-      price: 0.152, 
-      change: 5.8, 
+      price: tokenPrices.ETH?.price || 0.152, // Base uses ETH price
+      change: tokenPrices.ETH?.change24h || 5.8, 
       amount: parseFloat(wallet.balance.base || '0'), 
-      fiat: parseFloat(wallet.balance.base || '0') * 0.152 
+      fiat: parseFloat(wallet.balance.base || '0') * (tokenPrices.ETH?.price || 0.152) 
     }
   ];
 
   // Calculate total worth
   const totalWorth = tokenList.reduce((sum, token) => sum + token.fiat, 0).toFixed(2);
 
+  // Fetch real-time token prices
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const prices = await getCachedTokenPrices();
+        setTokenPrices(prices);
+        setLastPriceUpdate(new Date());
+      } catch (error) {
+        console.error('Error fetching prices:', error);
+      }
+    };
+
+    fetchPrices();
+    
+    // Refresh prices every 30 seconds
+    const interval = setInterval(fetchPrices, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const refreshWallet = async () => {
     setIsRefreshing(true);
     try {
-      // Simulate refresh delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Fetch fresh prices
+      const prices = await getCachedTokenPrices();
+      setTokenPrices(prices);
+      setLastPriceUpdate(new Date());
       toast.success('Wallet refreshed!');
     } catch (error) {
       toast.error('Failed to refresh wallet');
@@ -434,6 +459,11 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
               {parseFloat(wallet.balance.eth || '0').toFixed(4)}
             </span>
           </div>
+          {lastPriceUpdate && (
+            <div className="text-xs text-gray-500 mt-1">
+              Last updated: {lastPriceUpdate.toLocaleTimeString()}
+            </div>
+          )}
         </div>
         {/* Action Buttons */}
         <div className="flex justify-between items-center mb-4 px-2">
