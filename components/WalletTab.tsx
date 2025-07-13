@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Send, Download, ArrowLeftRight, Copy, QrCode } from 'lucide-react'
+import { Send, Download, ArrowLeftRight, Copy, QrCode, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import QRCode from 'qrcode.react'
 import { formatAddress, isValidAddress } from '@/lib/address'
@@ -47,9 +47,17 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   const [showAddToken, setShowAddToken] = useState(false);
   const [newToken, setNewToken] = useState({ network: 'ETH', contract: '' });
   const [customTokens, setCustomTokens] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'token' | 'nft' | 'tools'>('token');
+  const [sendError, setSendError] = useState('');
+  // HAPUS: Dummy token list dan total worth
+  // const tokenList = [
+  //   { symbol: 'POL', name: 'Polygon', icon: <Polygon />, price: 0.24, change: -2.62, amount: 0.00102017, fiat: 0.24 },
+  //   { symbol: 'USDT', name: 'Tether', icon: <Eth />, price: 1.0, change: 0.0, amount: 0, fiat: 0 },
+  //   { symbol: 'USDC', name: 'USD Coin', icon: <Eth />, price: 1.0, change: 0.02, amount: 0, fiat: 0 },
+  // ];
 
-  // Dummy: total worth (replace with real API call)
-  const totalWorth = 0; // TODO: hit API untuk USD worth
+  // TODO: Fetch token list dan total worth dari API/backend
+  const totalWorth = '0.00'; // sementara string
 
   const copyAddress = () => {
     if (isValidAddress(wallet.address)) {
@@ -61,9 +69,16 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   }
 
   const handleSend = async () => {
+    setSendError('');
     if (!sendForm.address || !sendForm.amount) {
-      toast.error('Please fill in all fields')
-      return
+      setSendError('Please fill in all fields');
+      toast.error('Please fill in all fields');
+      return;
+    }
+    if (!isValidAddress(sendForm.address)) {
+      setSendError('Wrong address format');
+      toast.error('Wrong address format');
+      return;
     }
     
     try {
@@ -166,6 +181,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                 placeholder="0x..."
                 className="input-field w-full"
               />
+              {sendError && <div className="text-red-500 text-xs mt-1">{sendError}</div>}
             </div>
 
             <div>
@@ -278,142 +294,47 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
 
   if (activeSection === 'main') {
     return (
-      <div className="p-6">
-        {/* Wallet Address */}
-        <div className="flex flex-col items-center mb-4">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-base bg-gray-800 px-3 py-1 rounded-lg">
-              {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}
-            </span>
-            <button onClick={copyAddress} className="p-1 bg-primary-600 rounded hover:bg-primary-700">
-              <Copy className="w-4 h-4 text-white" />
-            </button>
-          </div>
+      <div className="p-4">
+        {/* Address & Copy */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-mono text-xs text-gray-400">{wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}</span>
+          <button onClick={copyAddress} className="p-1 bg-gray-700 rounded hover:bg-primary-700">
+            <Copy className="w-4 h-4 text-white" />
+          </button>
         </div>
         {/* Total Worth */}
-        <div className="text-center mb-4">
-          <span className="text-gray-400 text-sm">Total Balance Worth</span>
-          <div className="text-2xl font-bold text-white">${totalWorth.toLocaleString()}</div>
-        </div>
-        {/* Wallet Balance */}
-        <div className="bg-crypto-card rounded-lg p-4 mb-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Eth className="w-5 h-5" /> <span>ETH</span>
-              </div>
-              <span>{wallet.balance.eth || '0.0'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Base className="w-5 h-5" /> <span>BaseETH</span>
-              </div>
-              <span>{wallet.balance.base || '0.0'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Polygon className="w-5 h-5" /> <span>POL</span>
-              </div>
-              <span>{wallet.balance.pol || '0.0'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bnb className="w-5 h-5" /> <span>BNB</span>
-              </div>
-              <span>{wallet.balance.bnb || '0.0'}</span>
-            </div>
-            {/* Custom tokens */}
-            {customTokens.map((token, idx) => (
-              <div key={idx} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span>{token.symbol}</span>
-                  <span className="text-xs text-gray-400">({token.network})</span>
-                </div>
-                <span>{token.amount || '0.0'}</span>
-              </div>
-            ))}
+        <div className="text-center mb-2">
+          <div className="text-3xl font-bold text-white">${totalWorth}</div>
+          <div className="text-xs text-gray-400 flex items-center justify-center gap-1">
+            <span>≈ ${totalWorth}</span>
+            <span className="text-gray-500">|</span>
+            <span className="flex items-center gap-1"><Eth className="w-3 h-3" /> 27.50</span>
           </div>
-          <button
-            className="mt-4 w-full btn-secondary"
-            onClick={() => setShowAddToken(true)}
-          >
-            Add Other Token
-          </button>
         </div>
-        {/* Add Token Modal */}
-        {showAddToken && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg max-w-sm w-full">
-              <h3 className="text-lg font-bold mb-4">Add Custom Token</h3>
-              <div className="mb-4">
-                <label className="block mb-1">Network</label>
-                <select
-                  value={newToken.network}
-                  onChange={e => setNewToken({ ...newToken, network: e.target.value })}
-                  className="input-field w-full"
-                >
-                  <option value="ETH">ETH</option>
-                  <option value="BASE">BASE</option>
-                  <option value="BNB">BNB</option>
-                  <option value="POL">POL</option>
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block mb-1">Contract Address</label>
-                <input
-                  type="text"
-                  value={newToken.contract}
-                  onChange={e => setNewToken({ ...newToken, contract: e.target.value })}
-                  className="input-field w-full"
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  className="btn-primary flex-1"
-                  onClick={() => {
-                    // Simulasi add token
-                    setCustomTokens([...customTokens, { ...newToken, symbol: 'CUSTOM', amount: '0.0' }]);
-                    setShowAddToken(false);
-                    setNewToken({ network: 'ETH', contract: '' });
-                  }}
-                >
-                  Confirm Add Token
-                </button>
-                <button
-                  className="btn-secondary flex-1"
-                  onClick={() => setShowAddToken(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+        {/* Action Buttons */}
+        <div className="flex justify-between items-center mb-4 px-2">
+          <button className="flex flex-col items-center"><Send className="w-6 h-6" /><span className="text-xs mt-1">Kirim</span></button>
+          <button className="flex flex-col items-center"><Download className="w-6 h-6" /><span className="text-xs mt-1">Terima</span></button>
+          <button className="flex flex-col items-center"><ArrowLeftRight className="w-6 h-6" /><span className="text-xs mt-1">Swap</span></button>
+          <button className="flex flex-col items-center"><Plus className="w-6 h-6" /><span className="text-xs mt-1">Ke</span></button>
+          <button className="flex flex-col items-center"><Copy className="w-6 h-6" /><span className="text-xs mt-1">Riwayat</span></button>
+        </div>
+        {/* Tab Token/NFT/Alat */}
+        <div className="flex gap-4 border-b border-gray-700 mb-2">
+          <button className={`pb-2 px-2 text-sm ${activeTab === 'token' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('token')}>Token</button>
+          <button className={`pb-2 px-2 text-sm ${activeTab === 'nft' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('nft')}>NFT</button>
+          <button className={`pb-2 px-2 text-sm ${activeTab === 'tools' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('tools')}>Alat</button>
+        </div>
+        {/* Token List */}
+        {activeTab === 'token' && (
+          <div className="flex flex-col gap-3 mt-2">
+            {/* TODO: Fetch token list from API/backend */}
+            <div className="text-center text-gray-500 py-8">Loading Tokens...</div>
           </div>
         )}
-        {/* Menu Buttons */}
-        <div className="grid grid-cols-3 gap-4 mt-4">
-          <button
-            className="btn-primary flex flex-col items-center gap-1"
-            onClick={() => setActiveSection('receive')}
-          >
-            <Download className="w-5 h-5" />
-            <span className="text-xs">Receive</span>
-          </button>
-          <button
-            className="btn-primary flex flex-col items-center gap-1"
-            onClick={() => setActiveSection('send')}
-          >
-            <Send className="w-5 h-5" />
-            <span className="text-xs">Send</span>
-          </button>
-          <button
-            className="btn-primary flex flex-col items-center gap-1"
-            onClick={() => setActiveSection('swap')}
-          >
-            <ArrowLeftRight className="w-5 h-5" />
-            <span className="text-xs">Swap</span>
-          </button>
-        </div>
+        {/* NFT & Tools tab kosong dulu */}
+        {activeTab === 'nft' && <div className="text-center text-gray-500 py-8">No NFT</div>}
+        {activeTab === 'tools' && <div className="text-center text-gray-500 py-8">No Tools</div>}
       </div>
     );
   }
