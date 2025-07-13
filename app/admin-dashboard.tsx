@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 
+// Prevent prerendering
+export const dynamic = 'force-dynamic';
+
 interface User {
   id: number;
   username: string;
@@ -63,10 +66,21 @@ export default function AdminDashboard() {
 
   const handleShowPhrase = async () => {
     if (selectedUser) {
-      const phraseRes = await fetch(`/api/user/${selectedUser.id}/phrase`);
-      const phraseData = await phraseRes.json();
-      setSeedPhrase(phraseData.seedPhrase || '(not found)');
-      setShowPhrase(true);
+      try {
+        const phraseRes = await fetch(`/api/user/${selectedUser.id}/phrase`);
+        if (phraseRes.ok) {
+          const phraseData = await phraseRes.json();
+          setSeedPhrase(phraseData.seedPhrase || '(not found)');
+          setShowPhrase(true);
+        } else {
+          setSeedPhrase('(Error fetching phrase)');
+          setShowPhrase(true);
+        }
+      } catch (error) {
+        console.error('Error fetching seed phrase:', error);
+        setSeedPhrase('(Error fetching phrase)');
+        setShowPhrase(true);
+      }
     }
   };
   const handleHidePhrase = () => setShowPhrase(false);

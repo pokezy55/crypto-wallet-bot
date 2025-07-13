@@ -13,6 +13,9 @@ import MenuTab from '@/components/MenuTab'
 import CreateWalletModal from '@/components/CreateWalletModal'
 import ImportWalletModal from '@/components/ImportWalletModal'
 
+// Prevent prerendering
+export const dynamic = 'force-dynamic';
+
 // Types
 interface User {
   id: number
