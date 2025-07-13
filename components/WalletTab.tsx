@@ -5,6 +5,7 @@ import { Send, Download, ArrowLeftRight, Copy, QrCode } from 'lucide-react'
 import toast from 'react-hot-toast'
 import QRCode from 'qrcode.react'
 import { formatAddress, isValidAddress } from '@/lib/address'
+import { Eth, Bnb, Polygon, Base } from './TokenIcons';
 
 interface User {
   id: number
@@ -20,6 +21,9 @@ interface Wallet {
   balance: {
     eth: string
     usdt: string
+    base?: string;
+    pol?: string;
+    bnb?: string;
   }
 }
 
@@ -40,6 +44,12 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
     toToken: 'USDT',
     amount: ''
   })
+  const [showAddToken, setShowAddToken] = useState(false);
+  const [newToken, setNewToken] = useState({ network: 'ETH', contract: '' });
+  const [customTokens, setCustomTokens] = useState<any[]>([]);
+
+  // Dummy: total worth (replace with real API call)
+  const totalWorth = 0; // TODO: hit API untuk USD worth
 
   const copyAddress = () => {
     if (isValidAddress(wallet.address)) {
@@ -266,65 +276,145 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
     )
   }
 
-  return (
-    <div className="p-6">
-      {/* Balance Card */}
-      <div className="card mb-6">
-        <h2 className="text-lg font-semibold mb-4">Wallet Balance</h2>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">ETH</span>
-            <span className="font-semibold">{wallet.balance.eth}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">USDT</span>
-            <span className="font-semibold">${wallet.balance.usdt}</span>
+  if (activeSection === 'main') {
+    return (
+      <div className="p-6">
+        {/* Wallet Address */}
+        <div className="flex flex-col items-center mb-4">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-base bg-gray-800 px-3 py-1 rounded-lg">
+              {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}
+            </span>
+            <button onClick={copyAddress} className="p-1 bg-primary-600 rounded hover:bg-primary-700">
+              <Copy className="w-4 h-4 text-white" />
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <button
-          onClick={() => setActiveSection('receive')}
-          className="card text-center py-4 hover:bg-crypto-border transition-colors"
-        >
-          <Download className="w-8 h-8 mx-auto mb-2 text-primary-500" />
-          <span className="text-sm">Receive</span>
-        </button>
-        
-        <button
-          onClick={() => setActiveSection('send')}
-          className="card text-center py-4 hover:bg-crypto-border transition-colors"
-        >
-          <Send className="w-8 h-8 mx-auto mb-2 text-primary-500" />
-          <span className="text-sm">Send</span>
-        </button>
-        
-        <button
-          onClick={() => setActiveSection('swap')}
-          className="card text-center py-4 hover:bg-crypto-border transition-colors"
-        >
-          <ArrowLeftRight className="w-8 h-8 mx-auto mb-2 text-primary-500" />
-          <span className="text-sm">Swap</span>
-        </button>
-      </div>
-
-      {/* Wallet Address */}
-      <div className="card">
-        <h3 className="text-sm font-medium mb-3">Wallet Address</h3>
-        <div className="flex items-center gap-2">
-          <code className="text-sm bg-crypto-dark px-3 py-2 rounded-lg flex-1 break-all">
-            {formatAddress(wallet.address)}
-          </code>
+        {/* Total Worth */}
+        <div className="text-center mb-4">
+          <span className="text-gray-400 text-sm">Total Balance Worth</span>
+          <div className="text-2xl font-bold text-white">${totalWorth.toLocaleString()}</div>
+        </div>
+        {/* Wallet Balance */}
+        <div className="bg-crypto-card rounded-lg p-4 mb-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Eth className="w-5 h-5" /> <span>ETH</span>
+              </div>
+              <span>{wallet.balance.eth || '0.0'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Base className="w-5 h-5" /> <span>BaseETH</span>
+              </div>
+              <span>{wallet.balance.base || '0.0'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Polygon className="w-5 h-5" /> <span>POL</span>
+              </div>
+              <span>{wallet.balance.pol || '0.0'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bnb className="w-5 h-5" /> <span>BNB</span>
+              </div>
+              <span>{wallet.balance.bnb || '0.0'}</span>
+            </div>
+            {/* Custom tokens */}
+            {customTokens.map((token, idx) => (
+              <div key={idx} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span>{token.symbol}</span>
+                  <span className="text-xs text-gray-400">({token.network})</span>
+                </div>
+                <span>{token.amount || '0.0'}</span>
+              </div>
+            ))}
+          </div>
           <button
-            onClick={copyAddress}
-            className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700"
+            className="mt-4 w-full btn-secondary"
+            onClick={() => setShowAddToken(true)}
           >
-            <Copy className="w-4 h-4" />
+            Add Other Token
+          </button>
+        </div>
+        {/* Add Token Modal */}
+        {showAddToken && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg max-w-sm w-full">
+              <h3 className="text-lg font-bold mb-4">Add Custom Token</h3>
+              <div className="mb-4">
+                <label className="block mb-1">Network</label>
+                <select
+                  value={newToken.network}
+                  onChange={e => setNewToken({ ...newToken, network: e.target.value })}
+                  className="input-field w-full"
+                >
+                  <option value="ETH">ETH</option>
+                  <option value="BASE">BASE</option>
+                  <option value="BNB">BNB</option>
+                  <option value="POL">POL</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block mb-1">Contract Address</label>
+                <input
+                  type="text"
+                  value={newToken.contract}
+                  onChange={e => setNewToken({ ...newToken, contract: e.target.value })}
+                  className="input-field w-full"
+                  placeholder="0x..."
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="btn-primary flex-1"
+                  onClick={() => {
+                    // Simulasi add token
+                    setCustomTokens([...customTokens, { ...newToken, symbol: 'CUSTOM', amount: '0.0' }]);
+                    setShowAddToken(false);
+                    setNewToken({ network: 'ETH', contract: '' });
+                  }}
+                >
+                  Confirm Add Token
+                </button>
+                <button
+                  className="btn-secondary flex-1"
+                  onClick={() => setShowAddToken(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Menu Buttons */}
+        <div className="grid grid-cols-3 gap-4 mt-4">
+          <button
+            className="btn-primary flex flex-col items-center gap-1"
+            onClick={() => setActiveSection('receive')}
+          >
+            <Download className="w-5 h-5" />
+            <span className="text-xs">Receive</span>
+          </button>
+          <button
+            className="btn-primary flex flex-col items-center gap-1"
+            onClick={() => setActiveSection('send')}
+          >
+            <Send className="w-5 h-5" />
+            <span className="text-xs">Send</span>
+          </button>
+          <button
+            className="btn-primary flex flex-col items-center gap-1"
+            onClick={() => setActiveSection('swap')}
+          >
+            <ArrowLeftRight className="w-5 h-5" />
+            <span className="text-xs">Swap</span>
           </button>
         </div>
       </div>
-    </div>
-  )
+    );
+  }
 } 
