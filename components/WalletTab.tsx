@@ -5,7 +5,7 @@ import { Send, Download, ArrowLeftRight, Copy, QrCode, Plus, Settings, RefreshCw
 import toast from 'react-hot-toast'
 import QRCode from 'qrcode.react'
 import { formatAddress, isValidAddress } from '@/lib/address'
-import { Eth, Bnb, Polygon, Base } from './TokenIcons';
+import { Eth, Bnb, Pol, Base, Usdt } from './TokenIcons';
 
 interface User {
   id: number
@@ -57,46 +57,46 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       symbol: 'ETH', 
       name: 'Ethereum', 
       icon: <Eth />, 
-      price: 1800, 
+      price: 1850.45, 
       change: 2.5, 
       amount: parseFloat(wallet.balance.eth || '0'), 
-      fiat: parseFloat(wallet.balance.eth || '0') * 1800 
+      fiat: parseFloat(wallet.balance.eth || '0') * 1850.45 
     },
     { 
       symbol: 'USDT', 
       name: 'Tether', 
-      icon: <Eth />, 
-      price: 1.0, 
-      change: 0.0, 
+      icon: <Usdt />, 
+      price: 1.001, 
+      change: 0.1, 
       amount: parseFloat(wallet.balance.usdt || '0'), 
-      fiat: parseFloat(wallet.balance.usdt || '0') 
+      fiat: parseFloat(wallet.balance.usdt || '0') * 1.001 
     },
     { 
       symbol: 'BNB', 
       name: 'Binance Coin', 
       icon: <Bnb />, 
-      price: 240, 
+      price: 245.67, 
       change: -1.2, 
       amount: parseFloat(wallet.balance.bnb || '0'), 
-      fiat: parseFloat(wallet.balance.bnb || '0') * 240 
+      fiat: parseFloat(wallet.balance.bnb || '0') * 245.67 
     },
     { 
       symbol: 'POL', 
       name: 'Polygon', 
-      icon: <Polygon />, 
-      price: 0.24, 
+      icon: <Pol />, 
+      price: 0.234, 
       change: -2.62, 
       amount: parseFloat(wallet.balance.pol || '0'), 
-      fiat: parseFloat(wallet.balance.pol || '0') * 0.24 
+      fiat: parseFloat(wallet.balance.pol || '0') * 0.234 
     },
     { 
       symbol: 'BASE', 
       name: 'Base', 
       icon: <Base />, 
-      price: 0.15, 
+      price: 0.152, 
       change: 5.8, 
       amount: parseFloat(wallet.balance.base || '0'), 
-      fiat: parseFloat(wallet.balance.base || '0') * 0.15 
+      fiat: parseFloat(wallet.balance.base || '0') * 0.152 
     }
   ];
 
@@ -465,13 +465,6 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
             <Plus className="w-6 h-6" />
             <span className="text-xs mt-1">Tambah</span>
           </button>
-          <button 
-            onClick={() => setActiveTab('tools')}
-            className="flex flex-col items-center hover:text-primary-500 transition-colors"
-          >
-            <Copy className="w-6 h-6" />
-            <span className="text-xs mt-1">Riwayat</span>
-          </button>
         </div>
         {/* Tab Token/NFT/Alat */}
         <div className="flex gap-4 border-b border-gray-700 mb-2">
@@ -491,6 +484,12 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                   <div>
                     <div className="font-medium text-white">{token.symbol}</div>
                     <div className="text-xs text-gray-400">{token.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-300">${token.price.toLocaleString()}</span>
+                      <span className={`text-xs ${token.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {token.change >= 0 ? '+' : ''}{token.change}%
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="text-right">
@@ -499,9 +498,6 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                   </div>
                   <div className="text-xs text-gray-400">
                     ${token.fiat > 0 ? token.fiat.toFixed(2) : '0.00'}
-                  </div>
-                  <div className={`text-xs ${token.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {token.change >= 0 ? '+' : ''}{token.change}%
                   </div>
                 </div>
               </div>

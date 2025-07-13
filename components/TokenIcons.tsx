@@ -1,32 +1,50 @@
-export function Eth(props: any) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 32 32" fill="none" {...props}>
-      <path d="M16 2L16 30" stroke="#627EEA" strokeWidth="2"/>
-      <path d="M16 2L28 16L16 30L4 16L16 2Z" stroke="#627EEA" strokeWidth="2"/>
-    </svg>
-  );
+import React from 'react';
+
+interface TokenIconProps {
+  className?: string;
 }
-export function Bnb(props: any) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 32 32" fill="none" {...props}>
-      <circle cx="16" cy="16" r="14" stroke="#F3BA2F" strokeWidth="2"/>
-      <path d="M16 8L16 24" stroke="#F3BA2F" strokeWidth="2"/>
-      <path d="M8 16L24 16" stroke="#F3BA2F" strokeWidth="2"/>
-    </svg>
-  );
-}
-export function Polygon(props: any) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 32 32" fill="none" {...props}>
-      <rect x="6" y="6" width="20" height="20" rx="5" stroke="#8247E5" strokeWidth="2"/>
-    </svg>
-  );
-}
-export function Base(props: any) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 32 32" fill="none" {...props}>
-      <circle cx="16" cy="16" r="14" stroke="#0052FF" strokeWidth="2"/>
-      <circle cx="16" cy="16" r="6" stroke="#0052FF" strokeWidth="2"/>
-    </svg>
-  );
-} 
+
+export const Eth: React.FC<TokenIconProps> = ({ className = "w-6 h-6" }) => (
+  <img 
+    src="https://www.citypng.com/public/uploads/preview/ethereum-eth-round-logo-icon-png-701751694969815akblwl2552.png" 
+    alt="ETH" 
+    className={`${className} rounded-full`}
+    style={{ objectFit: 'cover' }}
+  />
+);
+
+export const Usdt: React.FC<TokenIconProps> = ({ className = "w-6 h-6" }) => (
+  <img 
+    src="https://cdn.worldvectorlogo.com/logos/tether-1.svg" 
+    alt="USDT" 
+    className={`${className} rounded-full`}
+    style={{ objectFit: 'cover' }}
+  />
+);
+
+export const Bnb: React.FC<TokenIconProps> = ({ className = "w-6 h-6" }) => (
+  <img 
+    src="https://images.seeklogo.com/logo-png/47/2/bnb-bnb-logo-png_seeklogo-476074.png" 
+    alt="BNB" 
+    className={`${className} rounded-full`}
+    style={{ objectFit: 'cover' }}
+  />
+);
+
+export const Pol: React.FC<TokenIconProps> = ({ className = "w-6 h-6" }) => (
+  <img 
+    src="https://images.seeklogo.com/logo-png/48/1/polygon-matic-logo-png_seeklogo-482146.png" 
+    alt="POL" 
+    className={`${className} rounded-full`}
+    style={{ objectFit: 'cover' }}
+  />
+);
+
+export const Base: React.FC<TokenIconProps> = ({ className = "w-6 h-6" }) => (
+  <img 
+    src="https://www.citypng.com/public/uploads/preview/ethereum-eth-round-logo-icon-png-701751694969815akblwl2552.png" 
+    alt="BASE" 
+    className={`${className} rounded-full`}
+    style={{ objectFit: 'cover' }}
+  />
+); 
