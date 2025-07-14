@@ -10,13 +10,7 @@ interface Wallet {
   id: string;
   address: string;
   seedPhrase: string;
-  balance: {
-    eth: string
-    usdt: string
-    bnb?: string;
-    pol?: string;
-    base?: string;
-  }
+  balance: Record<string, Record<string, string>>;
 }
 
 interface CreateWalletModalProps {
@@ -103,11 +97,10 @@ export default function CreateWalletModal({ isOpen, onClose, onWalletCreated, us
           address: generatedWallet.address,
           seedPhrase: generatedWallet.seedPhrase,
           balance: {
-            eth: '0.0',
-            usdt: '0.00',
-            bnb: '0.0',
-            pol: '0.0',
-            base: '0.0'
+            eth: { eth: '0.0', usdt: '0.00' },
+            bsc: { bnb: '0.0', usdt: '0.00' },
+            polygon: { pol: '0.0', usdt: '0.00' },
+            base: { base: '0.0', usdt: '0.00' }
           }
         }
         

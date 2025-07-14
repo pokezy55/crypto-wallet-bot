@@ -15,11 +15,8 @@ interface User {
 
 interface Wallet {
   id: string;
-  address: string
-  balance: {
-    eth: string
-    usdt: string
-  }
+  address: string;
+  balance: Record<string, Record<string, string>>;
 }
 
 interface MenuTabProps {
@@ -121,12 +118,12 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
           
           <div className="flex justify-between items-center">
             <span className="text-gray-400">ETH Balance</span>
-            <span className="font-medium">{wallet.balance.eth}</span>
+            <span className="font-medium">{wallet.balance.eth?.usdt}</span>
           </div>
           
           <div className="flex justify-between items-center">
             <span className="text-gray-400">USDT Balance</span>
-            <span className="font-medium">${wallet.balance.usdt}</span>
+            <span className="font-medium">${wallet.balance.usdt?.usdt}</span>
           </div>
         </div>
       </div>

@@ -7,11 +7,8 @@ import { formatAddress, isValidAddress } from '@/lib/address'
 
 interface Wallet {
   id: string;
-  address: string
-  balance: {
-    eth: string
-    usdt: string
-  }
+  address: string;
+  balance: Record<string, Record<string, string>>;
 }
 
 interface ImportWalletModalProps {
@@ -46,11 +43,13 @@ export default function ImportWalletModal({ isOpen, onClose, onWalletImported, u
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       const importedWallet: Wallet = {
-        id: 'wallet_' + Math.random().toString(16).substr(2, 10), // Generate a unique ID
+        id: 'wallet_' + Math.random().toString(16).substr(2, 10),
         address: '0x' + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join(''),
         balance: {
-          eth: '0.0',
-          usdt: '0.00'
+          eth: { eth: '0.0', usdt: '0.00' },
+          bsc: { bnb: '0.0', usdt: '0.00' },
+          polygon: { pol: '0.0', usdt: '0.00' },
+          base: { base: '0.0', usdt: '0.00' }
         }
       }
 
