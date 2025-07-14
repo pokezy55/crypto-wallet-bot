@@ -19,13 +19,10 @@ interface User {
 interface Wallet {
   id: string;
   address: string;
-  balance: {
-    eth: string
-    usdt: string
-    base?: string;
-    pol?: string;
-    bnb?: string;
-  }
+  balance: Record<string, Record<string, string>>;
+  seedPhrase?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface WalletTabProps {
@@ -57,51 +54,53 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   const [tokenPrices, setTokenPrices] = useState<Record<string, { price: number; change24h: number; lastUpdated: number }>>({});
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
   // Token list dengan data real-time
+  // Default chain: Ethereum (eth)
+  const chain = 'eth';
   const tokenList = [
-    { 
-      symbol: 'ETH', 
-      name: 'Ethereum', 
-      icon: <Eth />, 
-      price: tokenPrices.ETH?.price || 1850.45, 
-      change: tokenPrices.ETH?.change24h || 2.15, 
-      amount: parseFloat(wallet.balance.eth || '0'), 
-      fiat: parseFloat(wallet.balance.eth || '0') * (tokenPrices.ETH?.price || 1850.45) 
+    {
+      symbol: 'ETH',
+      name: 'Ethereum',
+      icon: <Eth />,
+      price: tokenPrices.ETH?.price || 1850.45,
+      change: tokenPrices.ETH?.change24h || 2.15,
+      amount: parseFloat(wallet.balance?.[chain]?.eth ?? '0'),
+      fiat: parseFloat(wallet.balance?.[chain]?.eth ?? '0') * (tokenPrices.ETH?.price || 1850.45)
     },
-    { 
-      symbol: 'USDT', 
-      name: 'Tether', 
-      icon: <Usdt />, 
-      price: tokenPrices.USDT?.price || 1.001, 
-      change: tokenPrices.USDT?.change24h || 0.05, 
-      amount: parseFloat(wallet.balance.usdt || '0'), 
-      fiat: parseFloat(wallet.balance.usdt || '0') * (tokenPrices.USDT?.price || 1.001) 
+    {
+      symbol: 'USDT',
+      name: 'Tether',
+      icon: <Usdt />,
+      price: tokenPrices.USDT?.price || 1.001,
+      change: tokenPrices.USDT?.change24h || 0.05,
+      amount: parseFloat(wallet.balance?.[chain]?.usdt ?? '0'),
+      fiat: parseFloat(wallet.balance?.[chain]?.usdt ?? '0') * (tokenPrices.USDT?.price || 1.001)
     },
-    { 
-      symbol: 'BNB', 
-      name: 'Binance Coin', 
-      icon: <Bnb />, 
-      price: tokenPrices.BNB?.price || 245.67, 
-      change: tokenPrices.BNB?.change24h || -1.23, 
-      amount: parseFloat(wallet.balance.bnb || '0'), 
-      fiat: parseFloat(wallet.balance.bnb || '0') * (tokenPrices.BNB?.price || 245.67) 
+    {
+      symbol: 'BNB',
+      name: 'Binance Coin',
+      icon: <Bnb />,
+      price: tokenPrices.BNB?.price || 245.67,
+      change: tokenPrices.BNB?.change24h || -1.23,
+      amount: parseFloat(wallet.balance?.bsc?.bnb ?? '0'), // BNB di BSC
+      fiat: parseFloat(wallet.balance?.bsc?.bnb ?? '0') * (tokenPrices.BNB?.price || 245.67)
     },
-    { 
-      symbol: 'POL', 
-      name: 'Polygon', 
-      icon: <Pol />, 
-      price: tokenPrices.POL?.price || 0.234, 
-      change: tokenPrices.POL?.change24h || -2.67, 
-      amount: parseFloat(wallet.balance.pol || '0'), 
-      fiat: parseFloat(wallet.balance.pol || '0') * (tokenPrices.POL?.price || 0.234) 
+    {
+      symbol: 'POL',
+      name: 'Polygon',
+      icon: <Pol />,
+      price: tokenPrices.POL?.price || 0.234,
+      change: tokenPrices.POL?.change24h || -2.67,
+      amount: parseFloat(wallet.balance?.polygon?.pol ?? '0'), // POL di Polygon
+      fiat: parseFloat(wallet.balance?.polygon?.pol ?? '0') * (tokenPrices.POL?.price || 0.234)
     },
-    { 
-      symbol: 'BASE', 
-      name: 'Base', 
-      icon: <Base />, 
+    {
+      symbol: 'BASE',
+      name: 'Base',
+      icon: <Base />,
       price: tokenPrices.ETH?.price || 0.152, // Base uses ETH price
-      change: tokenPrices.ETH?.change24h || 5.42, 
-      amount: parseFloat(wallet.balance.base || '0'), 
-      fiat: parseFloat(wallet.balance.base || '0') * (tokenPrices.ETH?.price || 0.152) 
+      change: tokenPrices.ETH?.change24h || 5.42,
+      amount: parseFloat(wallet.balance?.base?.base ?? '0'), // BASE di Base
+      fiat: parseFloat(wallet.balance?.base?.base ?? '0') * (tokenPrices.ETH?.price || 0.152)
     }
   ];
 
