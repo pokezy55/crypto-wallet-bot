@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createWallet, getWalletByUserId } from '@/lib/database'
+import { createWallet, getWalletByUserId, getUserById, createUser } from '@/lib/database'
 
 export async function POST(request) {
   try {
@@ -18,6 +18,11 @@ export async function POST(request) {
         { error: 'User already has a wallet' },
         { status: 409 }
       )
+    }
+    // Check if user exists, if not, create minimal user
+    let user = await getUserById(userId)
+    if (!user) {
+      await createUser({ id: userId })
     }
     // Create new wallet
     const wallet = await createWallet(userId, {
