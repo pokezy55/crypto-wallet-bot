@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createUser } from '@/lib/database';
+import { createUser, approveSwapClaim } from '@/lib/database';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -23,6 +23,30 @@ async function banUser(userId) {
 export async function POST(req) {
   try {
     const data = await req.json();
+
+    // Handler tombol COMPLETE swap claim
+    if (data.callback_query && data.callback_query.data) {
+      const cb = data.callback_query;
+      if (cb.data.startsWith('complete_swap_')) {
+        const claimId = cb.data.replace('complete_swap_', '');
+        await approveSwapClaim(claimId);
+        // Balas ke admin
+        const chatId = cb.message.chat.id;
+        const messageId = cb.message.message_id;
+        // Edit pesan untuk menandai sudah completed
+        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } })
+        });
+        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: 'Claim marked as completed.' })
+        });
+        return NextResponse.json({ ok: true });
+      }
+    }
 
     // Cek jika command /ban user
     if (data.message && data.message.text) {
