@@ -1,31 +1,19 @@
 import { NextResponse } from 'next/server'
-import { pool } from '@/lib/database'
+import { getWalletByUserId } from '@/lib/database'
 
 export async function GET(request, { params }) {
   try {
     const { userId } = params
-
-    // Get wallet from database
-    const result = await pool.query(`
-      SELECT id, user_id, address, seed_phrase, 
-             balance_eth, balance_usdt, balance_bnb, balance_pol, balance_base,
-             created_at, updated_at
-      FROM wallets 
-      WHERE user_id = $1
-    `, [userId])
-
-    if (result.rows.length === 0) {
+    const walletData = await getWalletByUserId(userId)
+    if (!walletData) {
       return NextResponse.json(
         { error: 'Wallet not found' },
         { status: 404 }
       )
     }
-
-    const walletData = result.rows[0]
-
     // Format wallet data
     const wallet = {
-      id: walletData.id.toString(),
+      id: walletData.id?.toString(),
       address: walletData.address,
       seedPhrase: walletData.seed_phrase,
       balance: {
@@ -38,9 +26,7 @@ export async function GET(request, { params }) {
       createdAt: walletData.created_at,
       updatedAt: walletData.updated_at
     }
-
     return NextResponse.json(wallet)
-
   } catch (error) {
     console.error('Error getting wallet:', error)
     return NextResponse.json(
