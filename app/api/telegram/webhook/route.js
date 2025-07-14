@@ -3,7 +3,6 @@ import { createUser } from '@/lib/database';
 import fs from 'fs/promises';
 import path from 'path';
 
-// Prevent prerendering
 export const dynamic = 'force-dynamic';
 
 async function isUserBanned(userId) {
@@ -24,6 +23,7 @@ async function banUser(userId) {
 export async function POST(req) {
   try {
     const data = await req.json();
+
     // Cek jika command /ban user
     if (data.message && data.message.text) {
       const text = data.message.text.trim();
@@ -36,13 +36,31 @@ export async function POST(req) {
         }
       }
     }
+
     // Cek banned sebelum proses lain
     const userId = data.message?.from?.id || data.userId;
     if (userId && await isUserBanned(userId)) {
       return NextResponse.json({ error: 'User is banned' }, { status: 403 });
     }
-    const user = await createUser(data);
-    return NextResponse.json(user);
+
+    // Jika ada pesan /start, insert user ke database
+    if (data.message && data.message.text && data.message.text.startsWith('/start')) {
+      const from = data.message.from;
+      if (from && from.id) {
+        const userData = {
+          id: from.id, // WAJIB diisi!
+          username: from.username || null,
+          first_name: from.first_name || null,
+          last_name: from.last_name || null,
+          photo_url: from.photo_url || null
+        };
+        await createUser(userData);
+      } else {
+        console.error('Telegram user id tidak ditemukan di message.from');
+      }
+    }
+
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Error processing webhook:', error);
     return NextResponse.json(
