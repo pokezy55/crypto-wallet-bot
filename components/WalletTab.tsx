@@ -467,8 +467,8 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
             <span>Total Portfolio Value</span>
             <span className="text-gray-500">|</span>
             <span className="flex items-center gap-1">
-              <Eth className="w-3 h-3" /> 
-              {parseFloat(wallet.balance.eth || '0').toFixed(4)}
+              <Eth className="w-3 h-3" />
+              {parseFloat(wallet.balance?.eth?.eth ?? '0').toFixed(4)}
             </span>
           </div>
           {lastPriceUpdate && (
