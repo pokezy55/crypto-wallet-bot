@@ -8,9 +8,11 @@ export async function GET(req, { params }) {
     const { userId } = params;
     // Ambil wallet user
     const wallet = await getWalletByUserId(userId);
+    console.log('DEBUG swap-progress: wallet =', wallet);
     if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
     // Ambil transaksi swap
     const transactions = await getWalletTransactions(wallet.id, 1000);
+    console.log('DEBUG swap-progress: transactions =', transactions);
     const swapTxs = transactions.filter(tx => tx.tx_type === 'swap');
     const totalSwapUSD = swapTxs.reduce((sum, tx) => sum + (tx.usd_value || 0), 0);
     // Status claim: processing/claimed/belum

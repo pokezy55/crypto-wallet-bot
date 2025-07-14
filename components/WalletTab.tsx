@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Send, Download, ArrowLeftRight, Copy, QrCode, Plus, Settings, RefreshCw } from 'lucide-react'
+import { Send, Download, ArrowLeftRight, Copy, QrCode, Plus, Settings, RefreshCw, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import QRCode from 'qrcode.react'
 import { formatAddress, isValidAddress } from '@/lib/address'
@@ -48,7 +48,9 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   const [showAddToken, setShowAddToken] = useState(false);
   const [newToken, setNewToken] = useState({ network: 'ETH', contract: '' });
   const [customTokens, setCustomTokens] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'token' | 'nft' | 'history'>('token');
+  const [activeTab, setActiveTab] = useState<'token' | 'history'>('token');
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [sendError, setSendError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -125,6 +127,17 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
     
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      setLoadingHistory(true);
+      fetch(`/api/wallet/${user.id}/history`)
+        .then(res => res.json())
+        .then(data => setHistory(data.history || []))
+        .catch(() => setHistory([]))
+        .finally(() => setLoadingHistory(false));
+    }
+  }, [activeTab, user.id]);
 
   const refreshWallet = async () => {
     setIsRefreshing(true);
@@ -499,10 +512,8 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
         {/* Tab Token/NFT/History */}
         <div className="flex gap-4 border-b border-gray-700 mb-2">
           <button className={`pb-2 px-2 text-sm ${activeTab === 'token' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('token')}>Token</button>
-          <button className={`pb-2 px-2 text-sm ${activeTab === 'nft' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('nft')}>NFT</button>
           <button className={`pb-2 px-2 text-sm ${activeTab === 'history' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('history')}>History</button>
         </div>
-        {/* Token List */}
         {activeTab === 'token' && (
           <div className="flex flex-col gap-3 mt-2">
             {tokenList.map((token, index) => (
@@ -537,54 +548,32 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
             )}
           </div>
         )}
-        {/* NFT & History tab */}
-        {activeTab === 'nft' && (
-          <div className="text-center text-gray-500 py-8">
-            <div className="mb-4">
-              <QrCode className="w-16 h-16 mx-auto text-gray-600" />
-            </div>
-            <p>No NFTs in this wallet</p>
-            <p className="text-sm mt-2">Your NFT collection will appear here</p>
-          </div>
-        )}
         {activeTab === 'history' && (
           <div className="space-y-3 mt-2">
-            <div className="p-3 bg-crypto-card rounded-lg border border-crypto-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Copy className="w-6 h-6 text-primary-500" />
+            {loadingHistory ? (
+              <div className="text-center text-gray-500 py-8">Loading history...</div>
+            ) : history.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">No transaction history found</div>
+            ) : (
+              history.map((tx, idx) => (
+                <div key={idx} className="p-3 bg-crypto-card rounded-lg border border-crypto-border flex items-center justify-between">
                   <div>
-                    <div className="font-medium text-white">Transaction History</div>
-                    <div className="text-xs text-gray-400">View all transactions</div>
+                    {tx.type === 'Send' && (
+                      <div className="text-red-400 font-medium">Send {tx.amount} {tx.token} to <span className="font-mono">{tx.to.slice(0, 6)}...{tx.to.slice(-4)}</span></div>
+                    )}
+                    {tx.type === 'Receive' && (
+                      <div className="text-green-400 font-medium">Receive {tx.amount} {tx.token} from <span className="font-mono">{tx.from.slice(0, 6)}...{tx.from.slice(-4)}</span></div>
+                    )}
+                    {tx.type === 'Swap' && (
+                      <div className="text-blue-400 font-medium">Swap {tx.amountIn} {tx.tokenIn} to {tx.amountOut} {tx.tokenOut}</div>
+                    )}
                   </div>
+                  <a href={`https://etherscan.io/tx/${tx.txHash}`} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary-500 flex items-center gap-1 text-xs">
+                    TxLink <ExternalLink className="w-3 h-3" />
+                  </a>
                 </div>
-                <button className="text-primary-500 text-sm">View</button>
-              </div>
-            </div>
-            <div className="p-3 bg-crypto-card rounded-lg border border-crypto-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <QrCode className="w-6 h-6 text-primary-500" />
-                  <div>
-                    <div className="font-medium text-white">Export Private Key</div>
-                    <div className="text-xs text-gray-400">Backup your wallet</div>
-                  </div>
-                </div>
-                <button className="text-primary-500 text-sm">Export</button>
-              </div>
-            </div>
-            <div className="p-3 bg-crypto-card rounded-lg border border-crypto-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Settings className="w-6 h-6 text-primary-500" />
-                  <div>
-                    <div className="font-medium text-white">Wallet Settings</div>
-                    <div className="text-xs text-gray-400">Configure your wallet</div>
-                  </div>
-                </div>
-                <button className="text-primary-500 text-sm">Settings</button>
-              </div>
-            </div>
+              ))
+            )}
           </div>
         )}
 

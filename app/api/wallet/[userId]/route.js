@@ -1,5 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getWalletByUserId } from '@/lib/database'
+import { fetchEthBalance, fetchErc20Balance } from '@/lib/crypto-alchemy'
+
+const TOKENS = [
+  { symbol: 'ETH' },
+  { symbol: 'USDT' },
+  { symbol: 'BNB' },
+  { symbol: 'POL' },
+  { symbol: 'BASE' }
+]
 
 export async function GET(request, { params }) {
   try {
@@ -11,18 +20,22 @@ export async function GET(request, { params }) {
         { status: 404 }
       )
     }
+    const address = walletData.address
+    // Fetch balance real-time dari blockchain
+    const balances = {}
+    for (const t of TOKENS) {
+      if (t.symbol === 'ETH') {
+        balances.eth = (await fetchEthBalance(address)).toString()
+      } else {
+        balances[t.symbol.toLowerCase()] = (await fetchErc20Balance(address, t.symbol)).toString()
+      }
+    }
     // Format wallet data
     const wallet = {
       id: walletData.id?.toString(),
       address: walletData.address,
       seedPhrase: walletData.seed_phrase,
-      balance: {
-        eth: walletData.balance_eth || '0.0',
-        usdt: walletData.balance_usdt || '0.00',
-        bnb: walletData.balance_bnb || '0.0',
-        pol: walletData.balance_pol || '0.0',
-        base: walletData.balance_base || '0.0'
-      },
+      balance: balances,
       createdAt: walletData.created_at,
       updatedAt: walletData.updated_at
     }
