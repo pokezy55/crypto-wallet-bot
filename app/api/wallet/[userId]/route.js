@@ -3,7 +3,8 @@ import { getWalletByUserId } from '@/lib/database'
 import { fetchEthBalance, fetchErc20Balance } from '@/lib/crypto-alchemy'
 
 const CHAINS = ['eth', 'polygon', 'bsc', 'base']
-const TOKENS = ['ETH', 'USDT', 'BNB', 'POL', 'BASE']
+const NATIVE_SYMBOL = { eth: 'eth', polygon: 'pol', bsc: 'bnb', base: 'base' }
+const ERC20_TOKENS = ['USDT']
 
 export async function GET(request, { params }) {
   try {
@@ -20,12 +21,12 @@ export async function GET(request, { params }) {
     const balances = {}
     for (const chain of CHAINS) {
       balances[chain] = {}
-      for (const symbol of TOKENS) {
-        if (symbol === 'ETH' && chain === 'eth') {
-          balances[chain].eth = (await fetchEthBalance(address, chain)).toString()
-        } else if (symbol !== 'ETH') {
-          balances[chain][symbol.toLowerCase()] = (await fetchErc20Balance(address, symbol, chain)).toString()
-        }
+      // Native token
+      const nativeSymbol = NATIVE_SYMBOL[chain]
+      balances[chain][nativeSymbol] = (await fetchEthBalance(address, chain)).toString()
+      // ERC20 tokens
+      for (const symbol of ERC20_TOKENS) {
+        balances[chain][symbol.toLowerCase()] = (await fetchErc20Balance(address, symbol, chain)).toString()
       }
     }
     // Format wallet data
