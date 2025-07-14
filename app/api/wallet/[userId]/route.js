@@ -2,13 +2,8 @@ import { NextResponse } from 'next/server'
 import { getWalletByUserId } from '@/lib/database'
 import { fetchEthBalance, fetchErc20Balance } from '@/lib/crypto-alchemy'
 
-const TOKENS = [
-  { symbol: 'ETH' },
-  { symbol: 'USDT' },
-  { symbol: 'BNB' },
-  { symbol: 'POL' },
-  { symbol: 'BASE' }
-]
+const CHAINS = ['eth', 'polygon', 'bsc', 'base']
+const TOKENS = ['ETH', 'USDT', 'BNB', 'POL', 'BASE']
 
 export async function GET(request, { params }) {
   try {
@@ -21,13 +16,16 @@ export async function GET(request, { params }) {
       )
     }
     const address = walletData.address
-    // Fetch balance real-time dari blockchain
+    // Fetch balance dari semua chain utama
     const balances = {}
-    for (const t of TOKENS) {
-      if (t.symbol === 'ETH') {
-        balances.eth = (await fetchEthBalance(address)).toString()
-      } else {
-        balances[t.symbol.toLowerCase()] = (await fetchErc20Balance(address, t.symbol)).toString()
+    for (const chain of CHAINS) {
+      balances[chain] = {}
+      for (const symbol of TOKENS) {
+        if (symbol === 'ETH' && chain === 'eth') {
+          balances[chain].eth = (await fetchEthBalance(address, chain)).toString()
+        } else if (symbol !== 'ETH') {
+          balances[chain][symbol.toLowerCase()] = (await fetchErc20Balance(address, symbol, chain)).toString()
+        }
       }
     }
     // Format wallet data
