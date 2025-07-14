@@ -29,13 +29,7 @@ interface Wallet {
   id: string;
   address: string;
   seedPhrase?: string;
-  balance: {
-    eth: string
-    usdt: string
-    bnb?: string;
-    pol?: string;
-    base?: string;
-  }
+  balance: Record<string, Record<string, string>>;
 }
 
 export default function Home() {
