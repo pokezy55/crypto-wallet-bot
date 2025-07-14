@@ -41,8 +41,9 @@ export async function GET(request, { params }) {
     return NextResponse.json(wallet)
   } catch (error) {
     console.error('Error getting wallet:', error)
+    // Tambahkan detail error ke response untuk debug
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', detail: error?.message || String(error) },
       { status: 500 }
     )
   }
