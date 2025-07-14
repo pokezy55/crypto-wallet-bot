@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { CheckCircle, XCircle, Gift, DollarSign } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { CheckCircle, XCircle, Gift, DollarSign, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface User {
@@ -16,44 +16,61 @@ interface TaskTabProps {
   user: User
 }
 
+type SwapProgress = {
+  totalSwapUSD: number
+  eligibleToClaim: boolean
+  status: 'unclaimed' | 'eligible' | 'processing' | 'claimed'
+}
+
 export default function TaskTab({ user }: TaskTabProps) {
-  const [taskCompleted, setTaskCompleted] = useState(false)
-  const [rewardClaimed, setRewardClaimed] = useState(false)
+  const [progress, setProgress] = useState<SwapProgress | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [claiming, setClaiming] = useState(false)
 
-  const handleClaimReward = async () => {
-    if (!taskCompleted) {
-      toast.error('Complete the task first!')
-      return
-    }
-    
-    if (rewardClaimed) {
-      toast.error('Reward already claimed!')
-      return
-    }
-
+  // Fetch progress swap user
+  const fetchProgress = async () => {
+    setLoading(true)
     try {
-      const response = await fetch('/api/task/claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskId: 1 }) // In real app, get actual taskId
-      });
-      
-      if (response.ok) {
-        setRewardClaimed(true)
-        toast.success('Reward claimed! $5 USDT added to your wallet')
+      const res = await fetch(`/api/task/${user.id}/swap-progress`)
+      const data = await res.json()
+      setProgress(data)
+    } catch (e) {
+      toast.error('Failed to fetch swap progress')
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchProgress()
+    // Polling setiap 10 detik jika status processing
+    let interval: NodeJS.Timeout | undefined
+    if (progress?.status === 'processing') {
+      interval = setInterval(fetchProgress, 10000)
+    }
+    return () => interval && clearInterval(interval)
+    // eslint-disable-next-line
+  }, [user.id, progress?.status])
+
+  const handleClaim = async () => {
+    setClaiming(true)
+    try {
+      const res = await fetch(`/api/task/${user.id}/swap-claim`, { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success('Reward claim requested! Waiting for admin approval.')
+        fetchProgress()
       } else {
-        toast.error('Failed to claim reward')
+        toast.error(data.error || 'Failed to claim reward')
       }
-    } catch (error) {
+    } catch (e) {
       toast.error('Network error')
     }
+    setClaiming(false)
   }
 
   return (
     <div className="p-6">
       <h2 className="text-xl font-semibold mb-6">Tasks & Rewards</h2>
-
-      {/* Main Task */}
       <div className="card mb-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
@@ -68,58 +85,70 @@ export default function TaskTab({ user }: TaskTabProps) {
             </div>
           </div>
           <div className="ml-4">
-            {taskCompleted ? (
+            {progress?.status === 'claimed' ? (
               <CheckCircle className="w-8 h-8 text-green-500" />
             ) : (
               <XCircle className="w-8 h-8 text-red-500" />
             )}
           </div>
         </div>
-
         <div className="space-y-3">
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Task Status:</span>
-            <span className={taskCompleted ? 'text-green-400' : 'text-red-400'}>
-              {taskCompleted ? 'Completed' : 'Incomplete'}
+            <span className={progress?.status === 'claimed' || progress?.status === 'eligible' || progress?.status === 'processing' ? 'text-green-400' : 'text-red-400'}>
+              {loading ? <Loader2 className="animate-spin w-4 h-4" /> :
+                progress?.status === 'claimed' ? 'Claimed' :
+                progress?.status === 'processing' ? 'Processing' :
+                progress?.status === 'eligible' ? 'Completed' :
+                'Incomplete'}
             </span>
           </div>
-          
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Reward Status:</span>
-            <span className={rewardClaimed ? 'text-green-400' : 'text-yellow-400'}>
-              {rewardClaimed ? 'Claimed' : 'Available'}
+            <span className={progress?.status === 'claimed' ? 'text-green-400' : progress?.status === 'processing' ? 'text-yellow-400' : 'text-yellow-400'}>
+              {loading ? <Loader2 className="animate-spin w-4 h-4" /> :
+                progress?.status === 'claimed' ? 'Claimed' :
+                progress?.status === 'processing' ? 'Processing' :
+                progress?.status === 'eligible' ? 'Available' :
+                'Available'}
             </span>
           </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-400">Total Swap:</span>
+            <span className="text-blue-400">${progress?.totalSwapUSD?.toFixed(2) || '0.00'}</span>
+          </div>
         </div>
-
         <div className="mt-4 pt-4 border-t border-crypto-border">
-          {!taskCompleted ? (
-            <button
-              onClick={() => {
-                setTaskCompleted(true)
-                toast.success('Task completed! You can now claim your reward')
-              }}
-              className="w-full btn-primary"
-            >
-              Mark as Complete
+          {loading ? (
+            <button className="w-full btn-primary" disabled>
+              <Loader2 className="animate-spin w-4 h-4 mr-2 inline" /> Loading...
             </button>
-          ) : !rewardClaimed ? (
+          ) : progress?.status === 'eligible' ? (
             <button
-              onClick={handleClaimReward}
+              onClick={handleClaim}
               className="w-full btn-primary flex items-center justify-center gap-2"
+              disabled={claiming}
             >
-              <DollarSign className="w-4 h-4" />
+              {claiming ? <Loader2 className="animate-spin w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
               Claim $5 USDT Reward
             </button>
-          ) : (
+          ) : progress?.status === 'processing' ? (
+            <div className="text-center py-2 text-yellow-400">
+              <Loader2 className="animate-spin w-6 h-6 mx-auto mb-2" />
+              <span className="text-sm">Waiting for admin approval...</span>
+            </div>
+          ) : progress?.status === 'claimed' ? (
             <div className="text-center py-2 text-green-400">
               <CheckCircle className="w-6 h-6 mx-auto mb-2" />
               <span className="text-sm">Reward claimed successfully!</span>
             </div>
+          ) : (
+            <button className="w-full btn-primary" disabled>
+              Mark as Complete
+            </button>
           )}
         </div>
       </div>
-
       {/* Task Rules */}
       <div className="card">
         <h3 className="text-lg font-medium mb-4">Task Rules</h3>
