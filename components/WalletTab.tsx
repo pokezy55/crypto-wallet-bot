@@ -106,18 +106,18 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       name: meta.name,
       chain: meta.chain,
       icon: meta.symbol === 'ETH'
-        ? <img src="https://cryptologos.cc/logos/ethereum-eth-logo.svg" alt="ETH" className="w-8 h-8 rounded-full" />
+        ? <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg" alt="ETH" className="w-8 h-8 rounded-full" />
         : meta.symbol === 'BNB'
-        ? <img src="https://cryptologos.cc/logos/binance-coin-bnb-logo.svg" alt="BNB" className="w-8 h-8 rounded-full" />
+        ? <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg" alt="BNB" className="w-8 h-8 rounded-full" />
         : meta.symbol === 'POLYGON'
-        ? <img src="https://cryptologos.cc/logos/polygon-matic-logo.svg" alt="POLYGON" className="w-8 h-8 rounded-full" />
+        ? <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg" alt="POLYGON" className="w-8 h-8 rounded-full" />
         : meta.symbol === 'BASE'
-        ? <img src="https://cryptologos.cc/logos/base-base-logo.svg" alt="BASE" className="w-8 h-8 rounded-full" />
+        ? <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg" alt="BASE" className="w-8 h-8 rounded-full" />
         : meta.symbol === 'USDT'
-        ? <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" alt="USDT" className="w-8 h-8 rounded-full" />
+        ? <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg" alt="USDT" className="w-8 h-8 rounded-full" />
         : meta.symbol === 'USDC'
-        ? <img src="https://cryptologos.cc/logos/usd-coin-usdc-logo.svg" alt="USDC" className="w-8 h-8 rounded-full" />
-        : <img src="https://cryptologos.cc/logos/ethereum-eth-logo.svg" alt="ETH" className="w-8 h-8 rounded-full" />,
+        ? <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg" alt="USDC" className="w-8 h-8 rounded-full" />
+        : <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg" alt="ETH" className="w-8 h-8 rounded-full" />,
       price: priceMap[meta.symbol] || 1.0,
       amount,
       fiat: amount * (priceMap[meta.symbol] || 1.0),
