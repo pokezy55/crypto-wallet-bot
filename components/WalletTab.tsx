@@ -105,7 +105,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       baseSymbol: meta.symbol,
       name: meta.name,
       chain: meta.chain,
-      icon: meta.symbol === 'ETH' ? <Eth /> : meta.symbol === 'BNB' ? <Bnb /> : meta.symbol === 'POLYGON' ? <img src="https://images.seeklogo.com/logo-png/44/1/polygon-matic-logo-png_seeklogo-444501.png" alt="POL" width={32} height={32} className="rounded-full" /> : meta.symbol === 'BASE' ? <Base /> : meta.symbol === 'USDT' ? <Usdt /> : meta.symbol === 'USDC' ? <img src="https://images.seeklogo.com/logo-png/40/1/usd-coin-usdc-logo-png_seeklogo-408043.png" alt="USDC" width={32} height={32} className="rounded-full" /> : <Eth />, // USDC pakai icon USDT sementara
+      icon: meta.symbol === 'ETH' ? <Eth /> : meta.symbol === 'BNB' ? <Bnb /> : meta.symbol === 'POLYGON' ? <img src="https://images.seeklogo.com/logo-png/44/1/polygon-matic-logo-png_seeklogo-444501.png" alt="POLYGON" className="w-8 h-8 rounded-full" /> : meta.symbol === 'BASE' ? <Base /> : meta.symbol === 'USDT' ? <Usdt /> : meta.symbol === 'USDC' ? <img src="https://images.seeklogo.com/logo-png/40/1/usd-coin-usdc-logo-png_seeklogo-408043.png" alt="USDC" className="w-8 h-8 rounded-full" /> : <Eth />, // USDC pakai icon USDT sementara
       price: priceMap[meta.symbol] || 1.0,
       amount,
       fiat: amount * (priceMap[meta.symbol] || 1.0),

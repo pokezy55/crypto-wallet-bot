@@ -11,7 +11,7 @@ export const Eth: React.FC<TokenIconProps> = ({ className = "w-6 h-6" }) => (
     className={`${className} rounded-full`}
     style={{ objectFit: 'cover' }}
   />
-);
+  );
 
 export const Usdt: React.FC<TokenIconProps> = ({ className = "w-6 h-6" }) => (
   <img 
@@ -20,7 +20,7 @@ export const Usdt: React.FC<TokenIconProps> = ({ className = "w-6 h-6" }) => (
     className={`${className} rounded-full`}
     style={{ objectFit: 'cover' }}
   />
-);
+  );
 
 export const Bnb: React.FC<TokenIconProps> = ({ className = "w-6 h-6" }) => (
   <img 
@@ -29,7 +29,7 @@ export const Bnb: React.FC<TokenIconProps> = ({ className = "w-6 h-6" }) => (
     className={`${className} rounded-full`}
     style={{ objectFit: 'cover' }}
   />
-);
+  );
 
 export const Pol: React.FC<TokenIconProps> = ({ className = "w-6 h-6" }) => (
   <img 
