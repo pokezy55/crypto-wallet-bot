@@ -30,57 +30,6 @@ interface WalletTabProps {
   user: User
 }
 
-// Helper untuk ambil balance dari chain tertentu
-function getTokenBalance(wallet: Wallet, chain: string, tokenKey: string): number {
-  return parseFloat(wallet.balance?.[chain]?.[tokenKey] ?? '0');
-}
-
-// Daftar token multi-chain
-const tokenMeta = [
-  { symbol: 'ETH', name: 'Ethereum', chain: 'eth', tokenKey: 'eth', decimals: 18 },
-  { symbol: 'USDT', name: 'Tether', chain: 'eth', tokenKey: 'usdt', decimals: 6 },
-  { symbol: 'USDC', name: 'USD Coin', chain: 'eth', tokenKey: 'usdc', decimals: 6 },
-  { symbol: 'BNB', name: 'Binance Coin', chain: 'bsc', tokenKey: 'bnb', decimals: 18 },
-  { symbol: 'USDT', name: 'Tether', chain: 'bsc', tokenKey: 'usdt', decimals: 6 },
-  { symbol: 'USDC', name: 'USD Coin', chain: 'bsc', tokenKey: 'usdc', decimals: 6 },
-  { symbol: 'POL', name: 'Polygon', chain: 'polygon', tokenKey: 'pol', decimals: 18 },
-  { symbol: 'USDT', name: 'Tether', chain: 'polygon', tokenKey: 'usdt', decimals: 6 },
-  { symbol: 'USDC', name: 'USD Coin', chain: 'polygon', tokenKey: 'usdc', decimals: 6 },
-  { symbol: 'BASE', name: 'Base', chain: 'base', tokenKey: 'base', decimals: 18 },
-  { symbol: 'USDT', name: 'Tether', chain: 'base', tokenKey: 'usdt', decimals: 6 },
-  { symbol: 'USDC', name: 'USD Coin', chain: 'base', tokenKey: 'usdc', decimals: 6 },
-];
-
-// Mapping harga
-const priceMap: Record<string, number> = {
-  ETH: tokenPrices.ETH?.price || 1850.45,
-  USDT: tokenPrices.USDT?.price || 1.0,
-  USDC: tokenPrices.USDC?.price || 1.0,
-  BNB: tokenPrices.BNB?.price || 245.67,
-  POL: tokenPrices.POL?.price || 0.234,
-  BASE: tokenPrices.ETH?.price || 0.152, // Base pakai harga ETH
-};
-
-// Token list dinamis
-let tokenList = tokenMeta.map(meta => {
-  const amount = getTokenBalance(wallet, meta.chain, meta.tokenKey);
-  return {
-    symbol: `${meta.symbol}(${meta.name === 'Ethereum' ? 'Ethereum' : meta.chain.charAt(0).toUpperCase() + meta.chain.slice(1)})`,
-    baseSymbol: meta.symbol,
-    name: meta.name,
-    chain: meta.chain,
-    icon: meta.symbol === 'ETH' ? <Eth /> : meta.symbol === 'BNB' ? <Bnb /> : meta.symbol === 'POL' ? <Pol /> : meta.symbol === 'BASE' ? <Base /> : meta.symbol === 'USDT' ? <Usdt /> : meta.symbol === 'USDC' ? <Usdt /> : <Eth />, // USDC pakai icon USDT sementara
-    price: priceMap[meta.symbol] || 1.0,
-    amount,
-    fiat: amount * (priceMap[meta.symbol] || 1.0),
-  };
-});
-// Urutkan token dengan saldo > 0 ke paling atas
-const sortedTokenList = [
-  ...tokenList.filter(t => t.amount > 0),
-  ...tokenList.filter(t => t.amount === 0),
-];
-
 export default function WalletTab({ wallet, user }: WalletTabProps) {
   const [activeSection, setActiveSection] = useState<'main' | 'receive' | 'send' | 'swap'>('main')
   const [sendForm, setSendForm] = useState({
@@ -108,12 +57,9 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   // Default chain: Ethereum (eth)
   const chain = 'eth';
   // Helper untuk ambil balance dari beberapa chain
-  function getTokenBalance(wallet: Wallet, chains: string[], tokenKey: string): number {
-    for (const chain of chains) {
-      const val = parseFloat(wallet.balance?.[chain]?.[tokenKey] ?? '0');
-      if (!isNaN(val) && val > 0) return val;
-    }
-    // Jika tidak ada balance, return 0
+  function getTokenBalance(wallet: Wallet, chain: string, tokenKey: string): number {
+    const val = parseFloat(wallet.balance?.[chain]?.[tokenKey] ?? '0');
+    if (!isNaN(val) && val > 0) return val;
     return 0;
   }
 
@@ -585,9 +531,6 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                     <div className="text-xs text-gray-400">{token.name}</div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-300">${token.price.toLocaleString()}</span>
-                      <span className={`text-xs ${token.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {token.change >= 0 ? '+' : ''}{token.change.toFixed(2)}%
-                      </span>
                     </div>
                   </div>
                 </div>
