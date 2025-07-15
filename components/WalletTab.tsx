@@ -105,7 +105,19 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       baseSymbol: meta.symbol,
       name: meta.name,
       chain: meta.chain,
-      icon: meta.symbol === 'ETH' ? <Eth /> : meta.symbol === 'BNB' ? <Bnb /> : meta.symbol === 'POLYGON' ? <img src="https://images.seeklogo.com/logo-png/44/1/polygon-matic-logo-png_seeklogo-444501.png" alt="POLYGON" className="w-8 h-8 rounded-full" /> : meta.symbol === 'BASE' ? <Base /> : meta.symbol === 'USDT' ? <Usdt /> : meta.symbol === 'USDC' ? <img src="https://images.seeklogo.com/logo-png/40/1/usd-coin-usdc-logo-png_seeklogo-408043.png" alt="USDC" className="w-8 h-8 rounded-full" /> : <Eth />, // USDC pakai icon USDT sementara
+      icon: meta.symbol === 'ETH'
+        ? <img src="https://cryptologos.cc/logos/ethereum-eth-logo.svg" alt="ETH" className="w-8 h-8 rounded-full" />
+        : meta.symbol === 'BNB'
+        ? <img src="https://cryptologos.cc/logos/binance-coin-bnb-logo.svg" alt="BNB" className="w-8 h-8 rounded-full" />
+        : meta.symbol === 'POLYGON'
+        ? <img src="https://cryptologos.cc/logos/polygon-matic-logo.svg" alt="POLYGON" className="w-8 h-8 rounded-full" />
+        : meta.symbol === 'BASE'
+        ? <img src="https://cryptologos.cc/logos/base-base-logo.svg" alt="BASE" className="w-8 h-8 rounded-full" />
+        : meta.symbol === 'USDT'
+        ? <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" alt="USDT" className="w-8 h-8 rounded-full" />
+        : meta.symbol === 'USDC'
+        ? <img src="https://cryptologos.cc/logos/usd-coin-usdc-logo.svg" alt="USDC" className="w-8 h-8 rounded-full" />
+        : <img src="https://cryptologos.cc/logos/ethereum-eth-logo.svg" alt="ETH" className="w-8 h-8 rounded-full" />,
       price: priceMap[meta.symbol] || 1.0,
       amount,
       fiat: amount * (priceMap[meta.symbol] || 1.0),
