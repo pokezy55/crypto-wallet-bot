@@ -67,16 +67,16 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   const tokenMeta = [
     { symbol: 'ETH', name: 'Ethereum', chain: 'eth', tokenKey: 'eth', decimals: 18 },
     { symbol: 'USDT', name: 'Tether', chain: 'eth', tokenKey: 'usdt', decimals: 6 },
-    { symbol: 'USDC', name: 'USD Coin', chain: 'eth', tokenKey: 'usdc', decimals: 6 },
+    { symbol: 'USDC', name: 'USDC', chain: 'eth', tokenKey: 'usdc', decimals: 6 },
     { symbol: 'BNB', name: 'BNB', chain: 'bsc', tokenKey: 'bnb', decimals: 18 },
     { symbol: 'USDT', name: 'Tether', chain: 'bsc', tokenKey: 'usdt', decimals: 6 },
-    { symbol: 'USDC', name: 'USD Coin', chain: 'bsc', tokenKey: 'usdc', decimals: 6 },
-    { symbol: 'POLYGON', name: 'POLYGON', chain: 'polygon', tokenKey: 'pol', decimals: 18 },
+    { symbol: 'USDC', name: 'USDC', chain: 'bsc', tokenKey: 'usdc', decimals: 6 },
+    { symbol: 'POLYGON', name: 'POL', chain: 'polygon', tokenKey: 'pol', decimals: 18 },
     { symbol: 'USDT', name: 'Tether', chain: 'polygon', tokenKey: 'usdt', decimals: 6 },
-    { symbol: 'USDC', name: 'USD Coin', chain: 'polygon', tokenKey: 'usdc', decimals: 6 },
-    { symbol: 'BASE', name: 'BASE', chain: 'base', tokenKey: 'base', decimals: 18 },
+    { symbol: 'USDC', name: 'USDC', chain: 'polygon', tokenKey: 'usdc', decimals: 6 },
+    { symbol: 'BASE', name: 'ETH', chain: 'base', tokenKey: 'base', decimals: 18 },
     { symbol: 'USDT', name: 'Tether', chain: 'base', tokenKey: 'usdt', decimals: 6 },
-    { symbol: 'USDC', name: 'USD Coin', chain: 'base', tokenKey: 'usdc', decimals: 6 },
+    { symbol: 'USDC', name: 'USDC', chain: 'base', tokenKey: 'usdc', decimals: 6 },
   ];
 
   // Mapping harga
