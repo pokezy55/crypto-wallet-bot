@@ -341,7 +341,8 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
             to: sendForm.address,
             token: selectedToken.symbol,
             chain: selectedToken.chain,
-            amount: sendForm.amount
+            amount: sendForm.amount,
+            seedPhrase: wallet.seedPhrase // <-- tambahkan ini!
           })
         });
         const result = await response.json();
