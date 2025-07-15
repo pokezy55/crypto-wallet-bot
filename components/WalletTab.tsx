@@ -527,8 +527,8 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                     {token.icon}
                   </div>
                   <div>
-                    <div className="font-medium text-white">{token.symbol}</div>
-                    <div className="text-xs text-gray-400">{token.name}</div>
+                    <div className="font-medium text-white">{token.name}</div>
+                    <div className="text-xs text-gray-400">({token.chain.charAt(0).toUpperCase() + token.chain.slice(1)})</div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-300">${token.price.toLocaleString()}</span>
                     </div>
