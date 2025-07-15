@@ -45,38 +45,38 @@ export default function Home() {
     if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
       window.Telegram.WebApp.ready()
       window.Telegram.WebApp.expand()
-      
       // Get user data from Telegram
       const telegramUser = window.Telegram.WebApp.initDataUnsafe.user
       if (telegramUser) {
         setUser(telegramUser)
-        // Check if user has wallet
         checkUserWallet(telegramUser.id)
       }
     }
     setIsLoading(false)
   }, [])
 
+  // Selalu fetch wallet dari backend setiap kali tab wallet aktif
+  useEffect(() => {
+    if (user && activeTab === 'wallet') {
+      checkUserWallet(user.id)
+    }
+  }, [user, activeTab])
+
   const checkUserWallet = async (userId: number) => {
     try {
-      // Check localStorage first for immediate access
-      const cachedWallet = localStorage.getItem(`wallet_${userId}`)
-      if (cachedWallet) {
-        setWallet(JSON.parse(cachedWallet))
-        return
-      }
-
+      // Hapus cache localStorage, selalu fetch dari backend
+      // const cachedWallet = localStorage.getItem(`wallet_${userId}`)
+      // if (cachedWallet) {
+      //   setWallet(JSON.parse(cachedWallet))
+      //   return
+      // }
       // Fetch wallet from database
       const response = await fetch(`/api/wallet/${userId}`)
-      
       if (response.ok) {
         const walletData = await response.json()
-        
-        // Cache wallet data in localStorage
-        localStorage.setItem(`wallet_${userId}`, JSON.stringify(walletData))
+        // localStorage.setItem(`wallet_${userId}`, JSON.stringify(walletData))
         setWallet(walletData)
       } else if (response.status === 404) {
-        // User doesn't have a wallet yet
         setWallet(null)
       } else {
         console.error('Error fetching wallet from database')
