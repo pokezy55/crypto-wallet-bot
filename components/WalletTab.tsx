@@ -30,6 +30,16 @@ interface WalletTabProps {
   user: User
 }
 
+// Helper untuk ambil balance dari beberapa chain
+function getTokenBalance(wallet: Wallet, chains: string[], tokenKey: string): number {
+  for (const chain of chains) {
+    const val = parseFloat(wallet.balance?.[chain]?.[tokenKey] ?? '0');
+    if (!isNaN(val) && val > 0) return val;
+  }
+  // Jika tidak ada balance, return 0
+  return 0;
+}
+
 export default function WalletTab({ wallet, user }: WalletTabProps) {
   const [activeSection, setActiveSection] = useState<'main' | 'receive' | 'send' | 'swap'>('main')
   const [sendForm, setSendForm] = useState({
@@ -63,8 +73,8 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       icon: <Eth />,
       price: tokenPrices.ETH?.price || 1850.45,
       change: tokenPrices.ETH?.change24h || 2.15,
-      amount: parseFloat(wallet.balance?.[chain]?.eth ?? '0'),
-      fiat: parseFloat(wallet.balance?.[chain]?.eth ?? '0') * (tokenPrices.ETH?.price || 1850.45)
+      amount: parseFloat(wallet.balance?.eth?.eth ?? '0'),
+      fiat: parseFloat(wallet.balance?.eth?.eth ?? '0') * (tokenPrices.ETH?.price || 1850.45)
     },
     {
       symbol: 'USDT',
@@ -72,8 +82,9 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       icon: <Usdt />,
       price: tokenPrices.USDT?.price || 1.001,
       change: tokenPrices.USDT?.change24h || 0.05,
-      amount: parseFloat(wallet.balance?.[chain]?.usdt ?? '0'),
-      fiat: parseFloat(wallet.balance?.[chain]?.usdt ?? '0') * (tokenPrices.USDT?.price || 1.001)
+      // USDT bisa di ETH dan Polygon
+      amount: getTokenBalance(wallet, ['eth', 'polygon'], 'usdt'),
+      fiat: getTokenBalance(wallet, ['eth', 'polygon'], 'usdt') * (tokenPrices.USDT?.price || 1.001)
     },
     {
       symbol: 'BNB',
@@ -81,7 +92,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       icon: <Bnb />,
       price: tokenPrices.BNB?.price || 245.67,
       change: tokenPrices.BNB?.change24h || -1.23,
-      amount: parseFloat(wallet.balance?.bsc?.bnb ?? '0'), // BNB di BSC
+      amount: parseFloat(wallet.balance?.bsc?.bnb ?? '0'),
       fiat: parseFloat(wallet.balance?.bsc?.bnb ?? '0') * (tokenPrices.BNB?.price || 245.67)
     },
     {
@@ -90,7 +101,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       icon: <Pol />,
       price: tokenPrices.POL?.price || 0.234,
       change: tokenPrices.POL?.change24h || -2.67,
-      amount: parseFloat(wallet.balance?.polygon?.pol ?? '0'), // POL di Polygon
+      amount: parseFloat(wallet.balance?.polygon?.pol ?? '0'),
       fiat: parseFloat(wallet.balance?.polygon?.pol ?? '0') * (tokenPrices.POL?.price || 0.234)
     },
     {
@@ -99,7 +110,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       icon: <Base />,
       price: tokenPrices.ETH?.price || 0.152, // Base uses ETH price
       change: tokenPrices.ETH?.change24h || 5.42,
-      amount: parseFloat(wallet.balance?.base?.base ?? '0'), // BASE di Base
+      amount: parseFloat(wallet.balance?.base?.base ?? '0'),
       fiat: parseFloat(wallet.balance?.base?.base ?? '0') * (tokenPrices.ETH?.price || 0.152)
     }
   ];
