@@ -448,8 +448,14 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
         </div>
         {/* Modal Konfirmasi */}
         {showConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-crypto-card border border-crypto-border rounded-xl p-6 w-full max-w-sm mx-4">
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            onClick={() => { setShowConfirm(false); setActiveSection('main'); setSendForm({ address: '', amount: '', token: sendableTokens[0]?.symbol || '' }); }}
+          >
+            <div
+              className="bg-crypto-card border border-crypto-border rounded-xl p-6 w-full max-w-sm mx-4"
+              onClick={e => e.stopPropagation()}
+            >
               <h3 className="text-lg font-semibold mb-4">Confirm Transaction</h3>
               <div className="mb-4">
                 <div>Send <b>{sendForm.amount} {selectedToken.symbol}</b> to</div>
