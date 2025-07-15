@@ -68,13 +68,13 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
     { symbol: 'ETH', name: 'Ethereum', chain: 'eth', tokenKey: 'eth', decimals: 18 },
     { symbol: 'USDT', name: 'Tether', chain: 'eth', tokenKey: 'usdt', decimals: 6 },
     { symbol: 'USDC', name: 'USD Coin', chain: 'eth', tokenKey: 'usdc', decimals: 6 },
-    { symbol: 'BNB', name: 'Binance Coin', chain: 'bsc', tokenKey: 'bnb', decimals: 18 },
+    { symbol: 'BNB', name: 'BNB', chain: 'bsc', tokenKey: 'bnb', decimals: 18 },
     { symbol: 'USDT', name: 'Tether', chain: 'bsc', tokenKey: 'usdt', decimals: 6 },
     { symbol: 'USDC', name: 'USD Coin', chain: 'bsc', tokenKey: 'usdc', decimals: 6 },
-    { symbol: 'POL', name: 'Polygon', chain: 'polygon', tokenKey: 'pol', decimals: 18 },
+    { symbol: 'POLYGON', name: 'POLYGON', chain: 'polygon', tokenKey: 'pol', decimals: 18 },
     { symbol: 'USDT', name: 'Tether', chain: 'polygon', tokenKey: 'usdt', decimals: 6 },
     { symbol: 'USDC', name: 'USD Coin', chain: 'polygon', tokenKey: 'usdc', decimals: 6 },
-    { symbol: 'BASE', name: 'Base', chain: 'base', tokenKey: 'base', decimals: 18 },
+    { symbol: 'BASE', name: 'BASE', chain: 'base', tokenKey: 'base', decimals: 18 },
     { symbol: 'USDT', name: 'Tether', chain: 'base', tokenKey: 'usdt', decimals: 6 },
     { symbol: 'USDC', name: 'USD Coin', chain: 'base', tokenKey: 'usdc', decimals: 6 },
   ];
@@ -85,8 +85,16 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
     USDT: tokenPrices.USDT?.price || 1.0,
     USDC: tokenPrices.USDC?.price || 1.0,
     BNB: tokenPrices.BNB?.price || 245.67,
-    POL: tokenPrices.POL?.price || 0.234,
+    POLYGON: tokenPrices.POLYGON?.price || 0.234,
     BASE: tokenPrices.ETH?.price || 0.152, // Base pakai harga ETH
+  };
+
+  // Mapping kode chain
+  const chainCodeMap: Record<string, string> = {
+    eth: 'ETH',
+    bsc: 'BNB',
+    polygon: 'POLYGON',
+    base: 'BASE',
   };
 
   // Token list dinamis
@@ -97,7 +105,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       baseSymbol: meta.symbol,
       name: meta.name,
       chain: meta.chain,
-      icon: meta.symbol === 'ETH' ? <Eth /> : meta.symbol === 'BNB' ? <Bnb /> : meta.symbol === 'POL' ? <Pol /> : meta.symbol === 'BASE' ? <Base /> : meta.symbol === 'USDT' ? <Usdt /> : meta.symbol === 'USDC' ? <Usdt /> : <Eth />, // USDC pakai icon USDT sementara
+      icon: meta.symbol === 'ETH' ? <Eth /> : meta.symbol === 'BNB' ? <Bnb /> : meta.symbol === 'POLYGON' ? <Pol /> : meta.symbol === 'BASE' ? <Base /> : meta.symbol === 'USDT' ? <Usdt /> : meta.symbol === 'USDC' ? <Usdt /> : <Eth />, // USDC pakai icon USDT sementara
       price: priceMap[meta.symbol] || 1.0,
       amount,
       fiat: amount * (priceMap[meta.symbol] || 1.0),
@@ -329,7 +337,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                 <option value="ETH">ETH</option>
                 <option value="USDT">USDT</option>
                 <option value="BNB">BNB</option>
-                <option value="POL">POL</option>
+                <option value="POLYGON">POLYGON</option>
                 <option value="BASE">BASE</option>
               </select>
             </div>
@@ -387,7 +395,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                   <option value="ETH">ETH</option>
                   <option value="USDT">USDT</option>
                   <option value="BNB">BNB</option>
-                  <option value="POL">POL</option>
+                  <option value="POLYGON">POLYGON</option>
                   <option value="BASE">BASE</option>
                 </select>
               </div>
@@ -421,7 +429,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                   <option value="USDT">USDT</option>
                   <option value="ETH">ETH</option>
                   <option value="BNB">BNB</option>
-                  <option value="POL">POL</option>
+                  <option value="POLYGON">POLYGON</option>
                 </select>
               </div>
             </div>
@@ -528,7 +536,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                   </div>
                   <div>
                     <div className="font-medium text-white">{token.name}</div>
-                    <div className="text-xs text-gray-400">({token.chain.charAt(0).toUpperCase() + token.chain.slice(1)})</div>
+                    <div className="text-xs text-gray-400">({chainCodeMap[token.chain]})</div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-300">${token.price.toLocaleString()}</span>
                     </div>
