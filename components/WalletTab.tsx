@@ -332,9 +332,25 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
       setTxStatus('pending');
       setTxError('');
       try {
-        // Simulasi API call
-        await new Promise(r => setTimeout(r, 2000));
-        setTxStatus('success');
+        // Kirim request ke backend
+        const response = await fetch('/api/transaction/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: wallet.address,
+            to: sendForm.address,
+            token: selectedToken.symbol,
+            chain: selectedToken.chain,
+            amount: sendForm.amount
+          })
+        });
+        const result = await response.json();
+        if (result.success) {
+          setTxStatus('success');
+        } else {
+          setTxStatus('error');
+          setTxError(result.error || 'Failed to send transaction');
+        }
       } catch (e) {
         setTxStatus('error');
         setTxError('Failed to send transaction');
@@ -450,7 +466,10 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                 <div className="text-center py-4">Processing transaction...</div>
               )}
               {txStatus === 'success' && (
-                <div className="text-green-500 text-center py-4">Transaction sent successfully!</div>
+                <>
+                  <div className="text-green-500 text-center py-4">Transaction sent successfully!</div>
+                  <button onClick={() => { setShowConfirm(false); setActiveSection('main'); setSendForm({ address: '', amount: '', token: sendableTokens[0]?.symbol || '' }); }} className="btn-primary w-full mt-4">OK</button>
+                </>
               )}
               {txStatus === 'error' && (
                 <div className="text-red-500 text-center py-4">{txError}</div>
