@@ -29,9 +29,11 @@ interface Wallet {
 interface WalletTabProps {
   wallet: Wallet
   user: User
+  onWalletUpdate?: (wallet: Wallet) => void;
+  onHistoryUpdate?: (history: any[]) => void;
 }
 
-export default function WalletTab({ wallet, user }: WalletTabProps) {
+export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdate }: WalletTabProps) {
   const [activeSection, setActiveSection] = useState<'main' | 'receive' | 'send' | 'swap'>('main')
   const [sendForm, setSendForm] = useState({
     address: '',
@@ -267,6 +269,20 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   const [txError, setTxError] = useState('');
   const confirmRef = useRef(null);
 
+  // Tambahkan fungsi refreshWalletAndHistory di dalam WalletTab
+  const refreshWalletAndHistory = async () => {
+    // Panggil ulang API wallet
+    const walletRes = await fetch(`/api/wallet/${user.id}`);
+    if (walletRes.ok) {
+      if (onWalletUpdate) onWalletUpdate(await walletRes.json());
+    }
+    // Panggil ulang API history
+    const historyRes = await fetch(`/api/wallet/${user.id}/history`);
+    if (historyRes.ok) {
+      if (onHistoryUpdate) onHistoryUpdate((await historyRes.json()).history || []);
+    }
+  };
+
   if (activeSection === 'receive') {
     return (
       <div className="p-6">
@@ -475,7 +491,12 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
               {txStatus === 'success' && (
                 <>
                   <div className="text-green-500 text-center py-4">Transaction sent successfully!</div>
-                  <button onClick={() => { setShowConfirm(false); setActiveSection('main'); setSendForm({ address: '', amount: '', token: sendableTokens[0]?.symbol || '' }); }} className="btn-primary w-full mt-4">OK</button>
+                  <button onClick={() => {
+                    setShowConfirm(false);
+                    setActiveSection('main');
+                    setSendForm({ address: '', amount: '', token: sendableTokens[0]?.symbol || '' });
+                    refreshWalletAndHistory();
+                  }} className="btn-primary w-full mt-4">OK</button>
                 </>
               )}
               {txStatus === 'error' && (
