@@ -7,6 +7,7 @@ import QRCode from 'qrcode.react'
 import { formatAddress, isValidAddress } from '@/lib/address'
 import { getCachedTokenPrices } from '@/lib/crypto-prices'
 import { Eth, Bnb, Pol, Base, Usdt } from './TokenIcons';
+import { useRef } from 'react';
 
 interface User {
   id: number
@@ -303,6 +304,42 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   }
 
   if (activeSection === 'send') {
+    // Ambil token dengan balance > 0, urut dari balance terbesar
+    const sendableTokens = sortedTokenList.filter(t => t.amount > 0).sort((a, b) => b.amount - a.amount);
+    const selectedToken = sendableTokens.find(t => t.symbol === sendForm.token) || sendableTokens[0];
+    // Dummy fee (bisa diganti fetch fee dari backend)
+    const estimatedFee = 0.001; // contoh fee
+    // Fungsi handle MAX
+    const handleMax = () => {
+      // Jika native token, kurangi fee
+      if (selectedToken.symbol === selectedToken.chain) {
+        setSendForm({ ...sendForm, amount: (selectedToken.amount - estimatedFee).toFixed(6) });
+      } else {
+        setSendForm({ ...sendForm, amount: selectedToken.amount.toFixed(6) });
+      }
+    };
+    // Validasi address
+    const isAddressValid = isValidAddress(sendForm.address);
+    // Validasi form
+    const isFormValid = isAddressValid && sendForm.amount && parseFloat(sendForm.amount) > 0 && selectedToken;
+    // Modal konfirmasi
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+    const [txError, setTxError] = useState('');
+    const confirmRef = useRef(null);
+    // Fungsi kirim
+    const handleSendConfirm = async () => {
+      setTxStatus('pending');
+      setTxError('');
+      try {
+        // Simulasi API call
+        await new Promise(r => setTimeout(r, 2000));
+        setTxStatus('success');
+      } catch (e) {
+        setTxStatus('error');
+        setTxError('Failed to send transaction');
+      }
+    };
     return (
       <div className="p-6">
         <div className="flex items-center mb-6">
@@ -314,65 +351,115 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
           </button>
           <h2 className="text-xl font-semibold">Send</h2>
         </div>
-
         <div className="card">
           <div className="space-y-4">
+            {/* Token Dropdown */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Token</label>
+              <div className="relative">
+                <select
+                  value={sendForm.token}
+                  onChange={e => setSendForm({ ...sendForm, token: e.target.value })}
+                  className="input-field w-full pl-12"
+                >
+                  {sendableTokens.map(token => (
+                    <option key={token.symbol + token.chain} value={token.symbol}>
+                      {token.name}
+                    </option>
+                  ))}
+                </select>
+                {/* Logo di kiri */}
+                {selectedToken && (
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2">{selectedToken.icon}</span>
+                )}
+              </div>
+              {/* Nama + balance di kanan */}
+              {selectedToken && (
+                <div className="flex justify-between text-xs mt-1">
+                  <span>{selectedToken.name}</span>
+                  <span>{selectedToken.amount.toFixed(6)} {selectedToken.symbol}</span>
+                </div>
+              )}
+            </div>
+            {/* Recipient */}
             <div>
               <label className="block text-sm font-medium mb-2">Recipient Address</label>
               <input
                 type="text"
                 value={sendForm.address}
-                onChange={(e) => setSendForm({ ...sendForm, address: e.target.value })}
+                onChange={e => setSendForm({ ...sendForm, address: e.target.value })}
                 placeholder="0x..."
                 className="input-field w-full"
               />
-              {sendError && <div className="text-red-500 text-xs mt-1">{sendError}</div>}
+              {!isAddressValid && sendForm.address && (
+                <div className="text-red-500 text-xs mt-1">Invalid address</div>
+              )}
             </div>
-
+            {/* Amount */}
             <div>
               <label className="block text-sm font-medium mb-2">Amount</label>
-              <input
-                type="number"
-                value={sendForm.amount}
-                onChange={(e) => setSendForm({ ...sendForm, amount: e.target.value })}
-                placeholder="0.0"
-                className="input-field w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Token</label>
-              <select
-                value={sendForm.token}
-                onChange={(e) => setSendForm({ ...sendForm, token: e.target.value })}
-                className="input-field w-full"
-              >
-                <option value="ETH">ETH</option>
-                <option value="USDT">USDT</option>
-                <option value="BNB">BNB</option>
-                <option value="POLYGON">POLYGON</option>
-                <option value="BASE">BASE</option>
-              </select>
-            </div>
-
-            <button
-              onClick={handleSend}
-              disabled={isLoading}
-              className="w-full btn-primary flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Processing...
-                </>
-              ) : (
-                'Send Transaction'
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={sendForm.amount}
+                  onChange={e => setSendForm({ ...sendForm, amount: e.target.value })}
+                  placeholder="0.0"
+                  className="input-field flex-1"
+                  min="0"
+                  max={selectedToken ? selectedToken.amount : undefined}
+                />
+                <button
+                  type="button"
+                  onClick={handleMax}
+                  className="btn-secondary px-3"
+                >MAX</button>
+              </div>
+              {selectedToken && (
+                <div className="text-xs text-gray-400 mt-1">Available: {selectedToken.amount.toFixed(6)} {selectedToken.symbol}</div>
               )}
+            </div>
+            {/* Estimated Fee */}
+            <div className="text-xs text-gray-400 mb-2">Estimated Fee: {estimatedFee} {selectedToken ? selectedToken.chain : ''}</div>
+            {/* Send Button */}
+            <button
+              onClick={() => setShowConfirm(true)}
+              disabled={!isFormValid}
+              className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              Send Transaction
             </button>
           </div>
         </div>
+        {/* Modal Konfirmasi */}
+        {showConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-crypto-card border border-crypto-border rounded-xl p-6 w-full max-w-sm mx-4">
+              <h3 className="text-lg font-semibold mb-4">Confirm Transaction</h3>
+              <div className="mb-4">
+                <div>Send <b>{sendForm.amount} {selectedToken.symbol}</b> to</div>
+                <div className="break-all text-primary-500 font-mono">{sendForm.address}</div>
+                <div className="mt-2 text-xs text-gray-400">Fee: {estimatedFee} {selectedToken.chain}</div>
+              </div>
+              {txStatus === 'idle' && (
+                <div className="flex gap-2">
+                  <button onClick={() => setShowConfirm(false)} className="btn-secondary flex-1">Cancel</button>
+                  <button onClick={handleSendConfirm} className="btn-primary flex-1">Confirm</button>
+                </div>
+              )}
+              {txStatus === 'pending' && (
+                <div className="text-center py-4">Processing transaction...</div>
+              )}
+              {txStatus === 'success' && (
+                <div className="text-green-500 text-center py-4">Transaction sent successfully!</div>
+              )}
+              {txStatus === 'error' && (
+                <div className="text-red-500 text-center py-4">{txError}</div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
-    )
+    );
   }
 
   if (activeSection === 'swap') {
