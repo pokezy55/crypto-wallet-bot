@@ -65,17 +65,17 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
 
   // Daftar token multi-chain
   const tokenMeta = [
-    { symbol: 'ETH', name: 'Ethereum', chain: 'eth', tokenKey: 'eth', decimals: 18 },
-    { symbol: 'USDT', name: 'Tether', chain: 'eth', tokenKey: 'usdt', decimals: 6 },
+    { symbol: 'ETH', name: 'ETH', chain: 'eth', tokenKey: 'eth', decimals: 18 },
+    { symbol: 'USDT', name: 'USDT', chain: 'eth', tokenKey: 'usdt', decimals: 6 },
     { symbol: 'USDC', name: 'USDC', chain: 'eth', tokenKey: 'usdc', decimals: 6 },
     { symbol: 'BNB', name: 'BNB', chain: 'bsc', tokenKey: 'bnb', decimals: 18 },
-    { symbol: 'USDT', name: 'Tether', chain: 'bsc', tokenKey: 'usdt', decimals: 6 },
+    { symbol: 'USDT', name: 'USDT', chain: 'bsc', tokenKey: 'usdt', decimals: 6 },
     { symbol: 'USDC', name: 'USDC', chain: 'bsc', tokenKey: 'usdc', decimals: 6 },
     { symbol: 'POLYGON', name: 'POL', chain: 'polygon', tokenKey: 'pol', decimals: 18 },
-    { symbol: 'USDT', name: 'Tether', chain: 'polygon', tokenKey: 'usdt', decimals: 6 },
+    { symbol: 'USDT', name: 'USDT', chain: 'polygon', tokenKey: 'usdt', decimals: 6 },
     { symbol: 'USDC', name: 'USDC', chain: 'polygon', tokenKey: 'usdc', decimals: 6 },
     { symbol: 'BASE', name: 'ETH', chain: 'base', tokenKey: 'base', decimals: 18 },
-    { symbol: 'USDT', name: 'Tether', chain: 'base', tokenKey: 'usdt', decimals: 6 },
+    { symbol: 'USDT', name: 'USDT', chain: 'base', tokenKey: 'usdt', decimals: 6 },
     { symbol: 'USDC', name: 'USDC', chain: 'base', tokenKey: 'usdc', decimals: 6 },
   ];
 
@@ -88,21 +88,21 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
     POLYGON: tokenPrices.POLYGON?.price || 0.234,
     BASE: tokenPrices.ETH?.price || 0.152, // Base pakai harga ETH
   };
-
-  // Mapping kode chain
-  const chainCodeMap: Record<string, string> = {
-    eth: 'ETH',
-    bsc: 'BNB',
-    polygon: 'POLYGON',
-    base: 'BASE',
+  // Mapping perubahan harga
+  const priceMapChange: Record<string, number> = {
+    ETH: tokenPrices.ETH?.change24h || 0,
+    USDT: tokenPrices.USDT?.change24h || 0,
+    USDC: tokenPrices.USDC?.change24h || 0,
+    BNB: tokenPrices.BNB?.change24h || 0,
+    POLYGON: tokenPrices.POLYGON?.change24h || 0,
+    BASE: tokenPrices.ETH?.change24h || 0,
   };
 
   // Token list dinamis
   let tokenList = tokenMeta.map(meta => {
     const amount = getTokenBalance(wallet, meta.chain, meta.tokenKey);
     return {
-      symbol: `${meta.symbol}(${meta.name === 'Ethereum' ? 'Ethereum' : meta.chain.charAt(0).toUpperCase() + meta.chain.slice(1)})`,
-      baseSymbol: meta.symbol,
+      symbol: meta.symbol,
       name: meta.name,
       chain: meta.chain,
       icon: meta.symbol === 'ETH'
@@ -119,6 +119,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
         ? <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg" alt="USDC" className="w-8 h-8 rounded-full" />
         : <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg" alt="ETH" className="w-8 h-8 rounded-full" />,
       price: priceMap[meta.symbol] || 1.0,
+      change: priceMapChange[meta.symbol] || 0,
       amount,
       fiat: amount * (priceMap[meta.symbol] || 1.0),
     };
@@ -548,9 +549,10 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                   </div>
                   <div>
                     <div className="font-medium text-white">{token.name}</div>
-                    <div className="text-xs text-gray-400">({chainCodeMap[token.chain]})</div>
+                    <div className="text-xs text-gray-400">({token.chain.toUpperCase()})</div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-300">${token.price.toLocaleString()}</span>
+                      <span className={`text-xs ${token.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>{token.change >= 0 ? '+' : ''}{token.change.toFixed(2)}%</span>
                     </div>
                   </div>
                 </div>
