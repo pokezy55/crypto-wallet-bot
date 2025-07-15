@@ -262,6 +262,11 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
     }
   }
 
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+  const [txError, setTxError] = useState('');
+  const confirmRef = useRef(null);
+
   if (activeSection === 'receive') {
     return (
       <div className="p-6">
@@ -322,11 +327,6 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
     const isAddressValid = isValidAddress(sendForm.address);
     // Validasi form
     const isFormValid = isAddressValid && sendForm.amount && parseFloat(sendForm.amount) > 0 && selectedToken;
-    // Modal konfirmasi
-    const [showConfirm, setShowConfirm] = useState(false);
-    const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
-    const [txError, setTxError] = useState('');
-    const confirmRef = useRef(null);
     // Fungsi kirim
     const handleSendConfirm = async () => {
       setTxStatus('pending');
