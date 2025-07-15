@@ -30,15 +30,56 @@ interface WalletTabProps {
   user: User
 }
 
-// Helper untuk ambil balance dari beberapa chain
-function getTokenBalance(wallet: Wallet, chains: string[], tokenKey: string): number {
-  for (const chain of chains) {
-    const val = parseFloat(wallet.balance?.[chain]?.[tokenKey] ?? '0');
-    if (!isNaN(val) && val > 0) return val;
-  }
-  // Jika tidak ada balance, return 0
-  return 0;
+// Helper untuk ambil balance dari chain tertentu
+function getTokenBalance(wallet: Wallet, chain: string, tokenKey: string): number {
+  return parseFloat(wallet.balance?.[chain]?.[tokenKey] ?? '0');
 }
+
+// Daftar token multi-chain
+const tokenMeta = [
+  { symbol: 'ETH', name: 'Ethereum', chain: 'eth', tokenKey: 'eth', decimals: 18 },
+  { symbol: 'USDT', name: 'Tether', chain: 'eth', tokenKey: 'usdt', decimals: 6 },
+  { symbol: 'USDC', name: 'USD Coin', chain: 'eth', tokenKey: 'usdc', decimals: 6 },
+  { symbol: 'BNB', name: 'Binance Coin', chain: 'bsc', tokenKey: 'bnb', decimals: 18 },
+  { symbol: 'USDT', name: 'Tether', chain: 'bsc', tokenKey: 'usdt', decimals: 6 },
+  { symbol: 'USDC', name: 'USD Coin', chain: 'bsc', tokenKey: 'usdc', decimals: 6 },
+  { symbol: 'POL', name: 'Polygon', chain: 'polygon', tokenKey: 'pol', decimals: 18 },
+  { symbol: 'USDT', name: 'Tether', chain: 'polygon', tokenKey: 'usdt', decimals: 6 },
+  { symbol: 'USDC', name: 'USD Coin', chain: 'polygon', tokenKey: 'usdc', decimals: 6 },
+  { symbol: 'BASE', name: 'Base', chain: 'base', tokenKey: 'base', decimals: 18 },
+  { symbol: 'USDT', name: 'Tether', chain: 'base', tokenKey: 'usdt', decimals: 6 },
+  { symbol: 'USDC', name: 'USD Coin', chain: 'base', tokenKey: 'usdc', decimals: 6 },
+];
+
+// Mapping harga
+const priceMap: Record<string, number> = {
+  ETH: tokenPrices.ETH?.price || 1850.45,
+  USDT: tokenPrices.USDT?.price || 1.0,
+  USDC: tokenPrices.USDC?.price || 1.0,
+  BNB: tokenPrices.BNB?.price || 245.67,
+  POL: tokenPrices.POL?.price || 0.234,
+  BASE: tokenPrices.ETH?.price || 0.152, // Base pakai harga ETH
+};
+
+// Token list dinamis
+let tokenList = tokenMeta.map(meta => {
+  const amount = getTokenBalance(wallet, meta.chain, meta.tokenKey);
+  return {
+    symbol: `${meta.symbol}(${meta.name === 'Ethereum' ? 'Ethereum' : meta.chain.charAt(0).toUpperCase() + meta.chain.slice(1)})`,
+    baseSymbol: meta.symbol,
+    name: meta.name,
+    chain: meta.chain,
+    icon: meta.symbol === 'ETH' ? <Eth /> : meta.symbol === 'BNB' ? <Bnb /> : meta.symbol === 'POL' ? <Pol /> : meta.symbol === 'BASE' ? <Base /> : meta.symbol === 'USDT' ? <Usdt /> : meta.symbol === 'USDC' ? <Usdt /> : <Eth />, // USDC pakai icon USDT sementara
+    price: priceMap[meta.symbol] || 1.0,
+    amount,
+    fiat: amount * (priceMap[meta.symbol] || 1.0),
+  };
+});
+// Urutkan token dengan saldo > 0 ke paling atas
+const sortedTokenList = [
+  ...tokenList.filter(t => t.amount > 0),
+  ...tokenList.filter(t => t.amount === 0),
+];
 
 export default function WalletTab({ wallet, user }: WalletTabProps) {
   const [activeSection, setActiveSection] = useState<'main' | 'receive' | 'send' | 'swap'>('main')
@@ -66,57 +107,64 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
   // Token list dengan data real-time
   // Default chain: Ethereum (eth)
   const chain = 'eth';
-  const tokenList = [
-    {
-      symbol: 'ETH',
-      name: 'Ethereum',
-      icon: <Eth />,
-      price: tokenPrices.ETH?.price || 1850.45,
-      change: tokenPrices.ETH?.change24h || 2.15,
-      amount: parseFloat(wallet.balance?.eth?.eth ?? '0'),
-      fiat: parseFloat(wallet.balance?.eth?.eth ?? '0') * (tokenPrices.ETH?.price || 1850.45)
-    },
-    {
-      symbol: 'USDT',
-      name: 'Tether',
-      icon: <Usdt />,
-      price: tokenPrices.USDT?.price || 1.001,
-      change: tokenPrices.USDT?.change24h || 0.05,
-      // USDT bisa di ETH dan Polygon
-      amount: getTokenBalance(wallet, ['eth', 'polygon'], 'usdt'),
-      fiat: getTokenBalance(wallet, ['eth', 'polygon'], 'usdt') * (tokenPrices.USDT?.price || 1.001)
-    },
-    {
-      symbol: 'BNB',
-      name: 'Binance Coin',
-      icon: <Bnb />,
-      price: tokenPrices.BNB?.price || 245.67,
-      change: tokenPrices.BNB?.change24h || -1.23,
-      amount: parseFloat(wallet.balance?.bsc?.bnb ?? '0'),
-      fiat: parseFloat(wallet.balance?.bsc?.bnb ?? '0') * (tokenPrices.BNB?.price || 245.67)
-    },
-    {
-      symbol: 'POL',
-      name: 'Polygon',
-      icon: <Pol />,
-      price: tokenPrices.POL?.price || 0.234,
-      change: tokenPrices.POL?.change24h || -2.67,
-      amount: parseFloat(wallet.balance?.polygon?.pol ?? '0'),
-      fiat: parseFloat(wallet.balance?.polygon?.pol ?? '0') * (tokenPrices.POL?.price || 0.234)
-    },
-    {
-      symbol: 'BASE',
-      name: 'Base',
-      icon: <Base />,
-      price: tokenPrices.ETH?.price || 0.152, // Base uses ETH price
-      change: tokenPrices.ETH?.change24h || 5.42,
-      amount: parseFloat(wallet.balance?.base?.base ?? '0'),
-      fiat: parseFloat(wallet.balance?.base?.base ?? '0') * (tokenPrices.ETH?.price || 0.152)
+  // Helper untuk ambil balance dari beberapa chain
+  function getTokenBalance(wallet: Wallet, chains: string[], tokenKey: string): number {
+    for (const chain of chains) {
+      const val = parseFloat(wallet.balance?.[chain]?.[tokenKey] ?? '0');
+      if (!isNaN(val) && val > 0) return val;
     }
+    // Jika tidak ada balance, return 0
+    return 0;
+  }
+
+  // Daftar token multi-chain
+  const tokenMeta = [
+    { symbol: 'ETH', name: 'Ethereum', chain: 'eth', tokenKey: 'eth', decimals: 18 },
+    { symbol: 'USDT', name: 'Tether', chain: 'eth', tokenKey: 'usdt', decimals: 6 },
+    { symbol: 'USDC', name: 'USD Coin', chain: 'eth', tokenKey: 'usdc', decimals: 6 },
+    { symbol: 'BNB', name: 'Binance Coin', chain: 'bsc', tokenKey: 'bnb', decimals: 18 },
+    { symbol: 'USDT', name: 'Tether', chain: 'bsc', tokenKey: 'usdt', decimals: 6 },
+    { symbol: 'USDC', name: 'USD Coin', chain: 'bsc', tokenKey: 'usdc', decimals: 6 },
+    { symbol: 'POL', name: 'Polygon', chain: 'polygon', tokenKey: 'pol', decimals: 18 },
+    { symbol: 'USDT', name: 'Tether', chain: 'polygon', tokenKey: 'usdt', decimals: 6 },
+    { symbol: 'USDC', name: 'USD Coin', chain: 'polygon', tokenKey: 'usdc', decimals: 6 },
+    { symbol: 'BASE', name: 'Base', chain: 'base', tokenKey: 'base', decimals: 18 },
+    { symbol: 'USDT', name: 'Tether', chain: 'base', tokenKey: 'usdt', decimals: 6 },
+    { symbol: 'USDC', name: 'USD Coin', chain: 'base', tokenKey: 'usdc', decimals: 6 },
+  ];
+
+  // Mapping harga
+  const priceMap: Record<string, number> = {
+    ETH: tokenPrices.ETH?.price || 1850.45,
+    USDT: tokenPrices.USDT?.price || 1.0,
+    USDC: tokenPrices.USDC?.price || 1.0,
+    BNB: tokenPrices.BNB?.price || 245.67,
+    POL: tokenPrices.POL?.price || 0.234,
+    BASE: tokenPrices.ETH?.price || 0.152, // Base pakai harga ETH
+  };
+
+  // Token list dinamis
+  let tokenList = tokenMeta.map(meta => {
+    const amount = getTokenBalance(wallet, meta.chain, meta.tokenKey);
+    return {
+      symbol: `${meta.symbol}(${meta.name === 'Ethereum' ? 'Ethereum' : meta.chain.charAt(0).toUpperCase() + meta.chain.slice(1)})`,
+      baseSymbol: meta.symbol,
+      name: meta.name,
+      chain: meta.chain,
+      icon: meta.symbol === 'ETH' ? <Eth /> : meta.symbol === 'BNB' ? <Bnb /> : meta.symbol === 'POL' ? <Pol /> : meta.symbol === 'BASE' ? <Base /> : meta.symbol === 'USDT' ? <Usdt /> : meta.symbol === 'USDC' ? <Usdt /> : <Eth />, // USDC pakai icon USDT sementara
+      price: priceMap[meta.symbol] || 1.0,
+      amount,
+      fiat: amount * (priceMap[meta.symbol] || 1.0),
+    };
+  });
+  // Urutkan token dengan saldo > 0 ke paling atas
+  const sortedTokenList = [
+    ...tokenList.filter(t => t.amount > 0),
+    ...tokenList.filter(t => t.amount === 0),
   ];
 
   // Calculate total worth
-  const totalWorth = tokenList.reduce((sum, token) => sum + token.fiat, 0).toFixed(2);
+  const totalWorth = sortedTokenList.reduce((sum, token) => sum + token.fiat, 0).toFixed(2);
 
   // Fetch real-time token prices
   useEffect(() => {
@@ -526,7 +574,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
         </div>
         {activeTab === 'token' && (
           <div className="flex flex-col gap-3 mt-2">
-            {tokenList.map((token, index) => (
+            {sortedTokenList.map((token, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-crypto-card rounded-lg border border-crypto-border">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 flex items-center justify-center">
@@ -553,7 +601,7 @@ export default function WalletTab({ wallet, user }: WalletTabProps) {
                 </div>
               </div>
             ))}
-            {tokenList.length === 0 && (
+            {sortedTokenList.length === 0 && (
               <div className="text-center text-gray-500 py-8">No tokens found</div>
             )}
           </div>
