@@ -105,7 +105,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   }, 0).toFixed(2);
 
   // HOOK: Fetch balance
-  const { balances: hookBalances, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(wallet.address, chain);
+  const { tokens, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(wallet.address, chain);
   // HOOK: Send token
   const { sendToken: hookSendToken, loading: loadingSend, error: hookSendError, txHash: hookTxHash } = useSendToken();
 
@@ -175,27 +175,27 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   }, [wallet.address, chain]);
 
   // --- Token List (dynamic from balances) ---
-  const tokenList: TokenBalance[] = Object.entries(balances)
-    .map(([symbol, amount]) => {
+  const tokenList: TokenBalance[] = tokens
+    .map((token) => {
       // Icon logic (bisa di-improve)
       let icon = <Eth className="w-8 h-8 rounded-full" />;
-      if (symbol === 'BNB') icon = <Bnb className="w-8 h-8 rounded-full" />;
-      if (symbol === 'POL' || symbol === 'MATIC') icon = <Pol className="w-8 h-8 rounded-full" />;
-      if (symbol === 'BASE') icon = <Base className="w-8 h-8 rounded-full" />;
-      if (symbol === 'USDT') icon = <Usdt className="w-8 h-8 rounded-full" />;
-      if (symbol === 'USDC') icon = <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg" alt="USDC" className="w-8 h-8 rounded-full" />;
+      if (token.symbol === 'BNB') icon = <Bnb className="w-8 h-8 rounded-full" />;
+      if (token.symbol === 'POL' || token.symbol === 'MATIC') icon = <Pol className="w-8 h-8 rounded-full" />;
+      if (token.symbol === 'BASE') icon = <Base className="w-8 h-8 rounded-full" />;
+      if (token.symbol === 'USDT') icon = <Usdt className="w-8 h-8 rounded-full" />;
+      if (token.symbol === 'USDC') icon = <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg" alt="USDC" className="w-8 h-8 rounded-full" />;
       // Price/fiat dummy (bisa di-improve)
-      const price = tokenPrices[symbol]?.price || 1.0;
-      const change = tokenPrices[symbol]?.change24h || 0;
+      const price = tokenPrices[token.symbol]?.price || 1.0;
+      const change = tokenPrices[token.symbol]?.change24h || 0;
       return {
-        symbol,
-        name: symbol,
-        chain,
-        amount: parseFloat(amount),
+        symbol: token.symbol,
+        name: token.symbol,
+        chain: token.chain,
+        amount: parseFloat(token.balance),
         icon,
         price,
         change,
-        fiat: parseFloat(amount) * price,
+        fiat: parseFloat(token.balance) * price,
       };
     })
     .filter(t => t.amount > 0)
