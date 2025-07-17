@@ -9,6 +9,7 @@ import { getCachedTokenPrices } from '@/lib/crypto-prices';
 import { Eth, Bnb, Pol, Base, Usdt } from './TokenIcons';
 import { useBalance } from '../hooks/useBalance';
 import { useSendToken } from '../hooks/useSendToken';
+import { getTokenList } from '../lib/chain';
 
 function getExplorerUrl(chain: string, txHash: string): string {
   switch (chain.toLowerCase()) {
@@ -85,6 +86,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [isLoadingSend, setIsLoadingSend] = useState(false);
   const [balances, setBalances] = useState<Record<string, string>>({});
+  // Ganti default state chain ke 'eth'
   const [chain, setChain] = useState('eth');
   const [tokenPrices, setTokenPrices] = useState<Record<string, { price: number; change24h: number; lastUpdated: number }>>({});
   const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
@@ -108,6 +110,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const { tokens, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(wallet.address, chain);
   // HOOK: Send token
   const { sendToken: hookSendToken, loading: loadingSend, error: hookSendError, txHash: hookTxHash } = useSendToken();
+
+  // Tambahkan log debug
+  console.log('getTokenList', chain, getTokenList(chain));
 
   // --- Modular: Fetch Balances ---
   const fetchBalances = async (address: string, chain: string) => {
