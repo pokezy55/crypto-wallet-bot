@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getTokenList } from '../lib/chain';
+import { getTokenListStatic } from '../lib/chain';
 
 export interface TokenBalance {
   symbol: string;
@@ -19,8 +19,9 @@ export function useBalance(address: string, chain: string) {
     setLoading(true);
     setError(null);
     try {
-      // Ambil daftar token default dari chain
-      const tokenList = getTokenList(chain);
+      // Ambil daftar token default dari chain (static, tanpa env)
+      const tokenList = getTokenListStatic(chain);
+      console.log('tokenListStatic', chain, tokenList);
       // Fetch balance dari backend
       const res = await fetch('/api/balance', {
         method: 'POST',
