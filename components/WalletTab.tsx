@@ -190,7 +190,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       return {
         symbol: token.symbol,
         name: token.symbol,
-        chain: token.chain,
+        chain, // ambil dari state chain
         amount: parseFloat(token.balance),
         icon,
         price,
