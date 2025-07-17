@@ -1,18 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-
-export interface BalanceResponse {
-  balances: Record<string, string>;
-  chain: string;
-  error?: string;
-}
+import { getTokenList } from '../lib/chain';
 
 export interface TokenBalance {
   symbol: string;
-  amount: number;
+  balance: string;
+  decimals: number;
+  address: string;
+  isNative: boolean;
 }
 
 export function useBalance(address: string, chain: string) {
-  const [balances, setBalances] = useState<Record<string, string>>({});
+  const [tokens, setTokens] = useState<TokenBalance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,16 +19,27 @@ export function useBalance(address: string, chain: string) {
     setLoading(true);
     setError(null);
     try {
+      // Ambil daftar token default dari chain
+      const tokenList = getTokenList(chain);
+      // Fetch balance dari backend
       const res = await fetch('/api/balance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address, chain }),
       });
-      const data: BalanceResponse = await res.json();
-      if (data.error) setError(data.error);
-      else setBalances(data.balances);
+      const data = await res.json();
+      // Gabungkan tokenList dengan hasil balance (default 0 jika tidak ada)
+      const result: TokenBalance[] = tokenList.map((token: any) => ({
+        symbol: token.symbol,
+        balance: data.balances?.[token.symbol] ?? '0',
+        decimals: token.decimals,
+        address: token.address,
+        isNative: token.isNative,
+      }));
+      setTokens(result);
     } catch (e: any) {
       setError(e.message || 'Failed to fetch balances');
+      setTokens([]);
     } finally {
       setLoading(false);
     }
@@ -40,5 +49,5 @@ export function useBalance(address: string, chain: string) {
     refetch();
   }, [refetch]);
 
-  return { balances, loading, error, refetch };
+  return { tokens, loading, error, refetch };
 } 
