@@ -33,6 +33,7 @@ export async function POST(request) {
         balances[token.symbol] = formatUnits(bal, token.decimals);
       }
     }
+    console.log('Fetched balances', balances);
     return Response.json({ balances, chain });
   } catch (e) {
     console.warn('Balance fetch error:', e.message);
