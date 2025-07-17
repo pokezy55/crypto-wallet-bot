@@ -214,6 +214,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       return b.amount - a.amount;
     });
 
+  // Setelah tokenList didefinisikan:
+  console.log('tokenList', tokenList);
+
   // --- Send Form Validasi ---
   const selectedToken = tokenList.find(t => t.symbol === sendForm.token) || tokenList[0];
   const isAddressValid = isValidAddress(sendForm.address);
