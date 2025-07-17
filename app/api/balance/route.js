@@ -1,18 +1,17 @@
 import { getProvider, getTokenList } from '../../../lib/chain';
-import { ethers } from 'ethers';
+import { formatEther, formatUnits, isAddress, Contract } from 'ethers';
 
 const ERC20_ABI = [
-  'function balanceOf(address) view returns (uint256)',
-  'function decimals() view returns (uint8)'
+  'function balanceOf(address) view returns (uint256)'
 ];
 
-export default async function handler(req, res) {
-  const { address, chain } = req.query;
+export async function POST(request) {
+  const { address, chain } = await request.json();
   if (!address || !chain) {
-    return res.status(400).json({ error: 'Missing address or chain' });
+    return Response.json({ error: 'Missing address or chain' }, { status: 400 });
   }
-  if (!ethers.utils.isAddress(address)) {
-    return res.status(400).json({ error: 'Invalid address' });
+  if (!isAddress(address)) {
+    return Response.json({ error: 'Invalid address' }, { status: 400 });
   }
   let provider, tokens;
   try {
@@ -20,23 +19,23 @@ export default async function handler(req, res) {
     tokens = getTokenList(chain);
   } catch (e) {
     console.warn('Chain/provider error:', e.message);
-    return res.status(400).json({ error: e.message });
+    return Response.json({ error: e.message }, { status: 400 });
   }
   const balances = {};
   try {
     for (const token of tokens) {
       if (token.isNative) {
         const bal = await provider.getBalance(address);
-        balances[token.symbol] = ethers.utils.formatEther(bal);
+        balances[token.symbol] = formatEther(bal);
       } else {
-        const contract = new ethers.Contract(token.address, ERC20_ABI, provider);
+        const contract = new Contract(token.address, ERC20_ABI, provider);
         const bal = await contract.balanceOf(address);
-        balances[token.symbol] = ethers.utils.formatUnits(bal, token.decimals);
+        balances[token.symbol] = formatUnits(bal, token.decimals);
       }
     }
-    return res.json({ balances, chain });
+    return Response.json({ balances, chain });
   } catch (e) {
     console.warn('Balance fetch error:', e.message);
-    return res.status(500).json({ error: 'Failed to fetch balances', detail: e.message });
+    return Response.json({ error: 'Failed to fetch balances', detail: e.message }, { status: 500 });
   }
 } 
