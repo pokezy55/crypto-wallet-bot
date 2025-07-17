@@ -10,6 +10,7 @@ import { Eth, Bnb, Pol, Base, Usdt } from './TokenIcons';
 import { useBalance } from '../hooks/useBalance';
 import { useSendToken } from '../hooks/useSendToken';
 import { getTokenList } from '../lib/chain';
+import TokenRow from './TokenRow';
 
 function getExplorerUrl(chain: string, txHash: string): string {
   switch (chain.toLowerCase()) {
@@ -114,108 +115,48 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   // Tambahkan log debug
   console.log('getTokenList', chain, getTokenList(chain));
 
-  // --- Modular: Fetch Balances ---
-  const fetchBalances = async (address: string, chain: string) => {
-    setIsLoadingBalance(true);
-    try {
-      const res = await fetch('/api/balance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, chain })
-      });
-      const data: BalanceResponse = await res.json();
-      if (data.error) {
-        toast.error(data.error);
-        setBalances({});
-      } else {
-        setBalances(data.balances);
-      }
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to fetch balances');
-      setBalances({});
-    } finally {
-      setIsLoadingBalance(false);
-    }
+  // 1. Default token list per chain
+  const defaultTokenListMap: Record<string, Array<{ symbol: string; name: string; logo: string; address: string; chainId: number }>> = {
+    eth: [
+      { symbol: 'ETH', name: 'Ethereum', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg', address: '', chainId: 1 },
+      { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', chainId: 1 },
+      { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', chainId: 1 },
+    ],
+    base: [
+      { symbol: 'ETH', name: 'Ethereum', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg', address: '', chainId: 8453 },
+      { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg', address: '0xA7D9ddBE1f17865597fBD27EC712455208B6b76D', chainId: 8453 },
+      { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg', address: '0xd9AAEC86B65d86f6A7B5B1b0c42FFA531710b6CA', chainId: 8453 },
+    ],
+    polygon: [
+      { symbol: 'MATIC', name: 'Polygon', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg', address: '', chainId: 137 },
+      { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg', address: '0x3813e82e6f7098b9583FC0F33a962D02018B6803', chainId: 137 },
+      { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg', address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', chainId: 137 },
+    ],
+    bsc: [
+      { symbol: 'BNB', name: 'BNB', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg', address: '', chainId: 56 },
+      { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg', address: '0x55d398326f99059fF775485246999027B3197955', chainId: 56 },
+      { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg', address: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', chainId: 56 },
+    ],
   };
+  const defaultTokenList = defaultTokenListMap[chain] || [];
 
-  // --- Modular: Send Token ---
-  const sendToken = async (params: { from: string; to: string; amount: string; token: string; chain: string; seed: string }) => {
-    setIsLoadingSend(true);
-    setTxStatus('pending');
-    setTxError('');
-    try {
-      const res = await fetch('/api/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
-      });
-      const data: SendResponse = await res.json();
-      if (data.txHash) {
-        setTxStatus('success');
-        setTxError('');
-        toast.success('Transaction sent!');
-        setSendForm({ address: '', amount: '', token: params.token });
-        setShowConfirm(false);
-        fetchBalances(wallet.address, chain); // Refresh balance
-      } else {
-        setTxStatus('error');
-        setTxError(data.error || data.detail || 'Failed to send transaction');
-        toast.error(data.error || data.detail || 'Failed to send transaction');
-      }
-    } catch (e: any) {
-      setTxStatus('error');
-      setTxError(e.message || 'Failed to send transaction');
-      toast.error(e.message || 'Failed to send transaction');
-    } finally {
-      setIsLoadingSend(false);
-    }
-  };
+  // 2. Gabungkan hasil useBalance (tokens) dengan defaultTokenList
+  const mergedTokenList = defaultTokenList.map((def: any) => {
+    const found = tokens.find((t: any) => t.symbol === def.symbol);
+    return {
+      ...def,
+      balance: found ? parseFloat(found.balance) : 0,
+      priceUSD: tokenPrices[def.symbol]?.price || 0,
+    };
+  });
 
-  // --- Fetch balance on mount/chain change ---
-  useEffect(() => {
-    if (wallet.address && chain) {
-      fetchBalances(wallet.address, chain);
-    }
-    // eslint-disable-next-line
-  }, [wallet.address, chain]);
+  // 3. Jika tokenList kosong, render defaultTokenList
+  const tokenList = mergedTokenList.length > 0 ? mergedTokenList : defaultTokenList.map((def: any) => ({ ...def, balance: 0, priceUSD: 0 }));
 
-  // --- Token List (dynamic from balances) ---
-  const tokenList: TokenBalance[] = tokens
-    .map((token) => {
-      // Icon logic (bisa di-improve)
-      let icon = <Eth className="w-8 h-8 rounded-full" />;
-      if (token.symbol === 'BNB') icon = <Bnb className="w-8 h-8 rounded-full" />;
-      if (token.symbol === 'POL' || token.symbol === 'MATIC') icon = <Pol className="w-8 h-8 rounded-full" />;
-      if (token.symbol === 'BASE') icon = <Base className="w-8 h-8 rounded-full" />;
-      if (token.symbol === 'USDT') icon = <Usdt className="w-8 h-8 rounded-full" />;
-      if (token.symbol === 'USDC') icon = <img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg" alt="USDC" className="w-8 h-8 rounded-full" />;
-      // Price/fiat dummy (bisa di-improve)
-      const price = tokenPrices[token.symbol]?.price || 1.0;
-      const change = tokenPrices[token.symbol]?.change24h || 0;
-      return {
-        symbol: token.symbol,
-        name: token.symbol,
-        chain, // ambil dari state chain
-        amount: parseFloat(token.balance),
-        icon,
-        price,
-        change,
-        fiat: parseFloat(token.balance) * price,
-      };
-    })
-    .filter(t => t.amount > 0)
-    .sort((a, b) => {
-      // Native > stablecoin > lain
-      if (TOKEN_ORDER.indexOf(a.symbol) !== TOKEN_ORDER.indexOf(b.symbol)) {
-        return TOKEN_ORDER.indexOf(a.symbol) - TOKEN_ORDER.indexOf(b.symbol);
-      }
-      if (STABLECOINS.includes(a.symbol) && !STABLECOINS.includes(b.symbol)) return 1;
-      if (!STABLECOINS.includes(a.symbol) && STABLECOINS.includes(b.symbol)) return -1;
-      return b.amount - a.amount;
-    });
+  console.log('tokenList', tokenList);
 
   // Setelah tokenList didefinisikan:
-  console.log('tokenList', tokenList);
+  // console.log('tokenList', tokenList);
 
   // --- Send Form Validasi ---
   const selectedToken = tokenList.find(t => t.symbol === sendForm.token) || tokenList[0];
@@ -390,7 +331,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
   if (activeSection === 'send') {
     // Ambil token dengan balance > 0, urut dari balance terbesar
-    const sendableTokens = tokenList.filter(t => t.amount > 0).sort((a, b) => b.amount - a.amount);
+    const sendableTokens = tokenList.filter(t => t.balance > 0).sort((a, b) => b.balance - a.balance);
     const selectedToken = sendableTokens.find(t => t.symbol === sendForm.token) || sendableTokens[0];
     // Dummy fee (bisa diganti fetch fee dari backend)
     const estimatedFee = 0.001; // contoh fee
@@ -398,9 +339,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     const handleMax = () => {
       // Jika native token, kurangi fee
       if (selectedToken.symbol === selectedToken.chain) {
-        setSendForm({ ...sendForm, amount: (selectedToken.amount - estimatedFee).toFixed(6) });
+        setSendForm({ ...sendForm, amount: (selectedToken.balance - estimatedFee).toFixed(6) });
       } else {
-        setSendForm({ ...sendForm, amount: selectedToken.amount.toFixed(6) });
+        setSendForm({ ...sendForm, amount: selectedToken.balance.toFixed(6) });
       }
     };
     // Validasi address
@@ -420,7 +361,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             from: wallet.address,
             to: sendForm.address,
             token: selectedToken.symbol,
-            chain: selectedToken.chain,
+            chain: selectedToken.chainId,
             amount: sendForm.amount,
             seedPhrase: wallet.seedPhrase // <-- tambahkan ini!
           })
@@ -460,7 +401,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                   className="input-field w-full pl-12"
                 >
                   {sendableTokens.map(token => (
-                    <option key={token.symbol + token.chain} value={token.symbol}>
+                    <option key={token.symbol + token.chainId} value={token.symbol}>
                       {token.name}
                     </option>
                   ))}
@@ -474,7 +415,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
               {selectedToken && (
                 <div className="flex justify-between text-xs mt-1">
                   <span>{selectedToken.name}</span>
-                  <span>{selectedToken.amount.toFixed(6)} {selectedToken.symbol}</span>
+                  <span>{selectedToken.balance.toFixed(6)} {selectedToken.symbol}</span>
                 </div>
               )}
             </div>
@@ -503,7 +444,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                   placeholder="0.0"
                   className="input-field flex-1"
                   min="0"
-                  max={selectedToken ? selectedToken.amount : undefined}
+                  max={selectedToken ? selectedToken.balance : undefined}
                 />
                 <button
                   type="button"
@@ -512,7 +453,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                 >MAX</button>
               </div>
               {selectedToken && (
-                <div className="text-xs text-gray-400 mt-1">Available: {selectedToken.amount.toFixed(6)} {selectedToken.symbol}</div>
+                <div className="text-xs text-gray-400 mt-1">Available: {selectedToken.balance.toFixed(6)} {selectedToken.symbol}</div>
               )}
             </div>
             {/* Estimated Fee */}
@@ -740,29 +681,14 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         {activeTab === 'token' && (
           <div className="flex flex-col gap-3 mt-2">
             {tokenList.map((token, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-crypto-card rounded-lg border border-crypto-border">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 flex items-center justify-center">
-                    {token.icon}
-                  </div>
-                  <div>
-                    <div className="font-medium text-white">{token.name}</div>
-                    <div className="text-xs text-gray-400">({token.chain.toUpperCase()})</div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-300">${token.price.toLocaleString()}</span>
-                      <span className={`text-xs ${token.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>{token.change >= 0 ? '+' : ''}{token.change.toFixed(2)}%</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-medium text-white">
-                    {token.amount > 0 ? token.amount.toFixed(6) : '0.000000'}
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    ${token.fiat > 0 ? token.fiat.toFixed(2) : '0.00'}
-                  </div>
-                </div>
-              </div>
+              <TokenRow
+                key={token.symbol}
+                symbol={token.symbol}
+                name={token.name}
+                logo={token.logo}
+                balance={token.balance}
+                priceUSD={token.priceUSD}
+              />
             ))}
             {tokenList.length === 0 && (
               <div className="text-center text-gray-500 py-8">No tokens found</div>
