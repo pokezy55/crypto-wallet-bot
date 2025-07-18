@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 
-const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum,tether,usd-coin,binancecoin,polygon,base&vs_currencies=usd&include_24hr_change=true';
+const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum,tether,usd-coin,binancecoin,matic-network&vs_currencies=usd&include_24hr_change=true';
 const TOKEN_ID_MAP: Record<string, string> = {
   ETH: 'ethereum',
   USDT: 'tether',
   USDC: 'usd-coin',
   BNB: 'binancecoin',
-  MATIC: 'polygon',
-  BASE: 'base',
+  MATIC: 'matic-network',
+  BASE: 'ethereum', // gunakan harga ETH untuk Base ETH
 };
 
 export interface TokenPriceInfo {
