@@ -12,6 +12,7 @@ import { useSendToken } from '../hooks/useSendToken';
 import { getTokenList } from '../lib/chain';
 import TokenRow from './TokenRow';
 import { useTokenPrices } from '../hooks/useTokenPrices';
+import { CHAINS } from '../lib/chain';
 
 function getExplorerUrl(chain: string, txHash: string): string {
   switch (chain.toLowerCase()) {
@@ -147,24 +148,42 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   // Pilih balances sesuai chain aktif
   const activeBalances: Record<string, any> = walletBalances[chain] || {};
   // Gabungkan ke tokenList utama
-  const mergedTokenList = [
-    { symbol: 'ETH', name: 'Ethereum', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
-    { symbol: 'BNB', name: 'BNB', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg' },
-    { symbol: 'MATIC', name: 'Polygon', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg' },
-    { symbol: 'BASE', name: 'Base ETH', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
-    { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg' },
-    { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg' },
-  ].map(def => {
-    // Mapping symbol lowercase untuk balance
-    const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
-    return {
-      ...def,
-      balance: parseFloat(bal),
-      priceUSD: tokenPrices[def.symbol]?.priceUSD ?? 0,
-      priceChange24h: tokenPrices[def.symbol]?.priceChange24h ?? 0,
-    };
-  });
-  const tokenList = mergedTokenList;
+  let tokenList: any[] = [];
+  if (chain === 'all') {
+    // Fetch all tokens from all chains
+    const allTokens: any[] = [];
+    Object.entries(CHAINS).forEach(([chainKey, chainObj]: any) => {
+      chainObj.tokens.forEach((token: any) => {
+        allTokens.push({
+          ...token,
+          chain: chainKey,
+        });
+      });
+    });
+    tokenList = allTokens.map(def => {
+      const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
+      return {
+        ...def,
+        balance: parseFloat(bal),
+        priceUSD: tokenPrices[def.symbol]?.priceUSD ?? 0,
+        priceChange24h: tokenPrices[def.symbol]?.priceChange24h ?? 0,
+        chain: 'all', // Indicate it's from all chains
+      };
+    });
+  } else {
+    // Chain spesifik
+    const chains: Record<string, any> = CHAINS;
+    tokenList = (chains[chain]?.tokens as any[] || []).map((def: any) => {
+      const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
+      return {
+        ...def,
+        balance: parseFloat(bal),
+        priceUSD: tokenPrices[def.symbol]?.priceUSD ?? 0,
+        priceChange24h: tokenPrices[def.symbol]?.priceChange24h ?? 0,
+        chain: chain,
+      };
+    });
+  }
   console.log('tokenList with prices', tokenList);
 
   // Setelah tokenList didefinisikan:
@@ -620,8 +639,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
   if (activeSection === 'main') {
     const [showChainMenu, setShowChainMenu] = useState(false);
-    const [selectedChain, setSelectedChain] = useState(chain);
+    const [selectedChain, setSelectedChain] = useState<string>('eth');
     const CHAIN_OPTIONS = [
+      { key: 'all', label: 'All Networks', icon: '', emoji: '🌐' },
       { key: 'eth', label: 'Ethereum', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
       { key: 'bsc', label: 'BSC', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg' },
       { key: 'polygon', label: 'Polygon', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg' },
@@ -650,28 +670,36 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                 className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-colors"
                 onClick={() => setShowChainMenu(v => !v)}
               >
-                <img
-                  src={CHAIN_OPTIONS.find(c => c.key === selectedChain)?.icon || ''}
-                  alt={selectedChain}
-                  className="w-6 h-6 rounded-full"
-                />
+                {selectedChain === 'all' ? (
+                  <span className="text-xl">🌐</span>
+                ) : (
+                  <img
+                    src={CHAIN_OPTIONS.find(c => c.key === selectedChain)?.icon || ''}
+                    alt={selectedChain}
+                    className="w-6 h-6 rounded-full"
+                  />
+                )}
               </button>
               {/* Dropdown/Popover */}
               {showChainMenu && (
-                <div className="absolute right-0 mt-2 w-40 bg-crypto-card border border-crypto-border rounded-lg shadow-lg z-50 animate-fade-in">
+                <div className="absolute right-0 mt-2 w-44 bg-crypto-card border border-crypto-border rounded-lg shadow-lg z-50 animate-fade-in">
                   {CHAIN_OPTIONS.map(opt => (
                     <button
                       key={opt.key}
                       className={`flex items-center gap-2 w-full px-4 py-2 text-left hover:bg-primary-600/20 transition-colors ${selectedChain === opt.key ? 'bg-primary-900/40' : ''}`}
                       onClick={() => {
                         setSelectedChain(opt.key);
-                        setChain(opt.key);
+                        setChain(opt.key === 'all' ? 'eth' : opt.key); // fallback fetch eth for useBalance
                         setShowChainMenu(false);
                         refetch();
                         console.log('selectedChain', opt.key);
                       }}
                     >
-                      <img src={opt.icon} alt={opt.label} className="w-5 h-5 rounded-full" />
+                      {opt.key === 'all' ? (
+                        <span className="text-xl">🌐</span>
+                      ) : (
+                        <img src={opt.icon} alt={opt.label} className="w-5 h-5 rounded-full" />
+                      )}
                       <span className="text-white">{opt.label}</span>
                     </button>
                   ))}
@@ -732,7 +760,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           <div className="flex flex-col gap-3 mt-2">
             {tokenList.map((token, index) => (
               <TokenRow
-                key={token.symbol}
+                key={token.symbol + token.chain}
                 symbol={token.symbol}
                 name={token.name}
                 logo={token.logo}
