@@ -23,15 +23,19 @@ export async function POST(request) {
   }
   const balances = [];
   try {
+    let nativeBalance = null;
+    let erc20Balances = [];
     for (const token of tokens) {
       let bal;
       if (token.isNative) {
         bal = await provider.getBalance(address);
         bal = formatEther(bal);
+        nativeBalance = bal;
       } else {
         const contract = new Contract(token.address, ERC20_ABI, provider);
         bal = await contract.balanceOf(address);
         bal = formatUnits(bal, token.decimals);
+        erc20Balances.push({ symbol: token.symbol, balance: bal });
       }
       balances.push({
         symbol: token.symbol,
@@ -42,10 +46,13 @@ export async function POST(request) {
         decimals: token.decimals,
       });
     }
+    if (chain === 'bsc') {
+      console.log('BSC balance check', address, nativeBalance, erc20Balances);
+    }
     console.log('Fetched balances', balances);
     return Response.json({ balances, chain });
   } catch (e) {
-    console.warn('Balance fetch error:', e.message);
+    console.warn('Balance fetch error:', e.message, e);
     return Response.json({ error: 'Failed to fetch balances', detail: e.message }, { status: 500 });
   }
 } 
