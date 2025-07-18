@@ -437,21 +437,21 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             <div>
               <label className="block text-sm font-medium mb-2">Amount</label>
               <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={sendForm.amount}
+              <input
+                type="number"
+                value={sendForm.amount}
                   onChange={e => setSendForm({ ...sendForm, amount: e.target.value })}
-                  placeholder="0.0"
+                placeholder="0.0"
                   className="input-field flex-1"
                   min="0"
                   max={selectedToken ? selectedToken.balance : undefined}
-                />
+              />
                 <button
                   type="button"
                   onClick={handleMax}
                   className="btn-secondary px-3"
                 >MAX</button>
-              </div>
+            </div>
               {selectedToken && (
                 <div className="text-xs text-gray-400 mt-1">Available: {selectedToken.balance.toFixed(6)} {selectedToken.symbol}</div>
               )}
