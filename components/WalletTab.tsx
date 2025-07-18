@@ -104,8 +104,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [newToken, setNewToken] = useState({ network: 'ETH', contract: '' });
   // Hitung totalWorth dari balances
   const totalWorth = Object.entries(balances).reduce((sum, [symbol, amount]) => {
-    // Dummy price, bisa diimprove
-    const price = tokenPrices[symbol]?.price || 1.0;
+    const price = tokenPrices[symbol]?.priceUSD ?? 1.0;
     return sum + parseFloat(amount) * price;
   }, 0).toFixed(2);
 
@@ -348,7 +347,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     // Fungsi handle MAX
     const handleMax = () => {
       // Jika native token, kurangi fee
-      if (selectedToken.symbol === selectedToken.chain) {
+      if (selectedToken.symbol === selectedToken.symbol) {
         setSendForm({ ...sendForm, amount: (selectedToken.balance - estimatedFee).toFixed(6) });
       } else {
         setSendForm({ ...sendForm, amount: selectedToken.balance.toFixed(6) });
@@ -371,7 +370,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             from: wallet.address,
             to: sendForm.address,
             token: selectedToken.symbol,
-            chain: selectedToken.chainId,
+            chain: selectedToken.symbol,
             amount: sendForm.amount,
             seedPhrase: wallet.seedPhrase // <-- tambahkan ini!
           })
@@ -411,14 +410,14 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                   className="input-field w-full pl-12"
                 >
                   {sendableTokens.map(token => (
-                    <option key={token.symbol + token.chainId} value={token.symbol}>
+                    <option key={token.symbol + token.symbol} value={token.symbol}>
                       {token.name}
                     </option>
                   ))}
                 </select>
                 {/* Logo di kiri */}
                 {selectedToken && (
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2">{selectedToken.icon}</span>
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2">{selectedToken.symbol}</span>
                 )}
               </div>
               {/* Nama + balance di kanan */}
@@ -467,7 +466,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
               )}
             </div>
             {/* Estimated Fee */}
-            <div className="text-xs text-gray-400 mb-2">Estimated Fee: {estimatedFee} {selectedToken ? selectedToken.chain : ''}</div>
+            <div className="text-xs text-gray-400 mb-2">Estimated Fee: {estimatedFee} {selectedToken ? selectedToken.symbol : ''}</div>
             {/* Send Button */}
             <button
               onClick={() => setShowConfirm(true)}
@@ -492,7 +491,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
               <div className="mb-4">
                 <div>Send <b>{sendForm.amount} {selectedToken.symbol}</b> to</div>
                 <div className="break-all text-primary-500 font-mono">{sendForm.address}</div>
-                <div className="mt-2 text-xs text-gray-400">Fee: {estimatedFee} {selectedToken.chain}</div>
+                <div className="mt-2 text-xs text-gray-400">Fee: {estimatedFee} {selectedToken.symbol}</div>
               </div>
               {txStatus === 'idle' && (
                 <div className="flex gap-2">
