@@ -680,6 +680,49 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             </div>
           </div>
         </div>
+        {/* Total Worth */}
+        <div className="text-center mb-2">
+          <div className="text-3xl font-bold text-white">${totalWorth}</div>
+          <div className="text-xs text-gray-400 flex items-center justify-center gap-1">
+            <span>Total Portfolio Value</span>
+            <span className="text-gray-500">|</span>
+            <span className="flex items-center gap-1">
+              <Eth className="w-3 h-3" />
+              {parseFloat(balances['ETH'] ?? '0').toFixed(4)}
+            </span>
+          </div>
+        </div>
+        {/* Action Buttons */}
+        <div className="flex justify-between items-center mb-4 px-2">
+          <button 
+            onClick={() => setActiveSection('send')}
+            className="flex flex-col items-center hover:text-primary-500 transition-colors"
+          >
+            <Send className="w-6 h-6" />
+            <span className="text-xs mt-1">Send</span>
+          </button>
+          <button 
+            onClick={() => setActiveSection('receive')}
+            className="flex flex-col items-center hover:text-primary-500 transition-colors"
+          >
+            <Download className="w-6 h-6" />
+            <span className="text-xs mt-1">Receive</span>
+          </button>
+          <button 
+            onClick={() => setActiveSection('swap')}
+            className="flex flex-col items-center hover:text-primary-500 transition-colors"
+          >
+            <ArrowLeftRight className="w-6 h-6" />
+            <span className="text-xs mt-1">Swap</span>
+          </button>
+          <button 
+            onClick={() => setShowAddToken(true)}
+            className="flex flex-col items-center hover:text-primary-500 transition-colors"
+          >
+            <Plus className="w-6 h-6" />
+            <span className="text-xs mt-1">Add</span>
+          </button>
+        </div>
         {/* Tab Token/NFT/History */}
         <div className="flex gap-4 border-b border-gray-700 mb-2">
           <button className={`pb-2 px-2 text-sm ${activeTab === 'token' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('token')}>Token</button>
