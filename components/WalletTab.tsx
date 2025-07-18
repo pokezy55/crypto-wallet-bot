@@ -173,16 +173,54 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   } else {
     // Chain spesifik
     const chains: Record<string, any> = CHAINS;
-    tokenList = (chains[chain]?.tokens as any[] || []).map((def: any) => {
+    tokenList = (chains[chain]?.tokens || []).map((def: any) => {
       const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
       return {
         ...def,
         balance: parseFloat(bal),
         priceUSD: tokenPrices[def.symbol]?.priceUSD ?? 0,
         priceChange24h: tokenPrices[def.symbol]?.priceChange24h ?? 0,
-        chain: chain,
+        chains: [chain.toUpperCase()], // Ensure chains is always an array with at least one item
+        name: def.name || def.symbol, // Ensure name has fallback
+        logo: def.logo || '', // Ensure logo has fallback
+        isMerged: false // Default isMerged to false
       };
     });
+
+    // Merge tokens if needed
+    const mergedTokens: Record<string, any> = {};
+    tokenList.forEach((token) => {
+      if (shouldMergeToken(token.symbol)) {
+        // Merge token (USDT, USDC)
+        if (!mergedTokens[token.symbol]) {
+          mergedTokens[token.symbol] = {
+            symbol: token.symbol,
+            name: token.name || token.symbol,
+            logo: token.logo || '',
+            balance: 0,
+            priceUSD: tokenPrices[token.symbol]?.priceUSD ?? 0,
+            priceChange24h: tokenPrices[token.symbol]?.priceChange24h ?? 0,
+            chains: [],
+            isMerged: true
+          };
+        }
+        mergedTokens[token.symbol].balance += token.balance || 0;
+        if (token.balance > 0) {
+          mergedTokens[token.symbol].chains.push(chain.toUpperCase());
+        }
+      } else {
+        // Non-merged tokens
+        const key = `${token.symbol}-${chain}`;
+        mergedTokens[key] = {
+          ...token,
+          chains: [chain.toUpperCase()],
+          isMerged: false
+        };
+      }
+    });
+
+    // Convert merged tokens back to array
+    tokenList = Object.values(mergedTokens);
   }
   console.log('tokenList with prices', tokenList);
 
