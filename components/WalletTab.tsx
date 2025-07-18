@@ -12,7 +12,7 @@ import { useSendToken } from '../hooks/useSendToken';
 import { getTokenList } from '../lib/chain';
 import TokenRow from './TokenRow';
 import { useTokenPrices } from '../hooks/useTokenPrices';
-import { CHAINS } from '../lib/chain';
+import { CHAINS, TOKEN_GROUPS, shouldMergeToken, isNativeToken, getTokenPriority } from '../lib/chain';
 
 function getExplorerUrl(chain: string, txHash: string): string {
   switch (chain.toLowerCase()) {
@@ -758,15 +758,17 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         </div>
         {activeTab === 'token' && (
           <div className="flex flex-col gap-3 mt-2">
-            {tokenList.map((token, index) => (
+            {tokenList.map((token) => (
               <TokenRow
-                key={`${token.symbol}-${token.chain}`}
+                key={token.isMerged ? `${token.symbol}-merged` : `${token.symbol}-${token.chains[0]}`}
                 symbol={token.symbol}
                 name={token.name}
                 logo={token.logo}
                 balance={token.balance}
                 priceUSD={token.priceUSD}
                 priceChange24h={token.priceChange24h}
+                chains={token.chains}
+                isMerged={token.isMerged}
               />
             ))}
             {tokenList.length === 0 && (
