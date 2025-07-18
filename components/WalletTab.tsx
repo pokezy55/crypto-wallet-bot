@@ -11,6 +11,7 @@ import { useBalance } from '../hooks/useBalance';
 import { useSendToken } from '../hooks/useSendToken';
 import { getTokenList } from '../lib/chain';
 import TokenRow from './TokenRow';
+import { useTokenPrices } from '../hooks/useTokenPrices';
 
 function getExplorerUrl(chain: string, txHash: string): string {
   switch (chain.toLowerCase()) {
@@ -89,8 +90,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [balances, setBalances] = useState<Record<string, string>>({});
   // Ganti default state chain ke 'eth'
   const [chain, setChain] = useState('eth');
-  const [tokenPrices, setTokenPrices] = useState<Record<string, { price: number; change24h: number; lastUpdated: number }>>({});
-  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
+  // Hapus state tokenPrices dan lastPriceUpdate lama
+  // const [tokenPrices, setTokenPrices] = useState<Record<string, { price: number; change24h: number; lastUpdated: number }>>({});
+  // const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [txError, setTxError] = useState('');
@@ -109,6 +111,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
   // HOOK: Fetch balance
   const { tokens, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(wallet.address, chain);
+  const tokenPrices = useTokenPrices();
   // HOOK: Send token
   const { sendToken: hookSendToken, loading: loadingSend, error: hookSendError, txHash: hookTxHash } = useSendToken();
 
@@ -140,20 +143,27 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   };
   const defaultTokenList = defaultTokenListMap[chain] || [];
 
-  // 2. Gabungkan hasil useBalance (tokens) dengan defaultTokenList
-  const mergedTokenList = defaultTokenList.map((def: any) => {
-    const found = tokens.find((t: any) => t.symbol === def.symbol);
-    return {
-      ...def,
-      balance: found ? parseFloat(found.balance) : 0,
-      priceUSD: tokenPrices[def.symbol]?.price || 0,
-    };
-  });
-
-  // 3. Jika tokenList kosong, render defaultTokenList
-  const tokenList = mergedTokenList.length > 0 ? mergedTokenList : defaultTokenList.map((def: any) => ({ ...def, balance: 0, priceUSD: 0 }));
-
-  console.log('tokenList', tokenList);
+  // Gabungkan defaultTokenList dengan hasil useBalance dan harga
+  const mergedTokenList = [
+    ...[ // ETH
+      { symbol: 'ETH', name: 'Ethereum', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
+      { symbol: 'BNB', name: 'BNB', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg' },
+      { symbol: 'MATIC', name: 'Polygon', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg' },
+      { symbol: 'BASE', name: 'Base ETH', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
+      { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg' },
+      { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg' },
+    ].map(def => {
+      const found = tokens.find((t: any) => t.symbol === def.symbol);
+      return {
+        ...def,
+        balance: found ? parseFloat(found.balance) : 0,
+        priceUSD: tokenPrices[def.symbol]?.priceUSD ?? 0,
+        priceChange24h: tokenPrices[def.symbol]?.priceChange24h ?? 0,
+      };
+    })
+  ];
+  const tokenList = mergedTokenList;
+  console.log('tokenList with prices', tokenList);
 
   // Setelah tokenList didefinisikan:
   // console.log('tokenList', tokenList);
@@ -183,8 +193,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     try {
       // Fetch fresh prices
       const prices = await getCachedTokenPrices();
-      setTokenPrices(prices);
-      setLastPriceUpdate(new Date());
+      // setTokenPrices(prices); // Hapus state tokenPrices lama
+      // setLastPriceUpdate(new Date()); // Hapus state lastPriceUpdate lama
       toast.success('Wallet refreshed!');
     } catch (error) {
       toast.error('Failed to refresh wallet');
@@ -636,11 +646,11 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
               {parseFloat(balances['ETH'] ?? '0').toFixed(4)}
             </span>
           </div>
-          {lastPriceUpdate && (
-            <div className="text-xs text-gray-500 mt-1">
-              Last updated: {lastPriceUpdate.toLocaleTimeString()}
-            </div>
-          )}
+          {/* lastPriceUpdate && ( // Hapus state lastPriceUpdate lama */}
+          {/*   <div className="text-xs text-gray-500 mt-1"> */}
+          {/*     Last updated: {lastPriceUpdate.toLocaleTimeString()} */}
+          {/*   </div> */}
+          {/* ) */}
         </div>
         {/* Action Buttons */}
         <div className="flex justify-between items-center mb-4 px-2">
@@ -688,6 +698,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                 logo={token.logo}
                 balance={token.balance}
                 priceUSD={token.priceUSD}
+                priceChange24h={token.priceChange24h}
               />
             ))}
             {tokenList.length === 0 && (
