@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, Download, ArrowLeftRight, Copy, QrCode, Plus, Settings, RefreshCw, ExternalLink } from 'lucide-react';
+import { Send, Download, ArrowLeftRight, Copy, QrCode, Plus, Settings, RefreshCw, ExternalLink, Globe } from 'lucide-react';
 import toast from 'react-hot-toast';
 import QRCode from 'qrcode.react';
 import { formatAddress, isValidAddress } from '@/lib/address';
@@ -619,9 +619,18 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   }
 
   if (activeSection === 'main') {
+    const [showChainMenu, setShowChainMenu] = useState(false);
+    const [selectedChain, setSelectedChain] = useState(chain);
+    const CHAIN_OPTIONS = [
+      { key: 'eth', label: 'Ethereum', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
+      { key: 'bsc', label: 'BSC', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg' },
+      { key: 'polygon', label: 'Polygon', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg' },
+      { key: 'base', label: 'Base', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
+    ];
+
     return (
       <div className="p-4">
-        {/* Address & Copy */}
+        {/* Address & Copy + Chain Selector */}
         <div className="flex items-center justify-between mb-2">
           <span className="font-mono text-xs text-gray-400">{wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}</span>
           <div className="flex items-center gap-2">
@@ -632,70 +641,44 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             >
               <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
-          <button onClick={copyAddress} className="p-1 bg-gray-700 rounded hover:bg-primary-700">
-            <Copy className="w-4 h-4 text-white" />
-          </button>
-          </div>
-        </div>
-        {/* Chain Selector */}
-        <div className="flex gap-2 mb-4">
-          {['eth', 'bsc', 'polygon', 'base'].map(c => (
-            <button
-              key={c}
-              className={`px-3 py-1 rounded ${chain === c ? 'bg-primary-500 text-white' : 'bg-gray-700 text-gray-300'}`}
-              onClick={() => setChain(c)}
-            >
-              {c.toUpperCase()}
+            <button onClick={copyAddress} className="p-1 bg-gray-700 rounded hover:bg-primary-700">
+              <Copy className="w-4 h-4 text-white" />
             </button>
-          ))}
-        </div>
-        {/* Total Worth */}
-        <div className="text-center mb-2">
-          <div className="text-3xl font-bold text-white">${totalWorth}</div>
-          <div className="text-xs text-gray-400 flex items-center justify-center gap-1">
-            <span>Total Portfolio Value</span>
-            <span className="text-gray-500">|</span>
-            <span className="flex items-center gap-1">
-              <Eth className="w-3 h-3" />
-              {parseFloat(balances['ETH'] ?? '0').toFixed(4)}
-            </span>
+            {/* Chain Selector Button */}
+            <div className="relative">
+              <button
+                className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-colors"
+                onClick={() => setShowChainMenu(v => !v)}
+              >
+                <img
+                  src={CHAIN_OPTIONS.find(c => c.key === selectedChain)?.icon || ''}
+                  alt={selectedChain}
+                  className="w-6 h-6 rounded-full"
+                />
+              </button>
+              {/* Dropdown/Popover */}
+              {showChainMenu && (
+                <div className="absolute right-0 mt-2 w-40 bg-crypto-card border border-crypto-border rounded-lg shadow-lg z-50 animate-fade-in">
+                  {CHAIN_OPTIONS.map(opt => (
+                    <button
+                      key={opt.key}
+                      className={`flex items-center gap-2 w-full px-4 py-2 text-left hover:bg-primary-600/20 transition-colors ${selectedChain === opt.key ? 'bg-primary-900/40' : ''}`}
+                      onClick={() => {
+                        setSelectedChain(opt.key);
+                        setChain(opt.key);
+                        setShowChainMenu(false);
+                        refetch();
+                        console.log('selectedChain', opt.key);
+                      }}
+                    >
+                      <img src={opt.icon} alt={opt.label} className="w-5 h-5 rounded-full" />
+                      <span className="text-white">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          {/* lastPriceUpdate && ( // Hapus state lastPriceUpdate lama */}
-          {/*   <div className="text-xs text-gray-500 mt-1"> */}
-          {/*     Last updated: {lastPriceUpdate.toLocaleTimeString()} */}
-          {/*   </div> */}
-          {/* ) */}
-        </div>
-        {/* Action Buttons */}
-        <div className="flex justify-between items-center mb-4 px-2">
-          <button 
-            onClick={() => setActiveSection('send')}
-            className="flex flex-col items-center hover:text-primary-500 transition-colors"
-          >
-            <Send className="w-6 h-6" />
-            <span className="text-xs mt-1">Send</span>
-          </button>
-          <button 
-            onClick={() => setActiveSection('receive')}
-            className="flex flex-col items-center hover:text-primary-500 transition-colors"
-          >
-            <Download className="w-6 h-6" />
-            <span className="text-xs mt-1">Receive</span>
-          </button>
-          <button 
-            onClick={() => setActiveSection('swap')}
-            className="flex flex-col items-center hover:text-primary-500 transition-colors"
-          >
-            <ArrowLeftRight className="w-6 h-6" />
-            <span className="text-xs mt-1">Swap</span>
-          </button>
-          <button 
-            onClick={() => setShowAddToken(true)}
-            className="flex flex-col items-center hover:text-primary-500 transition-colors"
-          >
-            <Plus className="w-6 h-6" />
-            <span className="text-xs mt-1">Add</span>
-          </button>
         </div>
         {/* Tab Token/NFT/History */}
         <div className="flex gap-4 border-b border-gray-700 mb-2">
