@@ -175,11 +175,12 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     const chains: Record<string, any> = CHAINS;
     tokenList = (chains[chain]?.tokens || []).map((def: any) => {
       const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
+      const price = tokenPrices[def.symbol] || { priceUSD: 0, priceChange24h: 0 };
       return {
         ...def,
         balance: parseFloat(bal),
-        priceUSD: tokenPrices[def.symbol]?.priceUSD ?? 0,
-        priceChange24h: tokenPrices[def.symbol]?.priceChange24h ?? 0,
+        priceUSD: price.priceUSD,
+        priceChange24h: price.priceChange24h,
         chains: [chain.toUpperCase()], // Ensure chains is always an array with at least one item
         name: def.name || def.symbol, // Ensure name has fallback
         logo: def.logo || '', // Ensure logo has fallback
@@ -193,13 +194,14 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       if (shouldMergeToken(token.symbol)) {
         // Merge token (USDT, USDC)
         if (!mergedTokens[token.symbol]) {
+          const price = tokenPrices[token.symbol] || { priceUSD: 0, priceChange24h: 0 };
           mergedTokens[token.symbol] = {
             symbol: token.symbol,
             name: token.name || token.symbol,
             logo: token.logo || '',
             balance: 0,
-            priceUSD: tokenPrices[token.symbol]?.priceUSD ?? 0,
-            priceChange24h: tokenPrices[token.symbol]?.priceChange24h ?? 0,
+            priceUSD: price.priceUSD,
+            priceChange24h: price.priceChange24h,
             chains: [],
             isMerged: true
           };
@@ -219,8 +221,12 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       }
     });
 
-    // Convert merged tokens back to array
-    tokenList = Object.values(mergedTokens);
+    // Convert merged tokens back to array and sort by balance value
+    tokenList = Object.values(mergedTokens).sort((a, b) => {
+      const aValue = a.balance * (a.priceUSD || 0);
+      const bValue = b.balance * (b.priceUSD || 0);
+      return bValue - aValue;
+    });
   }
   console.log('tokenList with prices', tokenList);
 
