@@ -1,9 +1,10 @@
 import { getProvider, getTokenList } from '../../../lib/chain';
-import { formatEther, formatUnits, isAddress, Contract } from 'ethers';
+import { formatEther, formatUnits, isAddress, Contract, JsonRpcProvider } from 'ethers';
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)'
 ];
+const BSC_RPC_URL = process.env.BSC_RPC_URL || 'https://rpc.ankr.com/bsc';
 
 export async function POST(request) {
   const { address, chain } = await request.json();
@@ -15,7 +16,11 @@ export async function POST(request) {
   }
   let provider, tokens;
   try {
-    provider = getProvider(chain);
+    if (chain === 'bsc') {
+      provider = new JsonRpcProvider(BSC_RPC_URL);
+    } else {
+      provider = getProvider(chain);
+    }
     tokens = getTokenList(chain);
   } catch (e) {
     console.warn('Chain/provider error:', e.message);

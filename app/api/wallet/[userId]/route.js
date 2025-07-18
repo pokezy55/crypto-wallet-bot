@@ -35,11 +35,13 @@ export async function GET(request, { params }) {
         const provider = new JsonRpcProvider(BSC_RPC_URL)
         const bal = await provider.getBalance(address)
         balances[chain][nativeSymbol] = (Number(bal) / 1e18).toString()
+        console.log('BSC native', balances[chain][nativeSymbol]);
         // ERC20 USDT
         for (const symbol of ERC20_TOKENS) {
           const contract = new Contract(BSC_ERC20[symbol], ERC20_ABI, provider)
           const balErc20 = await contract.balanceOf(address)
           balances[chain][symbol.toLowerCase()] = (Number(balErc20) / 1e18).toString()
+          console.log('BSC USDT', balances[chain][symbol.toLowerCase()]);
         }
       } else {
         // Chain lain tetap pakai helper lama
@@ -58,6 +60,7 @@ export async function GET(request, { params }) {
       createdAt: walletData.created_at,
       updatedAt: walletData.updated_at
     }
+    console.log('Final wallet response', wallet);
     return NextResponse.json(wallet)
   } catch (error) {
     console.error('Error getting wallet:', error)
