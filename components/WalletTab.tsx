@@ -142,25 +142,28 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   };
   const defaultTokenList = defaultTokenListMap[chain] || [];
 
-  // Gabungkan defaultTokenList dengan hasil useBalance dan harga
+  // Ambil balances dari wallet jika ada
+  const walletBalances: Record<string, any> = (wallet && 'balance' in wallet && wallet.balance) ? wallet.balance : {};
+  // Pilih balances sesuai chain aktif
+  const activeBalances: Record<string, any> = walletBalances[chain] || {};
+  // Gabungkan ke tokenList utama
   const mergedTokenList = [
-    ...[ // ETH
-      { symbol: 'ETH', name: 'Ethereum', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
-      { symbol: 'BNB', name: 'BNB', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg' },
-      { symbol: 'MATIC', name: 'Polygon', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg' },
-      { symbol: 'BASE', name: 'Base ETH', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
-      { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg' },
-      { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg' },
-    ].map(def => {
-      const found = tokens.find((t: any) => t.symbol === def.symbol);
-      return {
-        ...def,
-        balance: found ? parseFloat(found.balance) : 0,
-        priceUSD: tokenPrices[def.symbol]?.priceUSD ?? 0,
-        priceChange24h: tokenPrices[def.symbol]?.priceChange24h ?? 0,
-      };
-    })
-  ];
+    { symbol: 'ETH', name: 'Ethereum', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
+    { symbol: 'BNB', name: 'BNB', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg' },
+    { symbol: 'MATIC', name: 'Polygon', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg' },
+    { symbol: 'BASE', name: 'Base ETH', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
+    { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg' },
+    { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg' },
+  ].map(def => {
+    // Mapping symbol lowercase untuk balance
+    const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
+    return {
+      ...def,
+      balance: parseFloat(bal),
+      priceUSD: tokenPrices[def.symbol]?.priceUSD ?? 0,
+      priceChange24h: tokenPrices[def.symbol]?.priceChange24h ?? 0,
+    };
+  });
   const tokenList = mergedTokenList;
   console.log('tokenList with prices', tokenList);
 
