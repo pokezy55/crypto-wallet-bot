@@ -29,14 +29,15 @@ export function useBalance(address: string, chain: string) {
         body: JSON.stringify({ address, chain }),
       });
       const data = await res.json();
-      // Gabungkan tokenList dengan hasil balance (default 0 jika tidak ada)
-      const result: TokenBalance[] = tokenList.map((token: any) => ({
+      // Gabungkan hasil API (array) ke tokenList
+      const result: TokenBalance[] = data.balances.map((token: any) => ({
         symbol: token.symbol,
-        balance: data.balances?.[token.symbol] ?? '0',
+        balance: token.balance,
         decimals: token.decimals,
         address: token.address,
         isNative: token.isNative,
       }));
+      console.log('tokenList with balances', result);
       setTokens(result);
     } catch (e: any) {
       setError(e.message || 'Failed to fetch balances');

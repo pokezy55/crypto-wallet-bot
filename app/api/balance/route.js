@@ -21,17 +21,26 @@ export async function POST(request) {
     console.warn('Chain/provider error:', e.message);
     return Response.json({ error: e.message }, { status: 400 });
   }
-  const balances = {};
+  const balances = [];
   try {
     for (const token of tokens) {
+      let bal;
       if (token.isNative) {
-        const bal = await provider.getBalance(address);
-        balances[token.symbol] = formatEther(bal);
+        bal = await provider.getBalance(address);
+        bal = formatEther(bal);
       } else {
         const contract = new Contract(token.address, ERC20_ABI, provider);
-        const bal = await contract.balanceOf(address);
-        balances[token.symbol] = formatUnits(bal, token.decimals);
+        bal = await contract.balanceOf(address);
+        bal = formatUnits(bal, token.decimals);
       }
+      balances.push({
+        symbol: token.symbol,
+        balance: bal,
+        address: token.address,
+        chainId: provider.network?.chainId || null,
+        isNative: token.isNative,
+        decimals: token.decimals,
+      });
     }
     console.log('Fetched balances', balances);
     return Response.json({ balances, chain });
