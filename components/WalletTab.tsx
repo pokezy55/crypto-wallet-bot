@@ -637,6 +637,18 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           </button>
           </div>
         </div>
+        {/* Chain Selector */}
+        <div className="flex gap-2 mb-4">
+          {['eth', 'bsc', 'polygon', 'base'].map(c => (
+            <button
+              key={c}
+              className={`px-3 py-1 rounded ${chain === c ? 'bg-primary-500 text-white' : 'bg-gray-700 text-gray-300'}`}
+              onClick={() => setChain(c)}
+            >
+              {c.toUpperCase()}
+            </button>
+          ))}
+        </div>
         {/* Total Worth */}
         <div className="text-center mb-2">
           <div className="text-3xl font-bold text-white">${totalWorth}</div>
