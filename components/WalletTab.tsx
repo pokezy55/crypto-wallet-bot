@@ -760,7 +760,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           <div className="flex flex-col gap-3 mt-2">
             {tokenList.map((token, index) => (
               <TokenRow
-                key={token.symbol + '-' + token.chain}
+                key={`${token.symbol}-${token.chain}`}
                 symbol={token.symbol}
                 name={token.name}
                 logo={token.logo}
