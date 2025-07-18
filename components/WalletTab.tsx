@@ -671,7 +671,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                 onClick={() => setShowChainMenu(v => !v)}
               >
                 {selectedChain === 'all' ? (
-                  <span className="text-xl">🌐</span>
+                  <Globe className="w-6 h-6 text-white" />
                 ) : (
                   <img
                     src={CHAIN_OPTIONS.find(c => c.key === selectedChain)?.icon || ''}
@@ -696,7 +696,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                       }}
                     >
                       {opt.key === 'all' ? (
-                        <span className="text-xl">🌐</span>
+                        <Globe className="w-5 h-5 text-white" />
                       ) : (
                         <img src={opt.icon} alt={opt.label} className="w-5 h-5 rounded-full" />
                       )}
