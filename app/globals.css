@@ -122,6 +122,10 @@ a {
   @apply bg-crypto-card hover:bg-crypto-border text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 border border-crypto-border;
 }
 
+.btn-disabled {
+  @apply bg-gray-600 text-gray-400 font-medium py-3 px-6 rounded-lg cursor-not-allowed;
+}
+
 .card {
   @apply bg-crypto-card border border-crypto-border rounded-xl p-6;
 }

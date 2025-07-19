@@ -191,7 +191,7 @@ export default function TaskTab({ user }: TaskTabProps) {
               disabled={claimingSwap}
             >
               {claimingSwap ? <Loader2 className="animate-spin w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
-              Claim $5 USDT Reward
+              CLAIM
             </button>
           ) : swapProgress?.status === 'processing' ? (
             <div className="text-center py-2 text-yellow-400">
@@ -204,8 +204,8 @@ export default function TaskTab({ user }: TaskTabProps) {
               <span className="text-sm">Reward claimed successfully!</span>
             </div>
           ) : (
-            <button className="w-full btn-primary" disabled>
-              Mark as Complete
+            <button className="w-full btn-disabled" disabled>
+              CLAIM
             </button>
           )}
         </div>
@@ -281,7 +281,7 @@ export default function TaskTab({ user }: TaskTabProps) {
               disabled={claimingDeposit}
             >
               {claimingDeposit ? <Loader2 className="animate-spin w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
-              Claim $3 USDT Reward
+              CLAIM
             </button>
           ) : depositProgress?.status === 'processing' ? (
             <div className="text-center py-2 text-yellow-400">
@@ -294,8 +294,8 @@ export default function TaskTab({ user }: TaskTabProps) {
               <span className="text-sm">Reward claimed successfully!</span>
             </div>
           ) : (
-            <button className="w-full btn-primary" disabled>
-              Mark as Complete
+            <button className="w-full btn-disabled" disabled>
+              CLAIM
             </button>
           )}
         </div>
