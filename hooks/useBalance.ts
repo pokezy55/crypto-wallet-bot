@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getTokenList } from '../lib/chain';
+import toast from 'react-hot-toast';
 
 export interface TokenBalance {
   symbol: string;
@@ -41,11 +42,21 @@ export function useBalance(chain: string, address?: string) {
         })
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to fetch balances');
+        throw new Error(data.error || 'Failed to fetch balances');
       }
 
-      const data = await response.json();
+      // Show warnings for any token errors
+      if (data.errors?.length > 0) {
+        data.errors.forEach((err: { symbol: string; error: string }) => {
+          console.warn(`Error fetching ${err.symbol} balance:`, err.error);
+          if (err.error.includes('Token not supported')) {
+            toast.error(`Token ${err.symbol} not supported on ${chain}`);
+          }
+        });
+      }
       
       // Normalize balances to lowercase for case-insensitive lookup
       const normalizedBalances: Record<string, string> = {};
@@ -57,6 +68,7 @@ export function useBalance(chain: string, address?: string) {
     } catch (err: any) {
       console.error('Error fetching balances:', err);
       setError(err.message || 'Failed to fetch balances');
+      toast.error(err.message || 'Failed to fetch balances');
       setBalances({});
     } finally {
       setLoading(false);

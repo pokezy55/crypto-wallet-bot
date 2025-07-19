@@ -4,7 +4,6 @@ import { formatEther, formatUnits, isAddress, Contract, getAddress } from 'ether
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)'
 ];
-const BSC_RPC_URL = process.env.BSC_RPC_URL || 'https://rpc.ankr.com/bsc';
 
 export async function POST(request) {
   try {
@@ -32,57 +31,50 @@ export async function POST(request) {
     }
 
     const balances = [];
-    try {
-      let nativeBalance = null;
-      let erc20Balances = [];
+    const errors = [];
 
-      for (const token of tokens) {
+    for (const token of tokens) {
+      try {
         let bal;
-        try {
-          if (token.isNative) {
-            bal = await provider.getBalance(normalizedAddress);
-            bal = formatEther(bal);
-            nativeBalance = bal;
-          } else {
-            const contract = new Contract(token.address, ERC20_ABI, provider);
-            bal = await contract.balanceOf(normalizedAddress);
-            bal = formatUnits(bal, token.decimals);
-            erc20Balances.push({ symbol: token.symbol, balance: bal });
+        if (token.isNative) {
+          bal = await provider.getBalance(normalizedAddress);
+          bal = formatEther(bal);
+        } else {
+          if (!token.address) {
+            throw new Error(`Token ${token.symbol} has no contract address`);
           }
-
-          balances.push({
-            symbol: token.symbol,
-            balance: bal,
-            address: token.address,
-            chainId: provider.network?.chainId || null,
-            isNative: token.isNative,
-            decimals: token.decimals,
-          });
-        } catch (e) {
-          console.warn(`Failed to fetch balance for token ${token.symbol}:`, e.message);
-          // Continue with next token instead of failing completely
-          balances.push({
-            symbol: token.symbol,
-            balance: '0',
-            address: token.address,
-            chainId: provider.network?.chainId || null,
-            isNative: token.isNative,
-            decimals: token.decimals,
-          });
+          const contract = new Contract(token.address, ERC20_ABI, provider);
+          bal = await contract.balanceOf(normalizedAddress);
+          bal = formatUnits(bal, token.decimals || 18);
         }
+        balances.push({ symbol: token.symbol, balance: bal });
+      } catch (e) {
+        console.warn(`Error fetching balance for ${token.symbol}:`, e.message);
+        errors.push({ symbol: token.symbol, error: e.message });
+        // Add token with 0 balance instead of failing
+        balances.push({ symbol: token.symbol, balance: '0' });
       }
-
-      if (chain === 'bsc') {
-        console.log('BSC balance check', normalizedAddress, nativeBalance, erc20Balances);
-      }
-      console.log('Fetched balances', balances);
-      return Response.json({ balances, chain });
-    } catch (e) {
-      console.warn('Balance fetch error:', e.message, e);
-      return Response.json({ error: 'Failed to fetch balances', detail: e.message }, { status: 500 });
     }
+
+    // If we have some successful balances, return them even if some failed
+    if (balances.length > 0) {
+      return Response.json({ 
+        balances,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    }
+
+    // If all tokens failed, return error
+    return Response.json({ 
+      error: 'Failed to fetch any token balances',
+      details: errors
+    }, { status: 500 });
+
   } catch (e) {
-    console.error('Unexpected error:', e);
-    return Response.json({ error: 'Internal server error', detail: e.message }, { status: 500 });
+    console.error('Balance API error:', e);
+    return Response.json({ 
+      error: 'Internal server error',
+      message: e.message
+    }, { status: 500 });
   }
 } 
