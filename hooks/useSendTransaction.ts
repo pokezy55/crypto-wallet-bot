@@ -35,16 +35,15 @@ export function useSendTransaction() {
   const [error, setError] = useState<string | null>(null);
 
   // Helper function to validate and format amount
-  const validateAndFormatAmount = (amount: string, decimals: number): string => {
+  const validateAndFormatAmount = (amount: string): string => {
     try {
       // Remove any commas, spaces, and leading zeros
-      let cleanAmount = amount.replace(/,/g, '').trim();
+      let cleanAmount = amount.replace(/[,\s]/g, '');
       
       // Handle leading zeros and decimal points
       if (cleanAmount.startsWith('.')) {
         cleanAmount = '0' + cleanAmount;
       }
-      cleanAmount = cleanAmount.replace(/^0+(\d)/, '$1');
       
       // Check if it's a valid decimal number
       if (!/^\d*\.?\d*$/.test(cleanAmount)) {
@@ -57,20 +56,7 @@ export function useSendTransaction() {
         throw new Error('Amount must be greater than 0');
       }
 
-      // Split into integer and decimal parts
-      const [integerPart, decimalPart = ''] = cleanAmount.split('.');
-      
-      // Ensure decimal places don't exceed token decimals
-      if (decimalPart.length > decimals) {
-        throw new Error(`Maximum ${decimals} decimal places allowed`);
-      }
-
-      // Pad with zeros if needed
-      const paddedDecimal = decimalPart.padEnd(decimals, '0');
-      
-      // Remove any scientific notation
-      return integerPart + paddedDecimal;
-
+      return cleanAmount;
     } catch (error: any) {
       console.error('Amount validation error:', error);
       throw new Error(error.message || 'Invalid amount format');
@@ -103,13 +89,15 @@ export function useSendTransaction() {
         throw new Error('Invalid wallet for sender address');
       }
 
+      // Validate amount format first
+      const validatedAmount = validateAndFormatAmount(amount);
+
       let tx;
       if (token.isNative) {
         // Send native token
         try {
-          // Format amount for native token (always 18 decimals)
-          const formattedAmount = validateAndFormatAmount(amount, 18);
-          const valueInWei = parseUnits(formattedAmount, 18);
+          // Parse amount to wei (always 18 decimals for native tokens)
+          const valueInWei = parseUnits(validatedAmount, 18);
           
           // Check native balance
           const balance = await provider.getBalance(from);
@@ -125,6 +113,9 @@ export function useSendTransaction() {
           if (error.message.includes('insufficient funds')) {
             throw new Error(`Insufficient ${token.symbol} balance for transaction`);
           }
+          if (error.code === 'INVALID_ARGUMENT') {
+            throw new Error('Invalid amount format');
+          }
           throw error;
         }
       } else {
@@ -136,9 +127,8 @@ export function useSendTransaction() {
         try {
           const tokenContract = new Contract(token.address, ERC20_ABI, wallet);
           
-          // Format amount according to token decimals
-          const formattedAmount = validateAndFormatAmount(amount, token.decimals);
-          const amountInWei = parseUnits(formattedAmount, token.decimals);
+          // Parse amount to wei using token decimals
+          const amountInWei = parseUnits(validatedAmount, token.decimals);
 
           // Check token balance
           const balance = await tokenContract.balanceOf(from);
@@ -150,6 +140,9 @@ export function useSendTransaction() {
         } catch (error: any) {
           if (error.message.includes('insufficient funds')) {
             throw new Error('Insufficient gas fee balance');
+          }
+          if (error.code === 'INVALID_ARGUMENT') {
+            throw new Error('Invalid amount format');
           }
           throw error;
         }
@@ -174,7 +167,7 @@ export function useSendTransaction() {
             from,
             to,
             token: token.symbol,
-            amount,
+            amount: validatedAmount,
             chain
           })
         });
