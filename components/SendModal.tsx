@@ -131,7 +131,10 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
 
   // Handle send
   const handleSend = async () => {
-    if (!isFormValid || !wallet.seedPhrase) return;
+    if (!isFormValid || !wallet?.seedPhrase) {
+      toast.error('Invalid wallet configuration');
+      return;
+    }
 
     try {
       // Final validation before sending
@@ -148,13 +151,24 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
       // Format amount according to token decimals
       const formattedAmount = formatAmount(form.amount, selectedTokenState.decimals);
 
+      // Remove any 0x prefix if accidentally added to seed phrase
+      const cleanSeedPhrase = wallet.seedPhrase.replace(/^0x/, '').trim();
+
+      // Pick only required token properties
+      const { symbol, address, decimals, isNative } = selectedTokenState;
+
       const result = await sendTransaction({
         from: wallet.address,
         to: form.address,
         amount: formattedAmount,
-        token: selectedTokenState,
+        token: {
+          symbol,
+          address,
+          decimals,
+          isNative
+        },
         chain,
-        seedPhrase: wallet.seedPhrase
+        seedPhrase: cleanSeedPhrase
       });
 
       if (result.success) {
