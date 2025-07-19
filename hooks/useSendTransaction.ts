@@ -39,8 +39,22 @@ const debugLog = (stage: string, data: any) => {
 
 // Check if string might be a mnemonic
 const isMnemonicLike = (str: string): boolean => {
+  if (!str || typeof str !== 'string') return false;
   const words = str.trim().split(/\s+/);
   return words.length >= 12 && words.length <= 24;
+};
+
+// Validate seed phrase
+const validateSeedPhrase = (seedPhrase: string): boolean => {
+  if (!seedPhrase || typeof seedPhrase !== 'string') return false;
+  try {
+    // Try creating a wallet to validate seed phrase
+    const wallet = new Wallet(seedPhrase);
+    return true;
+  } catch (error) {
+    console.error('Invalid seed phrase:', error);
+    return false;
+  }
 };
 
 export function useSendTransaction() {
@@ -56,7 +70,7 @@ export function useSendTransaction() {
       let cleanAmount = amount.replace(/[,\s]/g, '');
       
       // Check for potential mnemonic
-      if (isMnemonicLike(amount)) {
+      if (isMnemonicLike(cleanAmount)) {
         throw new Error('Invalid input: Looks like a seed phrase');
       }
 
@@ -105,6 +119,11 @@ export function useSendTransaction() {
     });
 
     try {
+      // Validate seed phrase first
+      if (!validateSeedPhrase(seedPhrase)) {
+        throw new Error('Invalid seed phrase');
+      }
+
       // Validate addresses
       if (!isAddress(from)) {
         throw new Error('Invalid sender address');
@@ -123,7 +142,18 @@ export function useSendTransaction() {
 
       // Get provider and create wallet
       const provider = getProvider(chain) as unknown as BrowserProvider;
-      const wallet = new Wallet(seedPhrase).connect(provider);
+      let wallet: Wallet;
+      
+      try {
+        wallet = new Wallet(seedPhrase).connect(provider);
+        debugLog('Wallet Creation', {
+          success: true,
+          address: wallet.address
+        });
+      } catch (error: any) {
+        console.error('Wallet creation error:', error);
+        throw new Error('Failed to create wallet: Invalid seed phrase');
+      }
 
       // Verify wallet address matches sender
       if (wallet.address.toLowerCase() !== from.toLowerCase()) {
