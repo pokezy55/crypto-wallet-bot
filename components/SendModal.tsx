@@ -17,9 +17,9 @@ function formatBalance(balance: string | number | undefined, decimals: number = 
   }
   // Handle small numbers better
   if (num < 0.000001) {
-    return num.toExponential(4);
+    return num.toExponential(6);
   }
-  return num.toFixed(decimals).replace(/\.?0+$/, '');
+  return num.toFixed(decimals).replace(/\.?0+$/, '') || '0';
 }
 
 interface SendFormState {
@@ -151,30 +151,59 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
   const handleAmountChange = (value: string) => {
     // Allow numbers, one decimal point, and scientific notation
     if (value === '' || /^[0-9]*\.?[0-9]*(?:[eE]-?[0-9]+)?$/.test(value)) {
+      let formattedValue = value;
+      
       // Convert scientific notation to decimal if needed
-      const num = value.includes('e') ? parseFloat(value) : value;
-      setForm(prev => ({ ...prev, amount: num.toString() }));
+      if (value.includes('e')) {
+        const num = parseFloat(value);
+        if (!isNaN(num)) {
+          formattedValue = num.toString();
+        }
+      }
+
+      setForm(prev => ({ ...prev, amount: formattedValue }));
     }
   };
 
   // Handle max amount
   const handleMax = () => {
     if (selectedTokenState.isNative) {
-      // For native tokens, subtract estimated fee
-      const fee = feeError ? 0 : parseFloat(estimatedFee || '0');
-      const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
-      // Convert to same decimal places for comparison
-      const balanceWei = parseFloat(formatAmount(balance.toString(), selectedTokenState.decimals));
-      const feeWei = parseFloat(formatAmount(fee.toString(), selectedTokenState.decimals));
-      const maxAmount = Math.max(0, balanceWei - feeWei);
-      // Format the amount based on size
-      const formattedAmount = maxAmount < 0.000001 ? maxAmount.toExponential(4) : formatBalance(maxAmount);
-      setForm(prev => ({ ...prev, amount: formattedAmount }));
+      try {
+        // For native tokens, subtract estimated fee
+        const fee = feeError ? 0 : parseFloat(estimatedFee || '0');
+        const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
+        const maxAmount = Math.max(0, balance - fee);
+        
+        // Format the amount based on size
+        let formattedAmount;
+        if (maxAmount < 0.000001) {
+          formattedAmount = maxAmount.toExponential(6);
+        } else {
+          formattedAmount = formatBalance(maxAmount, selectedTokenState.decimals);
+        }
+        
+        setForm(prev => ({ ...prev, amount: formattedAmount }));
+      } catch (error) {
+        console.error('Error calculating max amount:', error);
+        toast.error('Failed to calculate maximum amount');
+      }
     } else {
-      const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
-      // Format the amount based on size
-      const formattedAmount = balance < 0.000001 ? balance.toExponential(4) : formatBalance(balance);
-      setForm(prev => ({ ...prev, amount: formattedAmount }));
+      try {
+        const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
+        
+        // Format the amount based on size
+        let formattedAmount;
+        if (balance < 0.000001) {
+          formattedAmount = balance.toExponential(6);
+        } else {
+          formattedAmount = formatBalance(balance, selectedTokenState.decimals);
+        }
+        
+        setForm(prev => ({ ...prev, amount: formattedAmount }));
+      } catch (error) {
+        console.error('Error setting max amount:', error);
+        toast.error('Failed to set maximum amount');
+      }
     }
   };
 
