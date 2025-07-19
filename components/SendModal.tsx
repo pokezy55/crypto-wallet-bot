@@ -7,8 +7,14 @@ import { isValidEthereumAddress, isValidAmountFormat, formatAmount, isSensitiveD
 import toast from 'react-hot-toast';
 
 // Format balance helper
-function formatBalance(balance: string | number, decimals: number = 6): string {
+function formatBalance(balance: string | number | undefined, decimals: number = 6): string {
+  if (balance === undefined || balance === null) {
+    return '0';
+  }
   const num = typeof balance === 'string' ? parseFloat(balance) : balance;
+  if (isNaN(num)) {
+    return '0';
+  }
   return num.toFixed(decimals).replace(/\.?0+$/, '');
 }
 
@@ -76,6 +82,14 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
     }
   }, [isOpen]);
 
+  // Reset state when token changes
+  useEffect(() => {
+    if (selectedToken) {
+      setSelectedTokenState(selectedToken);
+      setForm(prev => ({ ...prev, amount: '' }));
+    }
+  }, [selectedToken]);
+
   // Real-time validation
   useEffect(() => {
     const errors = {
@@ -99,12 +113,16 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
       } else {
         const value = parseFloat(form.amount);
         if (selectedTokenState.isNative) {
-          const fee = feeError ? 0 : parseFloat(estimatedFee);
-          if (value + fee > selectedTokenState.balance) {
+          const fee = feeError ? 0 : parseFloat(estimatedFee || '0');
+          const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
+          if (value + fee > balance) {
             errors.amount = 'Insufficient balance (including fee)';
           }
-        } else if (value > selectedTokenState.balance) {
-          errors.amount = 'Insufficient balance';
+        } else {
+          const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
+          if (value > balance) {
+            errors.amount = 'Insufficient balance';
+          }
         }
       }
     }
@@ -130,8 +148,9 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
   const handleMax = () => {
     if (selectedTokenState.isNative) {
       // For native tokens, subtract estimated fee
-      const fee = feeError ? 0 : parseFloat(estimatedFee);
-      const maxAmount = Math.max(0, selectedTokenState.balance - fee);
+      const fee = feeError ? 0 : parseFloat(estimatedFee || '0');
+      const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
+      const maxAmount = Math.max(0, balance - fee);
       setForm(prev => ({ ...prev, amount: formatBalance(maxAmount) }));
     } else {
       setForm(prev => ({ ...prev, amount: formatBalance(selectedTokenState.balance) }));
