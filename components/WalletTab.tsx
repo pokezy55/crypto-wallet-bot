@@ -158,22 +158,22 @@ export default function WalletTab({
 
   return (
     <div className="flex-1 flex flex-col">
-      <div className="p-4 border-b border-crypto-border bg-crypto-card backdrop-blur-xl">
+      <div className="p-4 border-b border-crypto-border">
         <div className="text-sm text-gray-400 mb-1">Total Portfolio Value</div>
         <div className="text-2xl font-bold">
-          ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${totalValue.toFixed(2)}
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onSend} className="flex-1 bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-2 text-center transition-colors">
+          <button onClick={onSend} className="flex-1 bg-primary-500 text-white rounded-lg py-2 text-center">
             Send
           </button>
-          <button onClick={onReceive} className="flex-1 bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-2 text-center transition-colors">
+          <button onClick={onReceive} className="flex-1 bg-primary-500 text-white rounded-lg py-2 text-center">
             Receive
           </button>
-          <button onClick={onSwap} className="flex-1 bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-2 text-center transition-colors">
+          <button onClick={onSwap} className="flex-1 bg-primary-500 text-white rounded-lg py-2 text-center">
             Swap
           </button>
-          <button onClick={onAdd} className="flex-1 bg-primary-500 hover:bg-primary-600 text-white rounded-lg py-2 text-center transition-colors">
+          <button onClick={onAdd} className="flex-1 bg-primary-500 text-white rounded-lg py-2 text-center">
             Add
           </button>
         </div>
