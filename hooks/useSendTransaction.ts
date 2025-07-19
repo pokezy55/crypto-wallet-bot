@@ -30,16 +30,36 @@ interface TransactionResult {
   error?: string;
 }
 
+// Debug logging function
+const debugLog = (stage: string, data: any) => {
+  console.group(`🔍 Debug [${stage}]`);
+  console.log(JSON.stringify(data, null, 2));
+  console.groupEnd();
+};
+
+// Check if string might be a mnemonic
+const isMnemonicLike = (str: string): boolean => {
+  const words = str.trim().split(/\s+/);
+  return words.length >= 12 && words.length <= 24;
+};
+
 export function useSendTransaction() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Helper function to validate and format amount
   const validateAndFormatAmount = (amount: string): string => {
+    debugLog('Amount Validation Input', { amount });
+
     try {
       // Remove any commas, spaces, and leading zeros
       let cleanAmount = amount.replace(/[,\s]/g, '');
       
+      // Check for potential mnemonic
+      if (isMnemonicLike(amount)) {
+        throw new Error('Invalid input: Looks like a seed phrase');
+      }
+
       // Handle leading zeros and decimal points
       if (cleanAmount.startsWith('.')) {
         cleanAmount = '0' + cleanAmount;
@@ -56,6 +76,7 @@ export function useSendTransaction() {
         throw new Error('Amount must be greater than 0');
       }
 
+      debugLog('Amount Validation Result', { cleanAmount });
       return cleanAmount;
     } catch (error: any) {
       console.error('Amount validation error:', error);
@@ -74,11 +95,31 @@ export function useSendTransaction() {
     setLoading(true);
     setError(null);
 
+    // Initial debug log
+    debugLog('Transaction Params', {
+      from,
+      to,
+      amount,
+      token: { ...token, seedPhrase: '***' }, // Hide sensitive data
+      chain
+    });
+
     try {
       // Validate addresses
-      if (!isAddress(from) || !isAddress(to)) {
-        throw new Error('Invalid address format');
+      if (!isAddress(from)) {
+        throw new Error('Invalid sender address');
       }
+      if (!isAddress(to)) {
+        throw new Error('Invalid recipient address');
+      }
+      if (isMnemonicLike(to)) {
+        throw new Error('Recipient looks like a seed phrase');
+      }
+
+      debugLog('Address Validation', {
+        from: isAddress(from),
+        to: isAddress(to)
+      });
 
       // Get provider and create wallet
       const provider = getProvider(chain) as unknown as BrowserProvider;
@@ -99,10 +140,22 @@ export function useSendTransaction() {
           // Parse amount to wei (always 18 decimals for native tokens)
           const valueInWei = parseUnits(validatedAmount, 18);
           
+          debugLog('Native Token Transaction', {
+            to,
+            valueInWei: valueInWei.toString(),
+            chain,
+            decimals: 18
+          });
+
           // Check native balance
           const balance = await provider.getBalance(from);
           if (balance < valueInWei) {
             throw new Error(`Insufficient ${token.symbol} balance`);
+          }
+
+          // Final validation before sending
+          if (!isAddress(to) || isMnemonicLike(validatedAmount)) {
+            throw new Error('Invalid transaction parameters');
           }
 
           tx = await wallet.sendTransaction({
@@ -110,6 +163,7 @@ export function useSendTransaction() {
             value: valueInWei
           });
         } catch (error: any) {
+          console.error('Native token transfer error:', error);
           if (error.message.includes('insufficient funds')) {
             throw new Error(`Insufficient ${token.symbol} balance for transaction`);
           }
@@ -130,14 +184,27 @@ export function useSendTransaction() {
           // Parse amount to wei using token decimals
           const amountInWei = parseUnits(validatedAmount, token.decimals);
 
+          debugLog('ERC20 Token Transaction', {
+            to,
+            tokenAddress: token.address,
+            amountInWei: amountInWei.toString(),
+            decimals: token.decimals
+          });
+
           // Check token balance
           const balance = await tokenContract.balanceOf(from);
           if (balance < amountInWei) {
             throw new Error(`Insufficient ${token.symbol} balance`);
           }
 
+          // Final validation before sending
+          if (!isAddress(to) || isMnemonicLike(validatedAmount)) {
+            throw new Error('Invalid transaction parameters');
+          }
+
           tx = await tokenContract.transfer(to, amountInWei);
         } catch (error: any) {
+          console.error('ERC20 token transfer error:', error);
           if (error.message.includes('insufficient funds')) {
             throw new Error('Insufficient gas fee balance');
           }
@@ -151,6 +218,13 @@ export function useSendTransaction() {
       // Wait for transaction confirmation
       const receipt = await tx.wait();
       
+      debugLog('Transaction Success', {
+        hash: receipt.hash,
+        from,
+        to,
+        amount: validatedAmount
+      });
+
       // Show success toast
       toast.success('Transaction sent!', {
         duration: 5000,
@@ -182,6 +256,12 @@ export function useSendTransaction() {
 
     } catch (error: any) {
       console.error('Transaction error:', error);
+      debugLog('Transaction Error', {
+        message: error.message,
+        code: error.code,
+        data: error.data
+      });
+
       const errorMessage = error.message || 'Transaction failed';
       setError(errorMessage);
       toast.error(errorMessage);
