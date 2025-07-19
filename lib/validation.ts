@@ -1,4 +1,43 @@
-import { isAddress } from 'ethers';
+import { isAddress, Wallet } from 'ethers';
+
+/**
+ * Validates and cleans seed phrase
+ * @param phrase Seed phrase to validate
+ * @returns {string} Cleaned seed phrase if valid, throws error if invalid
+ */
+export function validateSeedPhrase(phrase: string): string {
+  if (!phrase) {
+    throw new Error('Seed phrase is required');
+  }
+
+  // Clean seed phrase
+  const cleanPhrase = phrase.trim().replace(/\s+/g, ' ').replace(/^0x/, '');
+  
+  // Check word count
+  const words = cleanPhrase.split(' ');
+  if (words.length !== 12) {
+    throw new Error('Seed phrase must contain exactly 12 words');
+  }
+
+  // Validate each word
+  for (const word of words) {
+    if (word.length < 3) {
+      throw new Error('Invalid word in seed phrase');
+    }
+    if (!/^[a-zA-Z]+$/.test(word)) {
+      throw new Error('Seed phrase can only contain letters');
+    }
+  }
+
+  // Try creating wallet to validate
+  try {
+    const wallet = Wallet.fromPhrase(cleanPhrase);
+    return cleanPhrase;
+  } catch (error) {
+    console.error('Invalid seed phrase:', error);
+    throw new Error('Invalid seed phrase format');
+  }
+}
 
 /**
  * Validates Ethereum address format

@@ -25,7 +25,8 @@ function validateSeedPhrase(phrase: string): boolean {
     }
 
     // Try creating wallet to validate
-    new Wallet(cleanPhrase);
+    const wallet = Wallet.fromPhrase(cleanPhrase);
+    console.log('Validated wallet address:', wallet.address);
     return true;
   } catch (error) {
     console.error('Seed phrase validation error:', error);

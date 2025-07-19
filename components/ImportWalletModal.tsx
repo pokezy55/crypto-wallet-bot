@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { validateSeedPhrase } from '@/lib/validation'
 import { formatAddress, isValidAddress } from '@/lib/address'
 import { Wallet } from 'ethers'
 
@@ -25,32 +26,6 @@ export default function ImportWalletModal({ isOpen, onClose, onWalletImported, u
   const [showSeedPhrase, setShowSeedPhrase] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  const validateAndCleanSeedPhrase = (phrase: string): string => {
-    // Remove any leading/trailing whitespace and normalize spaces
-    const cleaned = phrase.trim().replace(/\s+/g, ' ');
-    
-    // Remove any 0x prefix if present
-    const withoutPrefix = cleaned.replace(/^0x\s*/, '');
-    
-    // Split into words and check count
-    const words = withoutPrefix.split(' ');
-    if (words.length !== 12) {
-      throw new Error('Seed phrase must contain exactly 12 words');
-    }
-
-    // Validate each word (basic check)
-    for (const word of words) {
-      if (word.length < 3) {
-        throw new Error('Invalid word in seed phrase');
-      }
-      if (!/^[a-zA-Z]+$/.test(word)) {
-        throw new Error('Seed phrase can only contain letters');
-      }
-    }
-
-    return withoutPrefix;
-  }
-
   const handleImportWallet = async () => {
     if (!seedPhrase.trim()) {
       toast.error('Please enter your seed phrase')
@@ -60,18 +35,12 @@ export default function ImportWalletModal({ isOpen, onClose, onWalletImported, u
     setIsLoading(true)
 
     try {
-      // Clean and validate seed phrase
-      const cleanedPhrase = validateAndCleanSeedPhrase(seedPhrase);
+      // Validate and clean seed phrase
+      const cleanedPhrase = validateSeedPhrase(seedPhrase);
 
-      // Try creating wallet to validate seed phrase
-      let wallet: Wallet;
-      try {
-        wallet = new Wallet(cleanedPhrase);
-      } catch (error) {
-        console.error('Invalid seed phrase:', error);
-        toast.error('Invalid seed phrase format');
-        return;
-      }
+      // Create wallet to get address
+      const wallet = Wallet.fromPhrase(cleanedPhrase);
+      console.log('Creating wallet with address:', wallet.address);
 
       // Create wallet object
       const importedWallet: WalletData = {
