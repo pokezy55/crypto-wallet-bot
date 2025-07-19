@@ -59,11 +59,17 @@ export default function ReferralTab({ user }: ReferralTabProps) {
     const fetchReferralData = async () => {
       setLoading(true)
       try {
+        console.log('Fetching referral data for user:', user.id);
         const res = await fetch(`/api/referral/progress?user=${user.id}`)
+        
         if (!res.ok) {
-          throw new Error('Failed to fetch referral data')
+          console.error('API returned error status:', res.status);
+          throw new Error(`Failed to fetch referral data: ${res.status}`)
         }
+        
         const data = await res.json()
+        console.log('Referral data received:', data);
+        
         setReferrals(data.referrals || [])
         setStats(data.stats || {
           totalReferrals: 0,
@@ -73,13 +79,26 @@ export default function ReferralTab({ user }: ReferralTabProps) {
       } catch (error) {
         console.error('Error fetching referral data:', error)
         toast.error('Failed to load referral data')
+        
+        // Set default values on error
+        setReferrals([])
+        setStats({
+          totalReferrals: 0,
+          totalEarned: 0,
+          referralCode: `REF${user.id}`
+        })
       } finally {
         setLoading(false)
       }
     }
 
-    fetchReferralData()
-  }, [user.id])
+    if (user?.id) {
+      fetchReferralData()
+    } else {
+      console.log('No user ID available, skipping referral data fetch');
+      setLoading(false)
+    }
+  }, [user?.id])
 
   const copyReferralLink = () => {
     navigator.clipboard.writeText(referralLink)

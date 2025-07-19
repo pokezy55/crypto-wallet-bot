@@ -20,19 +20,22 @@ export default function Home() {
 
   // Handle user authentication from TelegramAuth
   const handleAuth = (telegramUser: any) => {
+    console.log('User authenticated:', telegramUser);
     setUser(telegramUser);
     checkUserWallet(telegramUser.id);
   };
 
   // Check if user has wallet
   const checkUserWallet = async (userId: number) => {
+    console.log('Checking wallet for user:', userId);
     try {
       const res = await fetch(`/api/wallet/${userId}`)
       if (res.ok) {
         const data = await res.json()
+        console.log('Wallet found:', data);
         setWallet(data)
       } else {
-        console.log('User has no wallet yet')
+        console.log('User has no wallet yet, status:', res.status)
       }
       setIsLoading(false)
     } catch (error) {

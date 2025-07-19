@@ -6,11 +6,16 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req) {
   try {
+    console.log('API referral/progress called');
+    
     // Get user parameter (can be userId or wallet address)
     const { searchParams } = new URL(req.url);
     const user = searchParams.get('user');
     
+    console.log('User parameter:', user);
+    
     if (!user) {
+      console.log('User parameter is missing');
       return NextResponse.json({ error: 'User parameter is required' }, { status: 400 });
     }
     
@@ -18,8 +23,10 @@ export async function GET(req) {
     
     // Check if user is a wallet address
     if (user.startsWith('0x')) {
+      console.log('User is a wallet address');
       const wallet = await getWalletByAddress(user);
       if (!wallet) {
+        console.log('Wallet not found');
         return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
       }
       userId = wallet.user_id;
@@ -27,11 +34,15 @@ export async function GET(req) {
       userId = user;
     }
     
+    console.log('Using userId:', userId);
+    
     // Get referral stats
     const stats = await getReferralStats(userId);
+    console.log('Referral stats:', stats);
     
     // Get referrals list
     const referrals = await getUserReferrals(userId);
+    console.log('Referrals list:', referrals);
     
     // Calculate total earned (valid referrals * $0.5)
     const validReferrals = referrals.filter(ref => {
@@ -43,12 +54,15 @@ export async function GET(req) {
     
     // Get user wallet for referral code
     const wallet = await getWalletByUserId(userId);
+    console.log('User wallet:', wallet ? 'Found' : 'Not found');
     
     // Generate referral code: username or wallet address part
     let referralCode;
     
     // Try to use Telegram username first
     const { rows } = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+    console.log('Username query result:', rows);
+    
     if (rows.length > 0 && rows[0].username) {
       referralCode = rows[0].username;
     } else if (wallet) {
@@ -58,7 +72,9 @@ export async function GET(req) {
       referralCode = userId.toString();
     }
     
-    return NextResponse.json({
+    console.log('Generated referral code:', referralCode);
+    
+    const response = {
       stats: {
         totalReferrals: stats.total_referrals || 0,
         totalEarned,
@@ -71,7 +87,11 @@ export async function GET(req) {
         isValid: ref.deposit_completed && ref.swap_completed,
         rewardStatus: ref.reward_status || 'pending'
       }))
-    });
+    };
+    
+    console.log('Sending response:', response);
+    
+    return NextResponse.json(response);
     
   } catch (error) {
     console.error('Error fetching referral progress:', error);
