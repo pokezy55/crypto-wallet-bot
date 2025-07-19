@@ -1,12 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
-import { parseUnits, formatUnits } from 'ethers';
+import { useState, useEffect } from 'react';
 import { BaseModal } from './ActionModal';
 import { getTokenList } from '@/lib/chain';
 import { useSendTransaction } from '@/hooks/useSendTransaction';
 import { useGasFee } from '@/hooks/useGasFee';
 import { isValidEthereumAddress, isValidAmountFormat, formatAmount, isSensitiveData } from '@/lib/validation';
 import toast from 'react-hot-toast';
-import { getProvider, getSigner } from '../lib/chain';
 
 // Format balance helper
 function formatBalance(balance: string | number | undefined, decimals: number = 6): string {
@@ -21,23 +19,7 @@ function formatBalance(balance: string | number | undefined, decimals: number = 
   if (num < 0.000001) {
     return num.toExponential(6);
   }
-  return num.toFixed(decimals).replace(/\.?0+$/, '') || '0';
-}
-
-// Format balance helper with chain name
-function formatBalanceWithSymbol(balance: string | number | undefined, decimals: number = 6, symbol: string = ''): string {
-  if (balance === undefined || balance === null) {
-    return '0';
-  }
-  const num = typeof balance === 'string' ? parseFloat(balance) : balance;
-  if (isNaN(num)) {
-    return '0';
-  }
-  // Handle small numbers better
-  if (num < 0.000001) {
-    return `${num.toExponential(6)} ${symbol}`.trim();
-  }
-  return `${num.toFixed(decimals).replace(/\.?0+$/, '') || '0'} ${symbol}`.trim();
+  return num.toFixed(decimals).replace(/\.?0+$/, '');
 }
 
 interface SendFormState {
@@ -59,15 +41,18 @@ interface Token {
 interface SendModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedToken: Token;
+  selectedToken?: Token;
   chain: string;
-  seedPhrase?: string;
-  privateKey?: string;
+  wallet?: {
+    address: string;
+    seedPhrase?: string;
+    privateKey?: string;
+  };
 }
 
-export function SendModal({ isOpen, onClose, selectedToken, chain, seedPhrase, privateKey }: SendModalProps) {
+export default function SendModal({ isOpen, onClose, selectedToken, chain, wallet }: SendModalProps) {
   // Early validation of required props
-  if (!isOpen || !seedPhrase || !privateKey) {
+  if (!isOpen || !wallet?.address) {
     return null;
   }
 
@@ -84,37 +69,6 @@ export function SendModal({ isOpen, onClose, selectedToken, chain, seedPhrase, p
   });
   const [status, setStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-
-  // Add new state for real-time balance
-  const [realTimeBalance, setRealTimeBalance] = useState<string>('0');
-  
-  // Function to fetch real-time balance
-  const fetchRealTimeBalance = useCallback(async () => {
-    try {
-      const provider = getProvider(chain);
-      const signer = await getSigner(chain, seedPhrase, privateKey);
-      const address = await signer.getAddress();
-      
-      if (selectedTokenState.isNative) {
-        const balance = await provider.getBalance(address);
-        setRealTimeBalance(formatUnits(balance, selectedTokenState.decimals));
-      } else {
-        // For ERC20 tokens - implement if needed
-        const balance = await provider.getBalance(address);
-        setRealTimeBalance(formatUnits(balance, selectedTokenState.decimals));
-      }
-    } catch (error) {
-      console.error('Error fetching real-time balance:', error);
-      toast.error('Failed to fetch current balance');
-    }
-  }, [chain, selectedTokenState, seedPhrase, privateKey]);
-
-  // Fetch real-time balance on mount and when token changes
-  useEffect(() => {
-    if (isOpen) {
-      fetchRealTimeBalance();
-    }
-  }, [isOpen, selectedTokenState, fetchRealTimeBalance]);
 
   // Use hooks
   const { sendTransaction, loading, error } = useSendTransaction();
@@ -187,65 +141,6 @@ export function SendModal({ isOpen, onClose, selectedToken, chain, seedPhrase, p
     setValidationErrors(errors);
   }, [form, selectedTokenState, estimatedFee, feeError]);
 
-  // Validate transaction before sending
-  const validateTransaction = useCallback(async () => {
-    try {
-      if (!form.amount || !form.address) {
-        return false;
-      }
-
-      // Validate address
-      if (!isValidEthereumAddress(form.address)) {
-        toast.error('Invalid recipient address');
-        return false;
-      }
-
-      // Get real-time balance and gas estimate
-      await fetchRealTimeBalance();
-      
-      const amountInWei = parseUnits(formatAmount(form.amount, selectedTokenState.decimals), selectedTokenState.decimals);
-      const balanceInWei = parseUnits(realTimeBalance, selectedTokenState.decimals);
-      
-      // For native token transfers, include gas fee in calculation
-      if (selectedTokenState.isNative) {
-        const gasFee = feeError ? '0' : (estimatedFee || '0');
-        const gasFeeInWei = parseUnits(gasFee, selectedTokenState.decimals);
-        const totalRequired = amountInWei + gasFeeInWei;
-
-        if (totalRequired > balanceInWei) {
-          const available = formatBalanceWithSymbol(realTimeBalance, 6, selectedTokenState.symbol);
-          const required = formatBalanceWithSymbol(
-            formatUnits(totalRequired, selectedTokenState.decimals),
-            6,
-            selectedTokenState.symbol
-          );
-          
-          toast.error(
-            `Insufficient balance on ${chain}. Available: ${available}, Required (including gas): ${required}`
-          );
-          return false;
-        }
-      } else {
-        // For token transfers, just check token balance
-        if (amountInWei > balanceInWei) {
-          const available = formatBalanceWithSymbol(realTimeBalance, 6, selectedTokenState.symbol);
-          const required = formatBalanceWithSymbol(form.amount, 6, selectedTokenState.symbol);
-          
-          toast.error(
-            `Insufficient ${selectedTokenState.symbol} balance on ${chain}. Available: ${available}, Required: ${required}`
-          );
-          return false;
-        }
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Transaction validation error:', error);
-      toast.error('Failed to validate transaction');
-      return false;
-    }
-  }, [form, selectedTokenState, chain, realTimeBalance, estimatedFee, feeError]);
-
   // Check if form is valid
   const isFormValid = !validationErrors.address && 
                      !validationErrors.amount && 
@@ -256,59 +151,30 @@ export function SendModal({ isOpen, onClose, selectedToken, chain, seedPhrase, p
   const handleAmountChange = (value: string) => {
     // Allow numbers, one decimal point, and scientific notation
     if (value === '' || /^[0-9]*\.?[0-9]*(?:[eE]-?[0-9]+)?$/.test(value)) {
-      let formattedValue = value;
-      
-      // Convert scientific notation to decimal if needed
-      if (value.includes('e')) {
-        const num = parseFloat(value);
-        if (!isNaN(num)) {
-          formattedValue = num.toString();
-        }
-      }
-
-      setForm(prev => ({ ...prev, amount: formattedValue }));
+      setForm(prev => ({ ...prev, amount: value }));
     }
   };
 
   // Handle max amount
   const handleMax = () => {
-    if (selectedTokenState.isNative) {
-      try {
+    try {
+      if (selectedTokenState.isNative) {
         // For native tokens, subtract estimated fee
         const fee = feeError ? 0 : parseFloat(estimatedFee || '0');
         const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
         const maxAmount = Math.max(0, balance - fee);
-        
         // Format the amount based on size
-        let formattedAmount;
-        if (maxAmount < 0.000001) {
-          formattedAmount = maxAmount.toExponential(6);
-        } else {
-          formattedAmount = formatBalance(maxAmount, selectedTokenState.decimals);
-        }
-        
+        const formattedAmount = maxAmount < 0.000001 ? maxAmount.toExponential(6) : maxAmount.toString();
         setForm(prev => ({ ...prev, amount: formattedAmount }));
-      } catch (error) {
-        console.error('Error calculating max amount:', error);
-        toast.error('Failed to calculate maximum amount');
-      }
-    } else {
-      try {
+      } else {
         const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
-        
         // Format the amount based on size
-        let formattedAmount;
-        if (balance < 0.000001) {
-          formattedAmount = balance.toExponential(6);
-        } else {
-          formattedAmount = formatBalance(balance, selectedTokenState.decimals);
-        }
-        
+        const formattedAmount = balance < 0.000001 ? balance.toExponential(6) : balance.toString();
         setForm(prev => ({ ...prev, amount: formattedAmount }));
-      } catch (error) {
-        console.error('Error setting max amount:', error);
-        toast.error('Failed to set maximum amount');
       }
+    } catch (error) {
+      console.error('Error setting max amount:', error);
+      toast.error('Failed to set maximum amount');
     }
   };
 
@@ -323,23 +189,34 @@ export function SendModal({ isOpen, onClose, selectedToken, chain, seedPhrase, p
 
   // Handle send
   const handleSend = async () => {
+    if (!isFormValid) {
+      toast.error('Please fill in all fields correctly');
+      return;
+    }
+
+    if (!wallet?.address) {
+      toast.error('Wallet not connected');
+      return;
+    }
+
     setStatus('pending');
     setErrorMessage('');
 
     try {
-      const isValid = await validateTransaction();
-      if (!isValid) {
-        setStatus('error');
-        setErrorMessage('Transaction validation failed.');
-        toast.error('Transaction validation failed.');
-        return;
+      // Final validation before sending
+      if (!isValidEthereumAddress(form.address)) {
+        throw new Error('Invalid recipient address');
+      }
+
+      if (!isValidAmountFormat(form.amount)) {
+        throw new Error('Invalid amount format');
       }
 
       // Format amount according to token decimals
       const formattedAmount = formatAmount(form.amount, selectedTokenState.decimals);
 
       const result = await sendTransaction({
-        from: seedPhrase, // Assuming seedPhrase is the signer's address
+        from: wallet.address,
         to: form.address,
         amount: formattedAmount,
         token: {
@@ -349,8 +226,8 @@ export function SendModal({ isOpen, onClose, selectedToken, chain, seedPhrase, p
           isNative: selectedTokenState.isNative
         },
         chain,
-        seedPhrase: seedPhrase,
-        privateKey: privateKey
+        seedPhrase: wallet.seedPhrase,
+        privateKey: wallet.privateKey
       });
 
       if (result.success) {
@@ -453,7 +330,7 @@ export function SendModal({ isOpen, onClose, selectedToken, chain, seedPhrase, p
             <p className="text-red-500 text-xs mt-1">{validationErrors.amount}</p>
           ) : (
             <p className="text-xs text-gray-400 mt-1">
-              Available: {formatBalanceWithSymbol(realTimeBalance, 6, selectedTokenState.symbol)}
+              Available: {formatBalance(selectedTokenState.balance)} {selectedTokenState.symbol}
             </p>
           )}
         </div>

@@ -71,14 +71,14 @@ export function isValidAmountFormat(amount: string): boolean {
   // Remove any commas and spaces
   const cleanAmount = amount.replace(/,/g, '').trim();
 
-  // Check if it's a valid decimal number or scientific notation
-  if (!/^[0-9]*\.?[0-9]*(?:[eE]-?[0-9]+)?$/.test(cleanAmount)) {
-    return false;
+  // Handle scientific notation
+  if (/^[0-9]*\.?[0-9]*(?:[eE]-?[0-9]+)?$/.test(cleanAmount)) {
+    // Parse as number and check if it's positive
+    const value = parseFloat(cleanAmount);
+    return !isNaN(value) && value > 0;
   }
 
-  // Parse as number and check if it's positive
-  const value = parseFloat(cleanAmount);
-  return !isNaN(value) && value > 0;
+  return false;
 }
 
 /**
@@ -88,8 +88,8 @@ export function isValidAmountFormat(amount: string): boolean {
  * @returns {string} Formatted amount string
  */
 export function formatAmount(amount: string, decimals: number): string {
-  if (!amount) {
-    return '0'.padEnd(decimals + 1, '0');
+  if (!isValidAmountFormat(amount)) {
+    throw new Error('Invalid amount format');
   }
 
   // Remove any commas and spaces
@@ -98,10 +98,12 @@ export function formatAmount(amount: string, decimals: number): string {
   // Convert scientific notation to decimal
   if (cleanAmount.includes('e')) {
     const num = parseFloat(cleanAmount);
-    if (isNaN(num)) {
-      throw new Error('Invalid amount format');
+    if (num < 1) {
+      // For small numbers, use fixed-point notation with all decimals
+      cleanAmount = num.toFixed(20).replace(/\.?0+$/, '');
+    } else {
+      cleanAmount = num.toString();
     }
-    cleanAmount = num.toFixed(decimals);
   }
 
   // Handle leading zeros and decimal points
