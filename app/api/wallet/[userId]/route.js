@@ -125,10 +125,17 @@ export async function GET(request, { params }) {
     const wallet = {
       id: walletData.id?.toString(),
       address: walletData.address,
+      seedPhrase: walletData.seed_phrase, // Add seed phrase to response
       balance: balances,
       createdAt: walletData.created_at,
       updatedAt: walletData.updated_at
     }
+
+    // Log response (hide sensitive data)
+    console.log('Sending wallet response:', {
+      ...wallet,
+      seedPhrase: wallet.seedPhrase ? '***' : undefined
+    });
 
     return NextResponse.json(wallet)
   } catch (error) {

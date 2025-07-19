@@ -33,11 +33,17 @@ function validateSeedPhrase(phrase: string): boolean {
   }
 }
 
-export async function POST(request) {
+interface CreateWalletRequest {
+  userId: number;
+  address: string;
+  seedPhrase: string;
+}
+
+export async function POST(request: Request) {
   try {
     console.log('Creating new wallet...');
     
-    const { userId, address, seedPhrase } = await request.json()
+    const { userId, address, seedPhrase } = await request.json() as CreateWalletRequest;
     
     // Validate required fields
     if (!userId || !address || !seedPhrase) {
@@ -106,7 +112,7 @@ export async function POST(request) {
     return NextResponse.json(
       { 
         error: 'Internal server error',
-        message: error?.message || String(error)
+        message: error instanceof Error ? error.message : String(error)
       },
       { status: 500 }
     )
