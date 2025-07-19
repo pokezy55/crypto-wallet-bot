@@ -131,12 +131,24 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
 
   // Handle send
   const handleSend = async () => {
-    if (!isFormValid || !wallet?.seedPhrase) {
-      toast.error('Invalid wallet configuration');
-      return;
-    }
-
     try {
+      // Validate form first
+      if (!isFormValid) {
+        toast.error('Please fill in all fields correctly');
+        return;
+      }
+
+      // Validate wallet configuration
+      if (!wallet?.address) {
+        toast.error('Wallet address is required');
+        return;
+      }
+
+      if (!wallet?.seedPhrase) {
+        toast.error('Wallet seed phrase is missing');
+        return;
+      }
+
       // Final validation before sending
       if (!isValidEthereumAddress(form.address)) {
         toast.error('Invalid recipient address');
@@ -157,6 +169,19 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
       // Pick only required token properties
       const { symbol, address, decimals, isNative } = selectedTokenState;
 
+      console.log('Sending transaction with:', {
+        from: wallet.address,
+        to: form.address,
+        amount: formattedAmount,
+        token: {
+          symbol,
+          address,
+          decimals,
+          isNative
+        },
+        chain
+      });
+
       const result = await sendTransaction({
         from: wallet.address,
         to: form.address,
@@ -174,6 +199,9 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
       if (result.success) {
         onClose();
         setForm({ address: '', amount: '' });
+        toast.success('Transaction sent successfully!');
+      } else if (result.error) {
+        throw new Error(result.error);
       }
     } catch (error: any) {
       console.error('Send error:', error);

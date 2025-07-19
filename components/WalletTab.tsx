@@ -618,15 +618,24 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
       // Handle token selection for modals
   const handleTokenAction = (token: Token, action: 'send' | 'receive' | 'swap') => {
+    // Validate wallet first
+    if (!wallet?.address || !wallet?.seedPhrase) {
+      toast.error('Wallet configuration is incomplete');
+      return;
+    }
+
     // Ensure token has all required properties
     const modalToken: Token = {
       ...token,
       priceUSD: token.priceUSD || 0,
       priceChange24h: token.priceChange24h || 0,
       isNative: token.isNative || false,
-      chains: token.chains || [chain]
+      chains: token.chains || [chain],
+      decimals: token.decimals || 18
     };
+
     setSelectedToken(modalToken);
+
     switch (action) {
       case 'send':
         setShowSendModal(true);
@@ -854,7 +863,10 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           onClose={() => setShowSendModal(false)}
           selectedToken={selectedToken}
           chain={chain}
-          wallet={wallet}
+          wallet={{
+            address: wallet.address,
+            seedPhrase: wallet.seedPhrase
+          }}
         />
 
         <SwapModal
@@ -862,14 +874,16 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           onClose={() => setShowSwapModal(false)}
           tokens={tokenList}
           chain={chain}
-          wallet={wallet}
+          wallet={{
+            address: wallet.address,
+            seedPhrase: wallet.seedPhrase
+          }}
         />
 
         <ReceiveModal
           isOpen={showReceiveModal}
           onClose={() => setShowReceiveModal(false)}
-          wallet={wallet}
-          selectedToken={selectedToken}
+          address={wallet.address}
         />
       </div>
     );
