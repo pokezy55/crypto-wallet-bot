@@ -59,7 +59,7 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
   // Validation
   const isAddressValid = form.address ? isValidAddress(form.address) : false;
   
-  // Amount validation
+  // Amount validation with fee consideration
   const validateAmount = (amount: string): boolean => {
     if (!amount) return false;
     
@@ -75,7 +75,7 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
     
     // For native tokens, check balance including estimated fee
     if (selectedTokenState.isNative) {
-      const fee = parseFloat(estimatedFee);
+      const fee = feeError ? 0 : parseFloat(estimatedFee);
       return value + fee <= selectedTokenState.balance;
     }
     
@@ -98,7 +98,7 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
   const handleMax = () => {
     if (selectedTokenState.isNative) {
       // For native tokens, subtract estimated fee
-      const fee = parseFloat(estimatedFee);
+      const fee = feeError ? 0 : parseFloat(estimatedFee);
       const maxAmount = Math.max(0, selectedTokenState.balance - fee);
       setForm(prev => ({ ...prev, amount: maxAmount.toFixed(selectedTokenState.decimals) }));
     } else {
@@ -209,32 +209,35 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
 
         {/* Network Fee */}
         {selectedTokenState.isNative && (
-          <div className="text-xs text-gray-400">
-            <div className="flex justify-between">
+          <div className="text-xs space-y-1">
+            <div className="flex justify-between text-gray-400">
               <span>Estimated Network Fee:</span>
               <span>
                 {feeLoading ? (
-                  'Calculating...'
+                  <span className="animate-pulse">Calculating...</span>
                 ) : feeError ? (
-                  'Failed to estimate'
+                  <span className="text-yellow-500">Using default fee</span>
                 ) : (
-                  `${parseFloat(estimatedFee).toFixed(6)} ${selectedTokenState.symbol}`
+                  `${parseFloat(estimatedFee).toFixed(8)} ${selectedTokenState.symbol}`
                 )}
               </span>
             </div>
-            {selectedTokenState.isNative && form.amount && (
-              <div className="flex justify-between mt-1">
+            {form.amount && (
+              <div className="flex justify-between text-gray-400">
                 <span>Total (including fee):</span>
                 <span>
                   {feeLoading ? (
-                    'Calculating...'
-                  ) : feeError ? (
-                    'Failed to calculate'
+                    <span className="animate-pulse">Calculating...</span>
                   ) : (
-                    `${(parseFloat(form.amount) + parseFloat(estimatedFee)).toFixed(6)} ${selectedTokenState.symbol}`
+                    `${(parseFloat(form.amount) + (feeError ? 0 : parseFloat(estimatedFee))).toFixed(8)} ${selectedTokenState.symbol}`
                   )}
                 </span>
               </div>
+            )}
+            {feeError && (
+              <p className="text-yellow-500">
+                Using default fee estimate. Actual fee may vary.
+              </p>
             )}
           </div>
         )}
@@ -249,7 +252,7 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
         {/* Send Button */}
         <button
           onClick={handleSend}
-          disabled={!isFormValid || loading}
+          disabled={!isFormValid || loading || (selectedTokenState.isNative && feeLoading)}
           className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
@@ -257,6 +260,8 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               <span>Sending...</span>
             </div>
+          ) : feeLoading && selectedTokenState.isNative ? (
+            <span>Calculating fee...</span>
           ) : (
             `Send ${selectedTokenState.symbol}`
           )}

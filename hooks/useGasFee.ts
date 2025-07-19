@@ -8,7 +8,19 @@ interface GasFeeEstimate {
   error: string | null;
 }
 
-const DEFAULT_GAS_PRICE = BigInt('20000000000'); // 20 Gwei
+// Gas limit constants
+const GAS_LIMIT = {
+  NATIVE_TRANSFER: BigInt(21000),
+  ERC20_TRANSFER: BigInt(65000)
+};
+
+// Default gas price in Gwei per chain
+const DEFAULT_GAS_PRICE = {
+  eth: BigInt(30), // 30 Gwei
+  bsc: BigInt(5),  // 5 Gwei
+  polygon: BigInt(50), // 50 Gwei
+  base: BigInt(1)  // 1 Gwei
+};
 
 export function useGasFee(chain: string, isNative: boolean = true) {
   const [estimate, setEstimate] = useState<GasFeeEstimate>({
@@ -19,6 +31,7 @@ export function useGasFee(chain: string, isNative: boolean = true) {
 
   useEffect(() => {
     let mounted = true;
+    let pollInterval: NodeJS.Timeout;
 
     const fetchGasPrice = async () => {
       if (!chain) return;
@@ -31,22 +44,27 @@ export function useGasFee(chain: string, isNative: boolean = true) {
         
         if (!mounted) return;
 
-        // Use gasPrice if available, otherwise use default
-        const currentGasPrice = feeData.gasPrice || DEFAULT_GAS_PRICE;
-
-        if (isNative) {
-          // For native token transfers, use 21000 gas
-          const gasFee = currentGasPrice * BigInt(21000);
-          setEstimate({
-            fee: formatUnits(gasFee, 18), // Native tokens use 18 decimals
-            loading: false,
-            error: null
-          });
+        // Use appropriate gas price or fallback to default
+        let gasPrice = BigInt(0);
+        
+        if (feeData.gasPrice) {
+          gasPrice = feeData.gasPrice;
         } else {
-          // For ERC20 transfers, use ~65000 gas (approximate)
-          const gasFee = currentGasPrice * BigInt(65000);
+          // Convert Gwei to Wei (multiply by 10^9)
+          const defaultGweiPrice = DEFAULT_GAS_PRICE[chain as keyof typeof DEFAULT_GAS_PRICE] || BigInt(5);
+          gasPrice = defaultGweiPrice * BigInt(1000000000);
+        }
+
+        // Calculate total gas fee
+        const gasLimit = isNative ? GAS_LIMIT.NATIVE_TRANSFER : GAS_LIMIT.ERC20_TRANSFER;
+        const totalFee = gasPrice * gasLimit;
+
+        // Format fee to native token decimals (18)
+        const formattedFee = formatUnits(totalFee, 18);
+
+        if (mounted) {
           setEstimate({
-            fee: formatUnits(gasFee, 18),
+            fee: formattedFee,
             loading: false,
             error: null
           });
@@ -54,11 +72,26 @@ export function useGasFee(chain: string, isNative: boolean = true) {
       } catch (error) {
         console.error('Error fetching gas price:', error);
         if (mounted) {
-          setEstimate(prev => ({
-            ...prev,
-            loading: false,
-            error: 'Failed to fetch gas price'
-          }));
+          // Use default gas price on error
+          try {
+            const defaultGweiPrice = DEFAULT_GAS_PRICE[chain as keyof typeof DEFAULT_GAS_PRICE] || BigInt(5);
+            const gasPrice = defaultGweiPrice * BigInt(1000000000); // Convert Gwei to Wei
+            const gasLimit = isNative ? GAS_LIMIT.NATIVE_TRANSFER : GAS_LIMIT.ERC20_TRANSFER;
+            const totalFee = gasPrice * gasLimit;
+            const formattedFee = formatUnits(totalFee, 18);
+
+            setEstimate({
+              fee: formattedFee,
+              loading: false,
+              error: null
+            });
+          } catch (fallbackError) {
+            setEstimate(prev => ({
+              ...prev,
+              loading: false,
+              error: 'Failed to estimate gas fee'
+            }));
+          }
         }
       }
     };
@@ -66,12 +99,14 @@ export function useGasFee(chain: string, isNative: boolean = true) {
     // Initial fetch
     fetchGasPrice();
 
-    // Fetch every 10 seconds
-    const interval = setInterval(fetchGasPrice, 10000);
+    // Poll every 10 seconds
+    pollInterval = setInterval(fetchGasPrice, 10000);
 
     return () => {
       mounted = false;
-      clearInterval(interval);
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
     };
   }, [chain, isNative]);
 
