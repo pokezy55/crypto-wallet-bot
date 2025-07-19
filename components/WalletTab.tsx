@@ -438,25 +438,53 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   };
 
   if (activeSection === 'send') {
-    // Get tokens with balance > 0
+    // Get sendable tokens and validate
     const sendableTokens = tokenList.filter(t => t.balance > 0)
       .sort((a, b) => b.balance - a.balance);
 
-    const selectedToken = sendableTokens.find(t => t.symbol === sendForm.token);
-    const { isAddressValid, isFormValid } = validateSendForm(sendForm, selectedToken);
+    // Ensure we have at least one token before rendering send form
+    if (sendableTokens.length === 0) {
+      return (
+        <div className="p-6">
+          <div className="flex items-center mb-6">
+            <button
+              onClick={() => setActiveSection('main')}
+              className="mr-4 p-2 rounded-lg bg-crypto-card border border-crypto-border"
+            >
+              <ArrowLeftRight className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-semibold">Send</h2>
+          </div>
+          <div className="text-center text-gray-400 py-8">
+            No tokens available to send
+          </div>
+        </div>
+      );
+    }
 
-    // Estimated fee (can be fetched from backend later)
-    const estimatedFee = selectedToken?.isNative ? 0.001 : 0;
+    // Ensure selected token exists or use first available
+    const selectedToken = sendableTokens.find(t => t.symbol === sendForm.token) || sendableTokens[0];
+    if (sendForm.token !== selectedToken.symbol) {
+      setSendForm(prev => ({ ...prev, token: selectedToken.symbol }));
+    }
 
+    // Validation
+    const isAddressValid = sendForm.address ? isValidAddress(sendForm.address) : false;
+    const isFormValid = isAddressValid && 
+      sendForm.amount && 
+      parseFloat(sendForm.amount) > 0 && 
+      selectedToken;
+
+    // Estimated fee
+    const estimatedFee = selectedToken.isNative ? 0.001 : 0;
+
+    // Handle max amount
     const handleMax = () => {
-      if (!selectedToken) return;
-      
-      // If native token, subtract fee
       if (selectedToken.isNative) {
         const maxAmount = Math.max(0, selectedToken.balance - estimatedFee);
-        setSendForm({ ...sendForm, amount: maxAmount.toFixed(6) });
+        setSendForm(prev => ({ ...prev, amount: maxAmount.toFixed(6) }));
       } else {
-        setSendForm({ ...sendForm, amount: selectedToken.balance.toFixed(6) });
+        setSendForm(prev => ({ ...prev, amount: selectedToken.balance.toFixed(6) }));
       }
     };
 
@@ -469,6 +497,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
               setSendForm({ address: '', amount: '', token: 'ETH' });
               setTxStatus('idle');
               setTxError('');
+              setShowConfirm(false);
             }}
             className="mr-4 p-2 rounded-lg bg-crypto-card border border-crypto-border"
           >
@@ -484,8 +513,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
               <label className="block text-sm font-medium mb-2">Token</label>
               <div className="relative">
                 <select
-                  value={sendForm.token}
-                  onChange={e => setSendForm({ ...sendForm, token: e.target.value })}
+                  value={selectedToken.symbol}
+                  onChange={e => setSendForm(prev => ({ ...prev, token: e.target.value }))}
                   className="input-field w-full pl-12"
                 >
                   {sendableTokens.map(token => (
@@ -494,7 +523,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                     </option>
                   ))}
                 </select>
-                {selectedToken && (
+                {selectedToken.logo && (
                   <img 
                     src={selectedToken.logo} 
                     alt={selectedToken.symbol}
@@ -510,11 +539,11 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
               <input
                 type="text"
                 value={sendForm.address}
-                onChange={e => setSendForm({ ...sendForm, address: e.target.value })}
+                onChange={e => setSendForm(prev => ({ ...prev, address: e.target.value }))}
                 placeholder="0x..."
                 className="input-field w-full"
               />
-              {!isAddressValid && sendForm.address && (
+              {sendForm.address && !isAddressValid && (
                 <p className="text-red-500 text-xs mt-1">Invalid address</p>
               )}
             </div>
@@ -526,11 +555,12 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                 <input
                   type="number"
                   value={sendForm.amount}
-                  onChange={e => setSendForm({ ...sendForm, amount: e.target.value })}
+                  onChange={e => setSendForm(prev => ({ ...prev, amount: e.target.value }))}
                   placeholder="0.0"
                   className="input-field flex-1"
                   min="0"
                   step="any"
+                  max={selectedToken.isNative ? selectedToken.balance - estimatedFee : selectedToken.balance}
                 />
                 <button
                   onClick={handleMax}
@@ -539,15 +569,13 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                   MAX
                 </button>
               </div>
-              {selectedToken && (
-                <p className="text-xs text-gray-400 mt-1">
-                  Available: {selectedToken.balance.toFixed(6)} {selectedToken.symbol}
-                </p>
-              )}
+              <p className="text-xs text-gray-400 mt-1">
+                Available: {selectedToken.balance.toFixed(6)} {selectedToken.symbol}
+              </p>
             </div>
 
             {/* Network Fee */}
-            {selectedToken?.isNative && (
+            {selectedToken.isNative && (
               <p className="text-xs text-gray-400">
                 Estimated Network Fee: {estimatedFee} {selectedToken.symbol}
               </p>
@@ -559,22 +587,22 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
               disabled={!isFormValid}
               className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Send {selectedToken?.symbol || 'Token'}
+              Send {selectedToken.symbol}
             </button>
           </div>
         </div>
 
         {/* Confirmation Modal */}
-        {showConfirm && (
+        {showConfirm && selectedToken && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-crypto-card border border-crypto-border rounded-xl p-6 w-full max-w-sm mx-4">
               <h3 className="text-lg font-semibold mb-4">Confirm Transaction</h3>
               
               <div className="space-y-2 mb-4">
-                <p>Send <b>{sendForm.amount} {selectedToken?.symbol}</b></p>
+                <p>Send <b>{sendForm.amount} {selectedToken.symbol}</b></p>
                 <p className="text-sm text-gray-400">to</p>
                 <p className="font-mono text-primary-500 break-all">{sendForm.address}</p>
-                {selectedToken?.isNative && (
+                {selectedToken.isNative && (
                   <p className="text-sm text-gray-400">
                     Network Fee: {estimatedFee} {selectedToken.symbol}
                   </p>
