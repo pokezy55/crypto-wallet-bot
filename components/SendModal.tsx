@@ -15,6 +15,10 @@ function formatBalance(balance: string | number | undefined, decimals: number = 
   if (isNaN(num)) {
     return '0';
   }
+  // Handle small numbers better
+  if (num < 0.000001) {
+    return num.toExponential(4);
+  }
   return num.toFixed(decimals).replace(/\.?0+$/, '');
 }
 
@@ -145,9 +149,11 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
 
   // Handle amount change
   const handleAmountChange = (value: string) => {
-    // Only allow numbers and one decimal point
-    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-      setForm(prev => ({ ...prev, amount: value }));
+    // Allow numbers, one decimal point, and scientific notation
+    if (value === '' || /^[0-9]*\.?[0-9]*(?:[eE]-?[0-9]+)?$/.test(value)) {
+      // Convert scientific notation to decimal if needed
+      const num = value.includes('e') ? parseFloat(value) : value;
+      setForm(prev => ({ ...prev, amount: num.toString() }));
     }
   };
 
@@ -161,9 +167,14 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
       const balanceWei = parseFloat(formatAmount(balance.toString(), selectedTokenState.decimals));
       const feeWei = parseFloat(formatAmount(fee.toString(), selectedTokenState.decimals));
       const maxAmount = Math.max(0, balanceWei - feeWei);
-      setForm(prev => ({ ...prev, amount: formatBalance(maxAmount) }));
+      // Format the amount based on size
+      const formattedAmount = maxAmount < 0.000001 ? maxAmount.toExponential(4) : formatBalance(maxAmount);
+      setForm(prev => ({ ...prev, amount: formattedAmount }));
     } else {
-      setForm(prev => ({ ...prev, amount: formatBalance(selectedTokenState.balance) }));
+      const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
+      // Format the amount based on size
+      const formattedAmount = balance < 0.000001 ? balance.toExponential(4) : formatBalance(balance);
+      setForm(prev => ({ ...prev, amount: formattedAmount }));
     }
   };
 
@@ -333,7 +344,7 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
               <p>Failed to estimate network fee</p>
             ) : (
               <div className="flex justify-between">
-                <span>Estimated Network Fee:</span>
+                <span>Estimated Fee:</span>
                 <span>
                   {estimatedFee} {selectedTokenState.symbol} (${feeUSD})
                 </span>

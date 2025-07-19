@@ -99,20 +99,20 @@ export function formatAmount(amount: string, decimals: number): string {
   if (cleanAmount.startsWith('.')) {
     cleanAmount = '0' + cleanAmount;
   }
-  cleanAmount = cleanAmount.replace(/^0+(\d)/, '$1');
 
   // Split into integer and decimal parts
-  const [integerPart, decimalPart = ''] = cleanAmount.split('.');
+  const [integerPart = '0', decimalPart = ''] = cleanAmount.split('.');
 
-  // Ensure decimal places don't exceed token decimals
-  if (decimalPart.length > decimals) {
-    throw new Error(`Maximum ${decimals} decimal places allowed`);
-  }
+  // If decimal part is longer than allowed decimals, truncate it
+  const truncatedDecimal = decimalPart.slice(0, decimals);
 
   // Pad with zeros if needed
-  const paddedDecimal = decimalPart.padEnd(decimals, '0');
+  const paddedDecimal = truncatedDecimal.padEnd(decimals, '0');
 
-  return integerPart + paddedDecimal;
+  // Remove leading zeros from integer part, but keep at least one digit
+  const cleanIntegerPart = integerPart.replace(/^0+/, '') || '0';
+
+  return cleanIntegerPart + paddedDecimal;
 }
 
 /**
