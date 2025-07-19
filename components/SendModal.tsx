@@ -142,8 +142,8 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
       return;
     }
 
-    if (!wallet?.seedPhrase) {
-      toast.error('Wallet seed phrase is missing');
+    if (!wallet?.address) {
+      toast.error('Wallet not connected');
       return;
     }
 
@@ -172,8 +172,7 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
           decimals: selectedTokenState.decimals,
           isNative: selectedTokenState.isNative
         },
-        chain,
-        seedPhrase: wallet.seedPhrase
+        chain
       });
 
       if (result.success) {

@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react';
-import { Wallet, JsonRpcProvider, Contract, parseUnits, formatUnits, isAddress, BrowserProvider } from 'ethers';
+import { BrowserProvider, Contract, JsonRpcSigner, parseUnits, formatUnits } from 'ethers';
 import { getProvider } from '@/lib/chain';
 import toast from 'react-hot-toast';
-import { TransactionToast } from '@/components/TransactionToast';
 
 const ERC20_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)',
@@ -21,7 +20,6 @@ interface SendTransactionParams {
     isNative: boolean;
   };
   chain: string;
-  seedPhrase: string;
 }
 
 interface TransactionResult {
@@ -37,64 +35,25 @@ const debugLog = (stage: string, data: any) => {
   console.groupEnd();
 };
 
-// Check if string might be a mnemonic
-const isMnemonicLike = (str: string): boolean => {
-  if (!str || typeof str !== 'string') return false;
-  const words = str.trim().split(/\s+/);
-  return words.length >= 12 && words.length <= 24;
-};
-
-// Validate seed phrase
-const validateSeedPhrase = (seedPhrase: string): boolean => {
-  if (!seedPhrase || typeof seedPhrase !== 'string') return false;
-  try {
-    // Try creating a wallet to validate seed phrase
-    const wallet = new Wallet(seedPhrase);
-    return true;
-  } catch (error) {
-    console.error('Invalid seed phrase:', error);
-    return false;
-  }
-};
-
 export function useSendTransaction() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Helper function to validate and format amount
-  const validateAndFormatAmount = (amount: string): string => {
-    debugLog('Amount Validation Input', { amount });
-
+  // Helper function to get signer
+  const getSigner = async (chain: string): Promise<JsonRpcSigner> => {
     try {
-      // Remove any commas, spaces, and leading zeros
-      let cleanAmount = amount.replace(/[,\s]/g, '');
+      // Get provider for chain
+      const provider = getProvider(chain) as unknown as BrowserProvider;
       
-      // Check for potential mnemonic
-      if (isMnemonicLike(cleanAmount)) {
-        throw new Error('Invalid input: Looks like a seed phrase');
-      }
-
-      // Handle leading zeros and decimal points
-      if (cleanAmount.startsWith('.')) {
-        cleanAmount = '0' + cleanAmount;
-      }
+      // Request account access if needed
+      await provider.send('eth_requestAccounts', []);
       
-      // Check if it's a valid decimal number
-      if (!/^\d*\.?\d*$/.test(cleanAmount)) {
-        throw new Error('Invalid amount format');
-      }
-
-      // Parse as float and check range
-      const value = parseFloat(cleanAmount);
-      if (isNaN(value) || value <= 0) {
-        throw new Error('Amount must be greater than 0');
-      }
-
-      debugLog('Amount Validation Result', { cleanAmount });
-      return cleanAmount;
-    } catch (error: any) {
-      console.error('Amount validation error:', error);
-      throw new Error(error.message || 'Invalid amount format');
+      // Get signer
+      const signer = await provider.getSigner();
+      return signer;
+    } catch (error) {
+      console.error('Failed to get signer:', error);
+      throw new Error('Failed to connect wallet');
     }
   };
 
@@ -104,71 +63,34 @@ export function useSendTransaction() {
     amount,
     token,
     chain,
-    seedPhrase
   }: SendTransactionParams): Promise<TransactionResult> => {
     setLoading(true);
     setError(null);
 
-    // Initial debug log
-    debugLog('Transaction Params', {
-      from,
-      to,
-      amount,
-      token: { ...token, seedPhrase: '***' }, // Hide sensitive data
-      chain
-    });
-
     try {
-      // Validate seed phrase first
-      if (!validateSeedPhrase(seedPhrase)) {
-        throw new Error('Invalid seed phrase');
-      }
-
-      // Validate addresses
-      if (!isAddress(from)) {
-        throw new Error('Invalid sender address');
-      }
-      if (!isAddress(to)) {
-        throw new Error('Invalid recipient address');
-      }
-      if (isMnemonicLike(to)) {
-        throw new Error('Recipient looks like a seed phrase');
-      }
-
-      debugLog('Address Validation', {
-        from: isAddress(from),
-        to: isAddress(to)
+      debugLog('Transaction Params', {
+        from,
+        to,
+        amount,
+        token,
+        chain
       });
 
-      // Get provider and create wallet
-      const provider = getProvider(chain) as unknown as BrowserProvider;
-      let wallet: Wallet;
+      // Get signer
+      const signer = await getSigner(chain);
       
-      try {
-        wallet = new Wallet(seedPhrase).connect(provider);
-        debugLog('Wallet Creation', {
-          success: true,
-          address: wallet.address
-        });
-      } catch (error: any) {
-        console.error('Wallet creation error:', error);
-        throw new Error('Failed to create wallet: Invalid seed phrase');
+      // Verify signer address matches sender
+      const signerAddress = await signer.getAddress();
+      if (signerAddress.toLowerCase() !== from.toLowerCase()) {
+        throw new Error('Signer address does not match sender');
       }
-
-      // Verify wallet address matches sender
-      if (wallet.address.toLowerCase() !== from.toLowerCase()) {
-        throw new Error('Invalid wallet for sender address');
-      }
-
-      // Validate amount format first
-      const validatedAmount = validateAndFormatAmount(amount);
 
       let tx;
       if (token.isNative) {
         // Send native token
         try {
           // Parse amount to wei (always 18 decimals for native tokens)
-          const valueInWei = parseUnits(validatedAmount, 18);
+          const valueInWei = parseUnits(amount, 18);
           
           debugLog('Native Token Transaction', {
             to,
@@ -178,17 +100,12 @@ export function useSendTransaction() {
           });
 
           // Check native balance
-          const balance = await provider.getBalance(from);
+          const balance = await signer.provider.getBalance(from);
           if (balance < valueInWei) {
             throw new Error(`Insufficient ${token.symbol} balance`);
           }
 
-          // Final validation before sending
-          if (!isAddress(to) || isMnemonicLike(validatedAmount)) {
-            throw new Error('Invalid transaction parameters');
-          }
-
-          tx = await wallet.sendTransaction({
+          tx = await signer.sendTransaction({
             to,
             value: valueInWei
           });
@@ -197,22 +114,19 @@ export function useSendTransaction() {
           if (error.message.includes('insufficient funds')) {
             throw new Error(`Insufficient ${token.symbol} balance for transaction`);
           }
-          if (error.code === 'INVALID_ARGUMENT') {
-            throw new Error('Invalid amount format');
-          }
           throw error;
         }
       } else {
         // Send ERC-20 token
-        if (!token.address || !isAddress(token.address)) {
+        if (!token.address) {
           throw new Error(`Invalid contract address for ${token.symbol}`);
         }
 
         try {
-          const tokenContract = new Contract(token.address, ERC20_ABI, wallet);
+          const tokenContract = new Contract(token.address, ERC20_ABI, signer);
           
           // Parse amount to wei using token decimals
-          const amountInWei = parseUnits(validatedAmount, token.decimals);
+          const amountInWei = parseUnits(amount, token.decimals);
 
           debugLog('ERC20 Token Transaction', {
             to,
@@ -227,19 +141,11 @@ export function useSendTransaction() {
             throw new Error(`Insufficient ${token.symbol} balance`);
           }
 
-          // Final validation before sending
-          if (!isAddress(to) || isMnemonicLike(validatedAmount)) {
-            throw new Error('Invalid transaction parameters');
-          }
-
           tx = await tokenContract.transfer(to, amountInWei);
         } catch (error: any) {
           console.error('ERC20 token transfer error:', error);
           if (error.message.includes('insufficient funds')) {
             throw new Error('Insufficient gas fee balance');
-          }
-          if (error.code === 'INVALID_ARGUMENT') {
-            throw new Error('Invalid amount format');
           }
           throw error;
         }
@@ -252,7 +158,7 @@ export function useSendTransaction() {
         hash: receipt.hash,
         from,
         to,
-        amount: validatedAmount
+        amount
       });
 
       // Show success toast
@@ -260,24 +166,6 @@ export function useSendTransaction() {
         duration: 5000,
         icon: '✅'
       });
-
-      // Update transaction history in background
-      try {
-        await fetch('/api/transaction/history', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            txHash: receipt.hash,
-            from,
-            to,
-            token: token.symbol,
-            amount: validatedAmount,
-            chain
-          })
-        });
-      } catch (error) {
-        console.warn('Failed to update transaction history:', error);
-      }
 
       return {
         success: true,
