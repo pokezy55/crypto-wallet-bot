@@ -52,7 +52,7 @@ export default function ReferralTab({ user }: ReferralTabProps) {
   }
 
   const referralCode = stats.referralCode || `REF${user.id}`
-  const referralLink = `https://t.me/cointwobot?start=${referralCode}`
+  const referralLink = `https://t.me/cointwobot/wallet?start=two${referralCode.replace('REF', '')}`
 
   // Fetch referral data
   useEffect(() => {

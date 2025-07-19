@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getUserReferrals, getReferralStats, getWalletByUserId, getWalletByAddress } from '@/lib/database';
+import pool from '@/lib/database';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +43,20 @@ export async function GET(req) {
     
     // Get user wallet for referral code
     const wallet = await getWalletByUserId(userId);
-    const referralCode = wallet ? `REF${wallet.address.substring(2, 8)}` : `REF${userId}`;
+    
+    // Generate referral code: username or wallet address part
+    let referralCode;
+    
+    // Try to use Telegram username first
+    const { rows } = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+    if (rows.length > 0 && rows[0].username) {
+      referralCode = rows[0].username;
+    } else if (wallet) {
+      // Otherwise use first 6 chars of wallet address
+      referralCode = wallet.address.substring(2, 8);
+    } else {
+      referralCode = userId.toString();
+    }
     
     return NextResponse.json({
       stats: {

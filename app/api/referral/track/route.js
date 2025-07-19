@@ -1,51 +1,58 @@
 import { NextResponse } from 'next/server';
-import { createReferral, getUserById } from '@/lib/database';
+import { createReferral, getUserById, getWalletByAddress } from '@/lib/database';
+import pool from '@/lib/database';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { referralCode, newUserId } = body;
+    const { referralCode, userId, walletAddress } = body;
     
-    if (!referralCode || !newUserId) {
-      return NextResponse.json({ error: 'Referral code and new user ID are required' }, { status: 400 });
+    if (!referralCode || !userId) {
+      return NextResponse.json({ error: 'Referral code and user ID are required' }, { status: 400 });
     }
     
     // Extract referrer ID from referral code
-    // Format: REFxxxxx where xxxxx is either userId or part of wallet address
+    // Format: username or wallet address part
     let referrerId;
     
-    if (referralCode.startsWith('REF')) {
-      const code = referralCode.substring(3); // Remove 'REF' prefix
-      
-      // Try to find user by ID first
+    // Try to find user by username first
+    try {
+      // Search for user with this username
+      const { rows } = await pool.query('SELECT id FROM users WHERE username = $1', [referralCode]);
+      if (rows.length > 0) {
+        referrerId = rows[0].id;
+      }
+    } catch (e) {
+      console.log('Not a username, trying to match by wallet address part');
+    }
+    
+    // If not found by username, try to find by wallet address part
+    if (!referrerId) {
       try {
-        const user = await getUserById(code);
-        if (user) {
-          referrerId = user.id;
+        // Search for wallets where address contains the referral code
+        const { rows } = await pool.query('SELECT user_id FROM wallets WHERE address LIKE $1', [`%${referralCode}%`]);
+        if (rows.length > 0) {
+          referrerId = rows[0].user_id;
         }
       } catch (e) {
-        console.log('Not a user ID, trying to match by wallet address part');
+        console.error('Error finding user by wallet address part:', e);
       }
-      
-      // If not found by ID, try to find by wallet address part
-      if (!referrerId) {
-        // This would require a new function to find user by partial wallet address
-        // For now, we'll just return an error
-        return NextResponse.json({ error: 'Invalid referral code' }, { status: 400 });
-      }
-    } else {
-      return NextResponse.json({ error: 'Invalid referral code format' }, { status: 400 });
+    }
+    
+    // If still not found, return error
+    if (!referrerId) {
+      return NextResponse.json({ error: 'Invalid referral code' }, { status: 400 });
     }
     
     // Check if referrer and new user are different
-    if (referrerId === newUserId) {
+    if (referrerId === userId) {
       return NextResponse.json({ error: 'Cannot refer yourself' }, { status: 400 });
     }
     
     // Create referral record
-    const referral = await createReferral(referrerId, newUserId, referralCode);
+    const referral = await createReferral(referrerId, userId, referralCode);
     
     return NextResponse.json({ success: true, referral });
   } catch (error) {
