@@ -44,7 +44,7 @@ export default function TaskTab({ user }: TaskTabProps) {
   const fetchSwapProgress = async () => {
     setLoadingSwap(true)
     try {
-      const res = await fetch(`/api/task/${user.id}/swap-progress`)
+      const res = await fetch(`/api/task/${user.id}/swap-progress/`)
       const data = await res.json()
       setSwapProgress(data)
     } catch (e) {
@@ -57,7 +57,7 @@ export default function TaskTab({ user }: TaskTabProps) {
   const fetchDepositProgress = async () => {
     setLoadingDeposit(true)
     try {
-      const res = await fetch(`/api/task/${user.id}/deposit-progress`)
+      const res = await fetch(`/api/task/${user.id}/deposit-progress/`)
       const data = await res.json()
       setDepositProgress(data)
     } catch (e) {
@@ -86,7 +86,7 @@ export default function TaskTab({ user }: TaskTabProps) {
   const handleClaimSwap = async () => {
     setClaimingSwap(true)
     try {
-      const res = await fetch(`/api/task/${user.id}/swap-claim`, { method: 'POST' })
+      const res = await fetch(`/api/task/${user.id}/swap-claim/`, { method: 'POST' })
       const data = await res.json()
       if (res.ok) {
         toast.success('Reward claim requested! Waiting for admin approval.')
@@ -103,7 +103,7 @@ export default function TaskTab({ user }: TaskTabProps) {
   const handleClaimDeposit = async () => {
     setClaimingDeposit(true)
     try {
-      const res = await fetch(`/api/task/${user.id}/deposit-claim`, { method: 'POST' })
+      const res = await fetch(`/api/task/${user.id}/deposit-claim/`, { method: 'POST' })
       const data = await res.json()
       if (res.ok) {
         toast.success('Reward claim requested! Waiting for admin approval.')
@@ -308,10 +308,6 @@ export default function TaskTab({ user }: TaskTabProps) {
           <li className="flex items-start gap-2">
             <span className="text-primary-500 mt-1">•</span>
             <span>Swap and deposit can be done on any EVM-compatible network (Ethereum, BSC, Polygon, etc.)</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary-500 mt-1">•</span>
-            <span>Total swap value must be at least $10 USD and deposit value at least $20 USD</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary-500 mt-1">•</span>

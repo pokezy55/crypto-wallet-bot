@@ -6,18 +6,18 @@ export const dynamic = 'force-dynamic';
 export async function GET(req, { params }) {
   try {
     const { userId } = params;
-    // Ambil wallet user
+    // Get user wallet
     const wallet = await getWalletByUserId(userId);
     if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
     
-    // Ambil transaksi deposit (receive)
+    // Get deposit transactions (receive)
     const transactions = await getWalletTransactions(wallet.id, 1000);
     const depositTxs = transactions.filter(tx => tx.tx_type === 'receive');
     const totalDepositUSD = depositTxs.reduce((sum, tx) => sum + (tx.usd_value || 0), 0);
     
-    // Status claim: processing/claimed/belum
+    // Claim status: processing/claimed/unclaimed
     let status = 'unclaimed';
-    // TODO: Integrasi dengan status task/claim deposit user
+    // TODO: Integrate with task/claim deposit status
     if (totalDepositUSD >= 20) status = 'eligible';
     
     return NextResponse.json({ 
