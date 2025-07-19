@@ -1,88 +1,63 @@
-import { getProvider, getTokenList } from '../../../lib/chain';
-import { formatEther, formatUnits, isAddress, Contract, getAddress } from 'ethers';
+import { NextResponse } from 'next/server';
+import { ethers } from 'ethers';
+import { CHAINS } from '@/lib/chain';
 
-const ERC20_ABI = [
-  'function balanceOf(address) view returns (uint256)'
-];
-const BSC_RPC_URL = process.env.BSC_RPC_URL || 'https://rpc.ankr.com/bsc';
-
-export async function POST(request) {
+export async function GET(request) {
   try {
-    const { address, chain } = await request.json();
+    const { searchParams } = new URL(request.url);
+    const address = searchParams.get('address');
+    const chain = searchParams.get('chain');
+
     if (!address || !chain) {
-      return Response.json({ error: 'Missing address or chain' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing address or chain' }, { status: 400 });
     }
 
-    // Validate & normalize address
-    let normalizedAddress;
-    try {
-      normalizedAddress = getAddress(address); // This will validate & checksum the address
-    } catch (e) {
-      console.warn('Address validation error:', e.message);
-      return Response.json({ error: 'Invalid address format' }, { status: 400 });
+    // Validate address
+    if (!ethers.isAddress(address)) {
+      return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
     }
 
-    let provider, tokens;
-    try {
-      provider = getProvider(chain);
-      tokens = getTokenList(chain);
-    } catch (e) {
-      console.warn('Chain/provider error:', e.message);
-      return Response.json({ error: e.message }, { status: 400 });
+    // Get chain config
+    const chainConfig = CHAINS[chain];
+    if (!chainConfig) {
+      return NextResponse.json({ error: 'Invalid chain' }, { status: 400 });
     }
 
-    const balances = [];
-    try {
-      let nativeBalance = null;
-      let erc20Balances = [];
+    // Get provider
+    const provider = new ethers.JsonRpcProvider(chainConfig.rpcUrl());
 
-      for (const token of tokens) {
-        let bal;
-        try {
-          if (token.isNative) {
-            bal = await provider.getBalance(normalizedAddress);
-            bal = formatEther(bal);
-            nativeBalance = bal;
-          } else {
-            const contract = new Contract(token.address, ERC20_ABI, provider);
-            bal = await contract.balanceOf(normalizedAddress);
-            bal = formatUnits(bal, token.decimals);
-            erc20Balances.push({ symbol: token.symbol, balance: bal });
+    // Get native token balance
+    const nativeBalance = await provider.getBalance(address);
+    
+    // Get token balances
+    const balances = {
+      [chainConfig.native.symbol.toLowerCase()]: ethers.formatEther(nativeBalance)
+    };
+
+    // Get other token balances
+    const tokenAbi = ['function balanceOf(address) view returns (uint256)'];
+    
+    await Promise.all(
+      chainConfig.tokens
+        .filter(token => !token.isNative)
+        .map(async (token) => {
+          try {
+            const contract = new ethers.Contract(token.address, tokenAbi, provider);
+            const balance = await contract.balanceOf(address);
+            balances[token.symbol.toLowerCase()] = ethers.formatUnits(balance, token.decimals);
+          } catch (error) {
+            console.error(`Failed to fetch balance for ${token.symbol}:`, error);
+            balances[token.symbol.toLowerCase()] = '0';
           }
+        })
+    );
 
-          balances.push({
-            symbol: token.symbol,
-            balance: bal,
-            address: token.address,
-            chainId: provider.network?.chainId || null,
-            isNative: token.isNative,
-            decimals: token.decimals,
-          });
-        } catch (e) {
-          console.warn(`Failed to fetch balance for token ${token.symbol}:`, e.message);
-          // Continue with next token instead of failing completely
-          balances.push({
-            symbol: token.symbol,
-            balance: '0',
-            address: token.address,
-            chainId: provider.network?.chainId || null,
-            isNative: token.isNative,
-            decimals: token.decimals,
-          });
-        }
-      }
-
-      if (chain === 'bsc') {
-        console.log('BSC balance check', normalizedAddress, nativeBalance, erc20Balances);
-      }
-      console.log('Fetched balances', balances);
-      return Response.json({ balances, chain });
-    } catch (e) {
-      console.warn('Balance fetch error:', e.message, e);
-      return Response.json({ error: 'Failed to fetch balances', detail: e.message }, { status: 500 });
-    }
-  } catch (e) {
-    console.error('Unexpected error:', e);
-    return Response.json({ error: 'Internal server error', detail: e.message }, { status: 500 });
+    return NextResponse.json({ balances });
+  } catch (error) {
+    console.error('Balance API error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch balances' },
+      { status: 500 }
+    );
   }
 } 
