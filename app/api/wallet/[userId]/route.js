@@ -16,29 +16,52 @@ const BSC_ERC20 = {
 
 export async function GET(request, { params }) {
   try {
+    // Validate userId
     const { userId } = params
+    if (!userId || isNaN(Number(userId))) {
+      console.error('Invalid userId:', userId)
+      return NextResponse.json(
+        { error: 'Invalid user ID' },
+        { status: 400 }
+      )
+    }
+
+    console.log('Fetching wallet for user:', userId)
     
-    // Get wallet data
+    // Get wallet data with better error handling
     let walletData;
     try {
-      walletData = await getWalletByUserId(userId)
+      walletData = await getWalletByUserId(Number(userId))
+      console.log('Database response:', walletData ? 'Wallet found' : 'No wallet')
+      
       if (!walletData) {
         return NextResponse.json(
           { error: 'Wallet not found' },
           { status: 404 }
         )
       }
+
+      // Validate wallet data
+      if (!walletData.address) {
+        console.error('Invalid wallet data:', walletData)
+        throw new Error('Wallet data is invalid')
+      }
     } catch (error) {
-      console.error('Error fetching wallet from database:', error)
+      console.error('Database error:', error)
       return NextResponse.json(
-        { error: 'Failed to fetch wallet data', detail: error?.message },
+        { 
+          error: 'Database error',
+          message: error?.message || 'Failed to fetch wallet data',
+          detail: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+        },
         { status: 500 }
       )
     }
 
     const address = walletData.address
+    console.log('Fetching balances for address:', address)
 
-    // Fetch balances
+    // Fetch balances with timeout
     const balances = {}
     try {
       for (const chain of CHAINS) {
@@ -46,28 +69,48 @@ export async function GET(request, { params }) {
         const nativeSymbol = NATIVE_SYMBOL[chain]
         
         if (chain === 'bsc') {
-          // Native BNB
+          // Native BNB with timeout
           const provider = new JsonRpcProvider(BSC_RPC_URL)
-          const bal = await provider.getBalance(address)
+          const balancePromise = provider.getBalance(address)
+          const bal = await Promise.race([
+            balancePromise,
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Balance fetch timeout')), 5000)
+            )
+          ])
           balances[chain][nativeSymbol] = (Number(bal) / 1e18).toString()
           
-          // ERC20 USDT
+          // ERC20 USDT with timeout
           for (const symbol of ERC20_TOKENS) {
             const contract = new Contract(BSC_ERC20[symbol], ERC20_ABI, provider)
-            const balErc20 = await contract.balanceOf(address)
+            const tokenPromise = contract.balanceOf(address)
+            const balErc20 = await Promise.race([
+              tokenPromise,
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Token balance fetch timeout')), 5000)
+              )
+            ])
             balances[chain][symbol.toLowerCase()] = (Number(balErc20) / 1e18).toString()
           }
         } else {
-          // Other chains use existing helpers
-          balances[chain][nativeSymbol] = (await fetchEthBalance(address, chain)).toString()
-          for (const symbol of ERC20_TOKENS) {
-            balances[chain][symbol.toLowerCase()] = (await fetchErc20Balance(address, symbol, chain)).toString()
+          // Other chains with timeout
+          try {
+            balances[chain][nativeSymbol] = (await fetchEthBalance(address, chain)).toString()
+            for (const symbol of ERC20_TOKENS) {
+              balances[chain][symbol.toLowerCase()] = (await fetchErc20Balance(address, symbol, chain)).toString()
+            }
+          } catch (chainError) {
+            console.error(`Error fetching ${chain} balances:`, chainError)
+            balances[chain] = {
+              [nativeSymbol]: '0',
+              usdt: '0'
+            }
           }
         }
       }
     } catch (error) {
-      console.error('Error fetching balances:', error)
-      // Continue with zero balances rather than failing
+      console.error('Balance fetch error:', error)
+      // Set zero balances for all chains
       for (const chain of CHAINS) {
         balances[chain] = {
           [NATIVE_SYMBOL[chain]]: '0',
@@ -76,7 +119,9 @@ export async function GET(request, { params }) {
       }
     }
 
-    // Format wallet response (exclude seed phrase)
+    console.log('Balances fetched successfully')
+
+    // Format wallet response
     const wallet = {
       id: walletData.id?.toString(),
       address: walletData.address,
@@ -87,12 +132,15 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(wallet)
   } catch (error) {
-    console.error('Error in wallet API:', error)
+    console.error('Unhandled error in wallet API:', error)
     return NextResponse.json(
       { 
-        error: 'Internal server error', 
-        detail: error?.message || String(error),
-        stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+        error: 'Internal server error',
+        message: error?.message || String(error),
+        detail: process.env.NODE_ENV === 'development' ? {
+          stack: error?.stack,
+          cause: error?.cause
+        } : undefined
       },
       { status: 500 }
     )
