@@ -3,6 +3,7 @@ import { isValidAddress } from '@/lib/address';
 import { BaseModal } from './ActionModal';
 import { getTokenList } from '@/lib/chain';
 import { useSendTransaction } from '@/hooks/useSendTransaction';
+import { useGasFee } from '@/hooks/useGasFee';
 import toast from 'react-hot-toast';
 
 interface SendFormState {
@@ -49,6 +50,12 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
   // Use send transaction hook
   const { sendTransaction, loading, error } = useSendTransaction();
 
+  // Get real-time gas fee estimate
+  const { fee: estimatedFee, loading: feeLoading, error: feeError } = useGasFee(
+    chain,
+    selectedTokenState.isNative
+  );
+
   // Validation
   const isAddressValid = form.address ? isValidAddress(form.address) : false;
   
@@ -66,15 +73,18 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
     const value = parseFloat(cleanAmount);
     if (isNaN(value) || value <= 0) return false;
     
-    // Check against balance
+    // For native tokens, check balance including estimated fee
+    if (selectedTokenState.isNative) {
+      const fee = parseFloat(estimatedFee);
+      return value + fee <= selectedTokenState.balance;
+    }
+    
+    // For other tokens, just check balance
     return value <= selectedTokenState.balance;
   };
 
   const isAmountValid = validateAmount(form.amount);
   const isFormValid = isAddressValid && isAmountValid && selectedTokenState;
-
-  // Estimated fee for native tokens
-  const estimatedFee = selectedTokenState.isNative ? 0.001 : 0;
 
   // Handle amount change
   const handleAmountChange = (value: string) => {
@@ -87,7 +97,9 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
   // Handle max amount
   const handleMax = () => {
     if (selectedTokenState.isNative) {
-      const maxAmount = Math.max(0, selectedTokenState.balance - estimatedFee);
+      // For native tokens, subtract estimated fee
+      const fee = parseFloat(estimatedFee);
+      const maxAmount = Math.max(0, selectedTokenState.balance - fee);
       setForm(prev => ({ ...prev, amount: maxAmount.toFixed(selectedTokenState.decimals) }));
     } else {
       setForm(prev => ({ ...prev, amount: selectedTokenState.balance.toFixed(selectedTokenState.decimals) }));
@@ -197,9 +209,34 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
 
         {/* Network Fee */}
         {selectedTokenState.isNative && (
-          <p className="text-xs text-gray-400">
-            Estimated Network Fee: {estimatedFee} {selectedTokenState.symbol}
-          </p>
+          <div className="text-xs text-gray-400">
+            <div className="flex justify-between">
+              <span>Estimated Network Fee:</span>
+              <span>
+                {feeLoading ? (
+                  'Calculating...'
+                ) : feeError ? (
+                  'Failed to estimate'
+                ) : (
+                  `${parseFloat(estimatedFee).toFixed(6)} ${selectedTokenState.symbol}`
+                )}
+              </span>
+            </div>
+            {selectedTokenState.isNative && form.amount && (
+              <div className="flex justify-between mt-1">
+                <span>Total (including fee):</span>
+                <span>
+                  {feeLoading ? (
+                    'Calculating...'
+                  ) : feeError ? (
+                    'Failed to calculate'
+                  ) : (
+                    `${(parseFloat(form.amount) + parseFloat(estimatedFee)).toFixed(6)} ${selectedTokenState.symbol}`
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Network Warning */}
