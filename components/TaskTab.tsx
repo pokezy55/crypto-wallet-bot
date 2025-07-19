@@ -48,7 +48,7 @@ export default function TaskTab({ user }: TaskTabProps) {
       const data = await res.json()
       setSwapProgress(data)
     } catch (e) {
-      toast.error('Gagal mengambil data swap progress')
+      toast.error('Failed to fetch swap progress')
     }
     setLoadingSwap(false)
   }
@@ -61,7 +61,7 @@ export default function TaskTab({ user }: TaskTabProps) {
       const data = await res.json()
       setDepositProgress(data)
     } catch (e) {
-      toast.error('Gagal mengambil data deposit progress')
+      toast.error('Failed to fetch deposit progress')
     }
     setLoadingDeposit(false)
   }
@@ -89,13 +89,13 @@ export default function TaskTab({ user }: TaskTabProps) {
       const res = await fetch(`/api/task/${user.id}/swap-claim`, { method: 'POST' })
       const data = await res.json()
       if (res.ok) {
-        toast.success('Permintaan reward berhasil! Menunggu persetujuan admin.')
+        toast.success('Reward claim requested! Waiting for admin approval.')
         fetchSwapProgress()
       } else {
-        toast.error(data.error || 'Gagal mengklaim reward')
+        toast.error(data.error || 'Failed to claim reward')
       }
     } catch (e) {
-      toast.error('Terjadi kesalahan jaringan')
+      toast.error('Network error')
     }
     setClaimingSwap(false)
   }
@@ -106,20 +106,20 @@ export default function TaskTab({ user }: TaskTabProps) {
       const res = await fetch(`/api/task/${user.id}/deposit-claim`, { method: 'POST' })
       const data = await res.json()
       if (res.ok) {
-        toast.success('Permintaan reward berhasil! Menunggu persetujuan admin.')
+        toast.success('Reward claim requested! Waiting for admin approval.')
         fetchDepositProgress()
       } else {
-        toast.error(data.error || 'Gagal mengklaim reward')
+        toast.error(data.error || 'Failed to claim reward')
       }
     } catch (e) {
-      toast.error('Terjadi kesalahan jaringan')
+      toast.error('Network error')
     }
     setClaimingDeposit(false)
   }
 
   return (
     <div className="p-6">
-      <h2 className="text-xl font-semibold mb-6">Tugas & Hadiah</h2>
+      <h2 className="text-xl font-semibold mb-6">Tasks & Rewards</h2>
       
       {/* Swap Task Card */}
       <div className="card mb-6">
@@ -145,23 +145,23 @@ export default function TaskTab({ user }: TaskTabProps) {
         </div>
         <div className="space-y-3">
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-400">Status Tugas:</span>
+            <span className="text-gray-400">Task Status:</span>
             <span className={swapProgress?.status === 'claimed' || swapProgress?.status === 'eligible' || swapProgress?.status === 'processing' ? 'text-green-400' : 'text-red-400'}>
               {loadingSwap ? <Loader2 className="animate-spin w-4 h-4" /> :
-                swapProgress?.status === 'claimed' ? 'Selesai' :
-                swapProgress?.status === 'processing' ? 'Diproses' :
-                swapProgress?.status === 'eligible' ? 'Selesai' :
-                'Belum Selesai'}
+                swapProgress?.status === 'claimed' ? 'Completed' :
+                swapProgress?.status === 'processing' ? 'Processing' :
+                swapProgress?.status === 'eligible' ? 'Completed' :
+                'Incomplete'}
             </span>
           </div>
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-400">Status Reward:</span>
+            <span className="text-gray-400">Reward Status:</span>
             <span className={swapProgress?.status === 'claimed' ? 'text-green-400' : swapProgress?.status === 'processing' ? 'text-yellow-400' : 'text-yellow-400'}>
               {loadingSwap ? <Loader2 className="animate-spin w-4 h-4" /> :
-                swapProgress?.status === 'claimed' ? 'Diklaim' :
-                swapProgress?.status === 'processing' ? 'Diproses' :
-                swapProgress?.status === 'eligible' ? 'Tersedia' :
-                'Tersedia'}
+                swapProgress?.status === 'claimed' ? 'Claimed' :
+                swapProgress?.status === 'processing' ? 'Processing' :
+                swapProgress?.status === 'eligible' ? 'Available' :
+                'Available'}
             </span>
           </div>
           <div className="flex justify-between items-center text-sm">
@@ -191,21 +191,21 @@ export default function TaskTab({ user }: TaskTabProps) {
               disabled={claimingSwap}
             >
               {claimingSwap ? <Loader2 className="animate-spin w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
-              Klaim Reward $5 USDT
+              Claim $5 USDT Reward
             </button>
           ) : swapProgress?.status === 'processing' ? (
             <div className="text-center py-2 text-yellow-400">
               <Loader2 className="animate-spin w-6 h-6 mx-auto mb-2" />
-              <span className="text-sm">Menunggu persetujuan admin...</span>
+              <span className="text-sm">Waiting for admin approval...</span>
             </div>
           ) : swapProgress?.status === 'claimed' ? (
             <div className="text-center py-2 text-green-400">
               <CheckCircle className="w-6 h-6 mx-auto mb-2" />
-              <span className="text-sm">Reward berhasil diklaim!</span>
+              <span className="text-sm">Reward claimed successfully!</span>
             </div>
           ) : (
             <button className="w-full btn-primary" disabled>
-              Tandai Selesai
+              Mark as Complete
             </button>
           )}
         </div>
@@ -235,23 +235,23 @@ export default function TaskTab({ user }: TaskTabProps) {
         </div>
         <div className="space-y-3">
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-400">Status Tugas:</span>
+            <span className="text-gray-400">Task Status:</span>
             <span className={depositProgress?.status === 'claimed' || depositProgress?.status === 'eligible' || depositProgress?.status === 'processing' ? 'text-green-400' : 'text-red-400'}>
               {loadingDeposit ? <Loader2 className="animate-spin w-4 h-4" /> :
-                depositProgress?.status === 'claimed' ? 'Selesai' :
-                depositProgress?.status === 'processing' ? 'Diproses' :
-                depositProgress?.status === 'eligible' ? 'Selesai' :
-                'Belum Selesai'}
+                depositProgress?.status === 'claimed' ? 'Completed' :
+                depositProgress?.status === 'processing' ? 'Processing' :
+                depositProgress?.status === 'eligible' ? 'Completed' :
+                'Incomplete'}
             </span>
           </div>
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-400">Status Reward:</span>
+            <span className="text-gray-400">Reward Status:</span>
             <span className={depositProgress?.status === 'claimed' ? 'text-green-400' : depositProgress?.status === 'processing' ? 'text-yellow-400' : 'text-yellow-400'}>
               {loadingDeposit ? <Loader2 className="animate-spin w-4 h-4" /> :
-                depositProgress?.status === 'claimed' ? 'Diklaim' :
-                depositProgress?.status === 'processing' ? 'Diproses' :
-                depositProgress?.status === 'eligible' ? 'Tersedia' :
-                'Tersedia'}
+                depositProgress?.status === 'claimed' ? 'Claimed' :
+                depositProgress?.status === 'processing' ? 'Processing' :
+                depositProgress?.status === 'eligible' ? 'Available' :
+                'Available'}
             </span>
           </div>
           <div className="flex justify-between items-center text-sm">
@@ -281,21 +281,21 @@ export default function TaskTab({ user }: TaskTabProps) {
               disabled={claimingDeposit}
             >
               {claimingDeposit ? <Loader2 className="animate-spin w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
-              Klaim Reward $3 USDT
+              Claim $3 USDT Reward
             </button>
           ) : depositProgress?.status === 'processing' ? (
             <div className="text-center py-2 text-yellow-400">
               <Loader2 className="animate-spin w-6 h-6 mx-auto mb-2" />
-              <span className="text-sm">Menunggu persetujuan admin...</span>
+              <span className="text-sm">Waiting for admin approval...</span>
             </div>
           ) : depositProgress?.status === 'claimed' ? (
             <div className="text-center py-2 text-green-400">
               <CheckCircle className="w-6 h-6 mx-auto mb-2" />
-              <span className="text-sm">Reward berhasil diklaim!</span>
+              <span className="text-sm">Reward claimed successfully!</span>
             </div>
           ) : (
             <button className="w-full btn-primary" disabled>
-              Tandai Selesai
+              Mark as Complete
             </button>
           )}
         </div>
@@ -303,27 +303,27 @@ export default function TaskTab({ user }: TaskTabProps) {
       
       {/* Task Rules */}
       <div className="card">
-        <h3 className="text-lg font-medium mb-4">Aturan Tugas</h3>
+        <h3 className="text-lg font-medium mb-4">Task Rules</h3>
         <ul className="space-y-2 text-sm text-gray-300">
           <li className="flex items-start gap-2">
             <span className="text-primary-500 mt-1">•</span>
-            <span>Swap dan deposit dapat dilakukan di jaringan EVM (Ethereum, BSC, Polygon, dll)</span>
+            <span>Swap and deposit can be done on any EVM-compatible network (Ethereum, BSC, Polygon, etc.)</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary-500 mt-1">•</span>
-            <span>Total nilai swap minimal $10 USD dan deposit minimal $20 USD</span>
+            <span>Total swap value must be at least $10 USD and deposit value at least $20 USD</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary-500 mt-1">•</span>
-            <span>Satu reward per akun pengguna</span>
+            <span>One reward per user account</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary-500 mt-1">•</span>
-            <span>Reward akan otomatis ditambahkan ke saldo wallet Anda</span>
+            <span>Reward is automatically added to your wallet balance</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary-500 mt-1">•</span>
-            <span>Penyelesaian tugas diverifikasi oleh sistem kami</span>
+            <span>Task completion is verified by our system</span>
           </li>
         </ul>
       </div>

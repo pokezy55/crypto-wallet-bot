@@ -24,16 +24,16 @@ export async function POST(req) {
   try {
     const data = await req.json();
 
-    // Handler tombol COMPLETE swap claim
+    // Handler for COMPLETE swap claim button
     if (data.callback_query && data.callback_query.data) {
       const cb = data.callback_query;
       if (cb.data.startsWith('complete_swap_')) {
         const claimId = cb.data.replace('complete_swap_', '');
         await approveSwapClaim(claimId);
-        // Balas ke admin
+        // Reply to admin
         const chatId = cb.message.chat.id;
         const messageId = cb.message.message_id;
-        // Edit pesan untuk menandai sudah completed
+        // Edit message to mark as completed
         await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -46,14 +46,14 @@ export async function POST(req) {
         });
         return NextResponse.json({ ok: true });
       }
-      // Handler tombol COMPLETE deposit claim
+      // Handler for COMPLETE deposit claim button
       else if (cb.data.startsWith('complete_deposit_')) {
         const claimId = cb.data.replace('complete_deposit_', '');
         await approveDepositClaim(claimId);
-        // Balas ke admin
+        // Reply to admin
         const chatId = cb.message.chat.id;
         const messageId = cb.message.message_id;
-        // Edit pesan untuk menandai sudah completed
+        // Edit message to mark as completed
         await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -68,7 +68,7 @@ export async function POST(req) {
       }
     }
 
-    // Cek jika command /ban user
+    // Check if /ban user command
     if (data.message && data.message.text) {
       const text = data.message.text.trim();
       if (text.startsWith('/ban')) {
@@ -81,18 +81,18 @@ export async function POST(req) {
       }
     }
 
-    // Cek banned sebelum proses lain
+    // Check banned before other processes
     const userId = data.message?.from?.id || data.userId;
     if (userId && await isUserBanned(userId)) {
       return NextResponse.json({ error: 'User is banned' }, { status: 403 });
     }
 
-    // Jika ada pesan /start, insert user ke database
+    // If there's a /start message, insert user to database
     if (data.message && data.message.text && data.message.text.startsWith('/start')) {
       const from = data.message.from;
       if (from && from.id) {
         const userData = {
-          id: from.id, // WAJIB diisi!
+          id: from.id, // REQUIRED!
           username: from.username || null,
           first_name: from.first_name || null,
           last_name: from.last_name || null,
@@ -100,7 +100,7 @@ export async function POST(req) {
         };
         await createUser(userData);
       } else {
-        console.error('Telegram user id tidak ditemukan di message.from');
+        console.error('Telegram user id not found in message.from');
       }
     }
 
