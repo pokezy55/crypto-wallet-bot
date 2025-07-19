@@ -34,6 +34,30 @@ export function useSendTransaction() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to validate and format amount
+  const validateAndFormatAmount = (amount: string): string => {
+    // Remove any commas and spaces
+    const cleanAmount = amount.replace(/,/g, '').trim();
+    
+    // Check if it's a valid number
+    if (!/^\d*\.?\d*$/.test(cleanAmount)) {
+      throw new Error('Invalid amount format');
+    }
+
+    // Parse as float and check range
+    const value = parseFloat(cleanAmount);
+    if (isNaN(value) || value <= 0) {
+      throw new Error('Amount must be greater than 0');
+    }
+
+    // Convert scientific notation to fixed notation
+    if (cleanAmount.includes('e')) {
+      return value.toFixed(18);
+    }
+
+    return cleanAmount;
+  };
+
   const sendTransaction = useCallback(async ({
     from,
     to,
@@ -51,9 +75,12 @@ export function useSendTransaction() {
         throw new Error('Invalid address format');
       }
 
-      // Validate amount
-      if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-        throw new Error('Invalid amount');
+      // Validate and format amount
+      let formattedAmount: string;
+      try {
+        formattedAmount = validateAndFormatAmount(amount);
+      } catch (error: any) {
+        throw new Error(`Invalid amount: ${error.message}`);
       }
 
       // Get provider and create wallet
@@ -69,7 +96,7 @@ export function useSendTransaction() {
       if (token.isNative) {
         // Send native token
         try {
-          const valueInWei = parseUnits(amount, token.decimals);
+          const valueInWei = parseUnits(formattedAmount, token.decimals);
           
           // Check native balance
           const balance = await provider.getBalance(from);
@@ -85,6 +112,9 @@ export function useSendTransaction() {
           if (error.message.includes('insufficient funds')) {
             throw new Error(`Insufficient ${token.symbol} balance for transaction`);
           }
+          if (error.message.includes('invalid BigNumber')) {
+            throw new Error('Invalid amount format');
+          }
           throw error;
         }
       } else {
@@ -95,7 +125,7 @@ export function useSendTransaction() {
 
         try {
           const tokenContract = new Contract(token.address, ERC20_ABI, wallet);
-          const amountInWei = parseUnits(amount, token.decimals);
+          const amountInWei = parseUnits(formattedAmount, token.decimals);
 
           // Check token balance
           const balance = await tokenContract.balanceOf(from);
@@ -107,6 +137,9 @@ export function useSendTransaction() {
         } catch (error: any) {
           if (error.message.includes('insufficient funds')) {
             throw new Error('Insufficient gas fee balance');
+          }
+          if (error.message.includes('invalid BigNumber')) {
+            throw new Error('Invalid amount format');
           }
           throw error;
         }
@@ -131,7 +164,7 @@ export function useSendTransaction() {
             from,
             to,
             token: token.symbol,
-            amount,
+            amount: formattedAmount,
             chain
           })
         });

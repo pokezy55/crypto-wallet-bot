@@ -51,20 +51,46 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
 
   // Validation
   const isAddressValid = form.address ? isValidAddress(form.address) : false;
-  const isAmountValid = form.amount && parseFloat(form.amount) > 0 && 
-    parseFloat(form.amount) <= selectedTokenState.balance;
+  
+  // Amount validation
+  const validateAmount = (amount: string): boolean => {
+    if (!amount) return false;
+    
+    // Remove commas and spaces
+    const cleanAmount = amount.replace(/,/g, '').trim();
+    
+    // Check format
+    if (!/^\d*\.?\d*$/.test(cleanAmount)) return false;
+    
+    // Parse value
+    const value = parseFloat(cleanAmount);
+    if (isNaN(value) || value <= 0) return false;
+    
+    // Check against balance
+    return value <= selectedTokenState.balance;
+  };
+
+  const isAmountValid = validateAmount(form.amount);
   const isFormValid = isAddressValid && isAmountValid && selectedTokenState;
 
   // Estimated fee for native tokens
   const estimatedFee = selectedTokenState.isNative ? 0.001 : 0;
 
+  // Handle amount change
+  const handleAmountChange = (value: string) => {
+    // Allow only numbers and one decimal point
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setForm(prev => ({ ...prev, amount: value }));
+    }
+  };
+
   // Handle max amount
   const handleMax = () => {
     if (selectedTokenState.isNative) {
       const maxAmount = Math.max(0, selectedTokenState.balance - estimatedFee);
-      setForm(prev => ({ ...prev, amount: maxAmount.toFixed(6) }));
+      setForm(prev => ({ ...prev, amount: maxAmount.toFixed(selectedTokenState.decimals) }));
     } else {
-      setForm(prev => ({ ...prev, amount: selectedTokenState.balance.toFixed(6) }));
+      setForm(prev => ({ ...prev, amount: selectedTokenState.balance.toFixed(selectedTokenState.decimals) }));
     }
   };
 
@@ -145,14 +171,12 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
           <label className="block text-sm font-medium mb-2">Amount</label>
           <div className="flex gap-2">
             <input
-              type="number"
+              type="text"
               value={form.amount}
-              onChange={e => setForm(prev => ({ ...prev, amount: e.target.value }))}
+              onChange={e => handleAmountChange(e.target.value)}
               placeholder="0.0"
               className="input-field flex-1"
-              min="0"
-              step="any"
-              max={selectedTokenState.isNative ? selectedTokenState.balance - estimatedFee : selectedTokenState.balance}
+              pattern="^\d*\.?\d*$"
             />
             <button
               onClick={handleMax}
@@ -161,9 +185,14 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
               MAX
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-1">
-            Available: {selectedTokenState.balance.toFixed(6)} {selectedTokenState.symbol}
-          </p>
+          <div className="flex justify-between text-xs mt-1">
+            <p className="text-gray-400">
+              Available: {selectedTokenState.balance.toFixed(selectedTokenState.decimals)} {selectedTokenState.symbol}
+            </p>
+            {form.amount && !isAmountValid && (
+              <p className="text-red-500">Invalid amount</p>
+            )}
+          </div>
         </div>
 
         {/* Network Fee */}
