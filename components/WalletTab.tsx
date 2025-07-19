@@ -218,7 +218,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         priceUSD: token.priceUSD || 0,
         priceChange24h: token.priceChange24h || 0,
         isNative: token.isNative || false,
-        chains: token.chains || [chain]
+        chains: token.chains || [chain],
+        decimals: token.decimals || 18, // Default to 18 decimals if not specified
+        address: token.address
       })).sort((a, b) => {
         // Native tokens always come first
         if (a.isNative && !b.isNative) return -1;

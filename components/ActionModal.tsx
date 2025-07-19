@@ -92,6 +92,8 @@ export interface Token {
   priceChange24h: number;
   isNative: boolean;
   chains: string[];
+  decimals: number;
+  address?: string;
 }
 
 // Common Props for Action Modals
