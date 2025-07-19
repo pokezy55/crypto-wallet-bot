@@ -84,39 +84,19 @@ export function useSendTransaction() {
           if (!signer.provider) {
             throw new Error('Provider not available');
           }
-
-          // Get current balance
           const balance = await signer.provider.getBalance(from);
-
-          // Estimate gas for the transaction
-          const gasEstimate = await signer.provider.estimateGas({
-            from,
-            to,
-            value: valueInWei
-          });
-
-          // Get current gas price
-          const feeData = await signer.provider.getFeeData();
-          const gasPrice = feeData.gasPrice || parseUnits('1', 'gwei'); // Fallback gas price
-
-          // Calculate total cost (value + gas)
-          const gasCost = gasEstimate * gasPrice;
-          const totalCost = valueInWei + gasCost;
-
-          // Check if we have enough balance for value + gas
-          if (balance < totalCost) {
-            throw new Error(`Insufficient ${token.symbol} balance (including gas fee)`);
+          if (balance < valueInWei) {
+            throw new Error(`Insufficient ${token.symbol} balance`);
           }
 
           tx = await signer.sendTransaction({
             to,
-            value: valueInWei,
-            gasLimit: gasEstimate
+            value: valueInWei
           });
         } catch (error: any) {
           console.error('Native token transfer error:', error);
-          if (error.message.includes('insufficient funds') || error.message.toLowerCase().includes('insufficient balance')) {
-            throw new Error(`Insufficient ${token.symbol} balance for transaction including gas fee`);
+          if (error.message.includes('insufficient funds')) {
+            throw new Error(`Insufficient ${token.symbol} balance for transaction`);
           }
           throw error;
         }
@@ -140,39 +120,16 @@ export function useSendTransaction() {
             throw new Error(`Insufficient ${token.symbol} balance`);
           }
 
-          // Check ETH balance for gas
-          const ethBalance = await provider.getBalance(from);
-          
-          // Estimate gas
+          // Send transaction
           const data = tokenContract.interface.encodeFunctionData('transfer', [to, amountInWei]);
-          const gasEstimate = await provider.estimateGas({
-            from,
+          tx = await signer.sendTransaction({
             to: token.address,
             data
           });
-
-          // Get gas price
-          const feeData = await provider.getFeeData();
-          const gasPrice = feeData.gasPrice || parseUnits('1', 'gwei');
-
-          // Calculate gas cost
-          const gasCost = gasEstimate * gasPrice;
-
-          // Check if we have enough ETH for gas
-          if (ethBalance < gasCost) {
-            throw new Error('Insufficient ETH for gas fee');
-          }
-
-          // Send transaction
-          tx = await signer.sendTransaction({
-            to: token.address,
-            data,
-            gasLimit: gasEstimate
-          });
         } catch (error: any) {
           console.error('ERC20 token transfer error:', error);
-          if (error.message.includes('insufficient funds') || error.message.toLowerCase().includes('insufficient balance')) {
-            throw new Error('Insufficient ETH for gas fee');
+          if (error.message.includes('insufficient funds')) {
+            throw new Error('Insufficient gas fee balance');
           }
           throw error;
         }

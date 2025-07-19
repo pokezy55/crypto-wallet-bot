@@ -8,11 +8,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        'crypto-dark': '#0d1117',
-        'crypto-card': '#161b22',
-        'crypto-border': '#30363d',
-        'crypto-hover': '#21262d',
-        'primary': {
+        primary: {
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
@@ -24,6 +20,14 @@ module.exports = {
           800: '#1e40af',
           900: '#1e3a8a',
         },
+        crypto: {
+          dark: '#0f172a',
+          card: '#1e293b',
+          border: '#334155',
+        }
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
       },
     },
   },

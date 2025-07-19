@@ -22,10 +22,10 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-500 text-white rounded-lg px-4 py-2 hover:bg-primary-600 transition-colors;
+    @apply bg-primary-600 text-white rounded-lg px-4 py-2 hover:bg-primary-700 transition-colors;
   }
   .btn-secondary {
-    @apply bg-crypto-card text-white rounded-lg px-4 py-2 hover:bg-crypto-hover transition-colors;
+    @apply bg-crypto-border text-white rounded-lg px-4 py-2 hover:bg-opacity-80 transition-colors;
   }
   .input-field {
     @apply bg-crypto-card border border-crypto-border rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500;
@@ -56,7 +56,8 @@
 
 :root {
   --foreground-rgb: 255, 255, 255;
-  --background-rgb: 13, 17, 23;
+  --background-start-rgb: 15, 23, 42;
+  --background-end-rgb: 30, 41, 59;
 }
 
 * {
@@ -74,7 +75,13 @@ body {
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  min-height: 100vh;
 }
 
 a {
@@ -102,9 +109,8 @@ a {
 
 /* Telegram WebApp specific styles */
 .telegram-webapp {
-  background: rgb(var(--background-rgb));
-  color: rgb(var(--foreground-rgb));
-  min-height: 100vh;
+  background: var(--tg-theme-bg-color, #0f172a);
+  color: var(--tg-theme-text-color, #ffffff);
 }
 
 /* Custom button styles */

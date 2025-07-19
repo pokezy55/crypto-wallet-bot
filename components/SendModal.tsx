@@ -1,100 +1,151 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { BaseModal } from './BaseModal';
-import { getProvider, getSigner, getTokenList } from '@/lib/chain';
-import { isValidEthereumAddress, isValidAmountFormat, formatAmount } from '@/lib/validation';
+import { useState, useEffect } from 'react';
+import { BaseModal } from './ActionModal';
+import { getTokenList } from '@/lib/chain';
 import { useSendTransaction } from '@/hooks/useSendTransaction';
 import { useGasFee } from '@/hooks/useGasFee';
+import { isValidEthereumAddress, isValidAmountFormat, formatAmount, isSensitiveData } from '@/lib/validation';
 import toast from 'react-hot-toast';
+
+// Format balance helper
+function formatBalance(balance: string | number | undefined, decimals: number = 6): string {
+  if (balance === undefined || balance === null) {
+    return '0';
+  }
+  const num = typeof balance === 'string' ? parseFloat(balance) : balance;
+  if (isNaN(num)) {
+    return '0';
+  }
+  // Handle small numbers better
+  if (num < 0.000001) {
+    return num.toExponential(6);
+  }
+  return num.toFixed(decimals).replace(/\.?0+$/, '') || '0';
+}
+
+interface SendFormState {
+  address: string;
+  amount: string;
+}
+
+interface Token {
+  symbol: string;
+  name: string;
+  logo?: string;
+  balance: number;
+  isNative: boolean;
+  chains: string[];
+  decimals: number;
+  address?: string;
+}
 
 interface SendModalProps {
   isOpen: boolean;
   onClose: () => void;
-  seedPhrase?: string;
-  privateKey?: string;
-  chain?: string;
+  selectedToken?: Token;
+  chain: string;
+  wallet?: {
+    address: string;
+    seedPhrase?: string;
+    privateKey?: string;
+  };
 }
 
-interface TokenState {
-  symbol: string;
-  balance: string;
-  decimals: number;
-  isNative: boolean;
-  address?: string;
-}
+export default function SendModal({ isOpen, onClose, selectedToken, chain, wallet }: SendModalProps) {
+  // Early validation of required props
+  if (!isOpen || !wallet?.address) {
+    return null;
+  }
 
-export function SendModal({ isOpen, onClose, seedPhrase, privateKey, chain = 'eth' }: SendModalProps) {
-  const [form, setForm] = useState({ to: '', amount: '' });
-  const [selectedTokenState, setSelectedTokenState] = useState<TokenState>({
-    symbol: 'ETH',
-    balance: '0',
-    decimals: 18,
-    isNative: true
+  // Get available tokens for the current chain
+  const availableTokens = getTokenList(chain) as Token[];
+  const defaultToken = selectedToken || availableTokens[0];
+
+  // States
+  const [form, setForm] = useState<SendFormState>({ address: '', amount: '' });
+  const [selectedTokenState, setSelectedTokenState] = useState<Token>(defaultToken);
+  const [validationErrors, setValidationErrors] = useState({
+    address: '',
+    amount: ''
   });
   const [status, setStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-  const [nativeBalance, setNativeBalance] = useState<string>('0');
-  const [tokenPrices, setTokenPrices] = useState<Record<string, number>>({});
 
   // Use hooks
-  const { sendTransaction, loading: txLoading } = useSendTransaction();
+  const { sendTransaction, loading, error } = useSendTransaction();
   const { fee: estimatedFee, feeUSD, loading: feeLoading, error: feeError } = useGasFee(
     chain,
     selectedTokenState.isNative
   );
 
-  // Fetch native balance and token prices
+  // Reset state when modal closes
   useEffect(() => {
-    const fetchBalances = async () => {
-      try {
-        const provider = getProvider(chain);
-        const signer = await getSigner(chain, seedPhrase, privateKey);
-        const address = await signer.getAddress();
-        const balance = await provider.getBalance(address);
-        setNativeBalance(balance.toString());
-        
-        // Update selected token balance if it's native
-        if (selectedTokenState.isNative) {
-          setSelectedTokenState(prev => ({
-            ...prev,
-            balance: balance.toString()
-          }));
-        }
-      } catch (error) {
-        console.error('Error fetching native balance:', error);
-      }
-    };
-
-    const fetchPrices = async () => {
-      try {
-        const response = await fetch('/api/price');
-        const prices = await response.json();
-        setTokenPrices(prices);
-      } catch (error) {
-        console.error('Error fetching token prices:', error);
-      }
-    };
-
-    if (isOpen) {
-      fetchBalances();
-      fetchPrices();
+    if (!isOpen) {
+      setForm({ address: '', amount: '' });
+      setStatus('idle');
+      setErrorMessage('');
     }
-  }, [isOpen, chain, seedPhrase, privateKey, selectedTokenState.isNative]);
+  }, [isOpen]);
 
-  // Format USD amount
-  const formatUSD = useCallback((amount: number) => {
-    if (isNaN(amount) || amount === 0) return '$0.00';
-    if (amount < 0.0001) return '< $0.0001';
-    return `$${amount.toFixed(4)}`;
-  }, []);
+  // Reset state when token changes
+  useEffect(() => {
+    if (selectedToken) {
+      setSelectedTokenState(selectedToken);
+      setForm(prev => ({ ...prev, amount: '' }));
+    }
+  }, [selectedToken]);
 
-  // Format estimated fee display
-  const formattedFee = useMemo(() => {
-    if (feeError || !estimatedFee) return 'Calculating...';
-    if (feeLoading) return 'Calculating...';
-    
-    const feeValue = typeof feeUSD === 'string' ? parseFloat(feeUSD) : (feeUSD || 0);
-    return `${estimatedFee} ETH (${formatUSD(feeValue)})`;
-  }, [estimatedFee, feeError, feeLoading, feeUSD, formatUSD]);
+  // Real-time validation
+  useEffect(() => {
+    const errors = {
+      address: '',
+      amount: ''
+    };
+
+    // Validate address
+    if (form.address) {
+      if (isSensitiveData(form.address)) {
+        errors.address = 'This looks like a private key or mnemonic. Please enter a recipient address.';
+      } else if (!isValidEthereumAddress(form.address)) {
+        errors.address = 'Invalid Ethereum address format';
+      }
+    }
+
+    // Validate amount
+    if (form.amount) {
+      if (!isValidAmountFormat(form.amount)) {
+        errors.amount = 'Invalid amount format';
+      } else {
+        const value = parseFloat(form.amount);
+        if (selectedTokenState.isNative) {
+          const fee = feeError ? 0 : parseFloat(estimatedFee || '0');
+          const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
+          // Convert to same decimal places for comparison
+          const valueWei = parseFloat(formatAmount(form.amount, selectedTokenState.decimals));
+          const balanceWei = parseFloat(formatAmount(balance.toString(), selectedTokenState.decimals));
+          const feeWei = parseFloat(formatAmount(fee.toString(), selectedTokenState.decimals));
+          if (valueWei + feeWei > balanceWei) {
+            errors.amount = 'Insufficient balance (including fee)';
+          }
+        } else {
+          const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
+          // Convert to same decimal places for comparison
+          const valueWei = parseFloat(formatAmount(form.amount, selectedTokenState.decimals));
+          const balanceWei = parseFloat(formatAmount(balance.toString(), selectedTokenState.decimals));
+          if (valueWei > balanceWei) {
+            errors.amount = 'Insufficient balance';
+          }
+        }
+      }
+    }
+
+    setValidationErrors(errors);
+  }, [form, selectedTokenState, estimatedFee, feeError]);
+
+  // Check if form is valid
+  const isFormValid = !validationErrors.address && 
+                     !validationErrors.amount && 
+                     form.address && 
+                     form.amount;
 
   // Handle amount change
   const handleAmountChange = (value: string) => {
@@ -128,7 +179,7 @@ export function SendModal({ isOpen, onClose, seedPhrase, privateKey, chain = 'et
         if (maxAmount < 0.000001) {
           formattedAmount = maxAmount.toExponential(6);
         } else {
-          formattedAmount = maxAmount.toFixed(selectedTokenState.decimals).replace(/\.?0+$/, '') || '0';
+          formattedAmount = formatBalance(maxAmount, selectedTokenState.decimals);
         }
         
         setForm(prev => ({ ...prev, amount: formattedAmount }));
@@ -145,7 +196,7 @@ export function SendModal({ isOpen, onClose, seedPhrase, privateKey, chain = 'et
         if (balance < 0.000001) {
           formattedAmount = balance.toExponential(6);
         } else {
-          formattedAmount = balance.toFixed(selectedTokenState.decimals).replace(/\.?0+$/, '') || '0';
+          formattedAmount = formatBalance(balance, selectedTokenState.decimals);
         }
         
         setForm(prev => ({ ...prev, amount: formattedAmount }));
@@ -156,18 +207,33 @@ export function SendModal({ isOpen, onClose, seedPhrase, privateKey, chain = 'et
     }
   };
 
-  // Handle form submission
-  const handleSubmit = async () => {
+  // Handle token change
+  const handleTokenChange = (symbol: string) => {
+    const token = availableTokens.find(t => t.symbol === symbol);
+    if (token) {
+      setSelectedTokenState(token);
+      setForm(prev => ({ ...prev, amount: '' }));
+    }
+  };
+
+  // Handle send
+  const handleSend = async () => {
+    if (!isFormValid) {
+      toast.error('Please fill in all fields correctly');
+      return;
+    }
+
+    if (!wallet?.address) {
+      toast.error('Wallet not connected');
+      return;
+    }
+
+    setStatus('pending');
+    setErrorMessage('');
+
     try {
-      setStatus('pending');
-      setErrorMessage('');
-
-      // Validate form
-      if (!form.to || !form.amount) {
-        throw new Error('Please fill in all fields');
-      }
-
-      if (!isValidEthereumAddress(form.to)) {
+      // Final validation before sending
+      if (!isValidEthereumAddress(form.address)) {
         throw new Error('Invalid recipient address');
       }
 
@@ -175,120 +241,162 @@ export function SendModal({ isOpen, onClose, seedPhrase, privateKey, chain = 'et
         throw new Error('Invalid amount format');
       }
 
-      // Get current balance and convert to same decimal places
-      const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
-      const amount = parseFloat(form.amount);
+      // Format amount according to token decimals
+      const formattedAmount = formatAmount(form.amount, selectedTokenState.decimals);
 
-      if (isNaN(balance) || isNaN(amount)) {
-        throw new Error('Invalid amount or balance');
-      }
-
-      // For native token, ensure we have enough for amount + gas
-      if (selectedTokenState.isNative) {
-        const fee = feeError ? 0 : parseFloat(estimatedFee || '0');
-        if (amount + fee > balance) {
-          throw new Error(`Insufficient ${selectedTokenState.symbol} balance (including gas fee)`);
-        }
-      } else {
-        // For tokens, check token balance and ETH for gas separately
-        if (amount > balance) {
-          throw new Error(`Insufficient ${selectedTokenState.symbol} balance`);
-        }
-
-        // Check if we have enough ETH for gas
-        const fee = feeError ? 0 : parseFloat(estimatedFee || '0');
-        const ethBalance = parseFloat(nativeBalance || '0');
-        
-        if (fee > ethBalance) {
-          throw new Error('Insufficient ETH for gas fee');
-        }
-      }
-
-      // Send transaction
       const result = await sendTransaction({
-        from: await getSigner(chain, seedPhrase, privateKey).then(s => s.getAddress()),
-        to: form.to,
-        amount: form.amount,
-        token: selectedTokenState,
+        from: wallet.address,
+        to: form.address,
+        amount: formattedAmount,
+        token: {
+          symbol: selectedTokenState.symbol,
+          address: selectedTokenState.address,
+          decimals: selectedTokenState.decimals,
+          isNative: selectedTokenState.isNative
+        },
         chain,
-        seedPhrase,
-        privateKey
+        seedPhrase: wallet.seedPhrase,
+        privateKey: wallet.privateKey
       });
 
-      if (!result.success) {
-        throw new Error(result.error || 'Transaction failed');
+      if (result.success) {
+        setStatus('success');
+        onClose();
+        setForm({ address: '', amount: '' });
+        toast.success('Transaction sent successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to send transaction');
       }
-
-      setStatus('success');
-      onClose();
     } catch (error: any) {
       console.error('Send error:', error);
       setStatus('error');
-      setErrorMessage(error.message);
-      toast.error(error.message);
+      setErrorMessage(error.message || 'Failed to send transaction');
+      toast.error(error.message || 'Failed to send transaction');
     }
   };
 
-  // Reset state when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setForm({ to: '', amount: '' });
-      setStatus('idle');
-      setErrorMessage('');
-    }
-  }, [isOpen]);
+  // Render different states
+  if (status === 'pending') {
+    return (
+      <BaseModal isOpen={isOpen} onClose={onClose} title="Sending">
+        <div className="text-center py-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-2"></div>
+          <p>Processing transaction...</p>
+        </div>
+      </BaseModal>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <BaseModal isOpen={isOpen} onClose={onClose} title="Error">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{errorMessage}</p>
+          <button
+            onClick={() => setStatus('idle')}
+            className="btn-primary w-full"
+          >
+            Try Again
+          </button>
+        </div>
+      </BaseModal>
+    );
+  }
 
   return (
-    <BaseModal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Send"
-      onAction={handleSubmit}
-      isLoading={status === 'pending' || txLoading || feeLoading}
-      error={errorMessage}
-    >
-      {/* Modal content */}
+    <BaseModal isOpen={isOpen} onClose={onClose} title="Send">
       <div className="space-y-4">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            To Address
-          </label>
-          <input
-            type="text"
-            value={form.to}
-            onChange={(e) => setForm(prev => ({ ...prev, to: e.target.value }))}
-            placeholder="0x..."
-            className="w-full px-3 py-2 border rounded-md"
-          />
+        {/* Token Selector */}
+        <div>
+          <label className="block text-sm font-medium mb-2">Token</label>
+          <select
+            value={selectedTokenState.symbol}
+            onChange={(e) => handleTokenChange(e.target.value)}
+            className="input-field w-full"
+          >
+            {availableTokens.map(token => (
+              <option key={token.symbol} value={token.symbol}>
+                {token.name} ({formatBalance(token.balance)} {token.symbol})
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Amount
-          </label>
-          <div className="relative">
+        {/* Recipient Address */}
+        <div>
+          <label className="block text-sm font-medium mb-2">Recipient Address</label>
+          <input
+            type="text"
+            value={form.address}
+            onChange={e => setForm(prev => ({ ...prev, address: e.target.value }))}
+            placeholder="0x..."
+            className="input-field w-full"
+          />
+          {validationErrors.address && (
+            <p className="text-red-500 text-xs mt-1">{validationErrors.address}</p>
+          )}
+        </div>
+
+        {/* Amount */}
+        <div>
+          <label className="block text-sm font-medium mb-2">Amount</label>
+          <div className="flex gap-2">
             <input
               type="text"
               value={form.amount}
-              onChange={(e) => handleAmountChange(e.target.value)}
+              onChange={e => handleAmountChange(e.target.value)}
               placeholder="0.0"
-              className="w-full px-3 py-2 border rounded-md"
+              className="input-field flex-1"
             />
             <button
               onClick={handleMax}
-              className="absolute right-2 top-2 text-sm text-blue-600 hover:text-blue-800"
+              className="btn-secondary px-3"
             >
               MAX
             </button>
           </div>
-          <div className="text-xs text-gray-500">
-            Available: {parseFloat(selectedTokenState.balance).toFixed(6)} {selectedTokenState.symbol}
-          </div>
+          {validationErrors.amount ? (
+            <p className="text-red-500 text-xs mt-1">{validationErrors.amount}</p>
+          ) : (
+            <p className="text-xs text-gray-400 mt-1">
+              Available: {formatBalance(selectedTokenState.balance)} {selectedTokenState.symbol}
+            </p>
+          )}
         </div>
 
-        <div className="text-sm text-gray-600">
-          Estimated Fee: {formattedFee}
-        </div>
+        {/* Network Fee */}
+        {selectedTokenState.isNative && (
+          <div className="text-xs text-gray-400">
+            {feeLoading ? (
+              <p>Calculating network fee...</p>
+            ) : feeError ? (
+              <p>Failed to estimate network fee</p>
+            ) : (
+              <div className="flex justify-between">
+                <span>Estimated Fee:</span>
+                <span>
+                  {estimatedFee} {selectedTokenState.symbol} (${feeUSD})
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Send Button */}
+        <button
+          onClick={handleSend}
+          disabled={!isFormValid || loading}
+          className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>Processing...</span>
+            </div>
+          ) : (
+            `Send ${selectedTokenState.symbol}`
+          )}
+        </button>
       </div>
     </BaseModal>
   );
