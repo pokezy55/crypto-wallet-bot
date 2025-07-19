@@ -1,27 +1,67 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
-import { Send, Download, ArrowLeftRight, Copy, Plus, RefreshCw } from 'lucide-react';
-import { formatAddress } from '@/lib/address';
+import { Send, Download, ArrowLeftRight, Copy, QrCode, Plus, Settings, RefreshCw } from 'lucide-react';
+import { formatAddress, isValidAddress } from '@/lib/address';
 import { useBalance } from '../hooks/useBalance';
+import { useSendToken } from '../hooks/useSendToken';
 import { useTokenPrices } from '../hooks/useTokenPrices';
 import TokenRow from './TokenRow';
-import { CHAINS } from '../lib/chain';
+import { CHAINS, shouldMergeToken } from '../lib/chain';
 import toast from 'react-hot-toast';
-import SendModal from './SendModal';
-import { Token } from './ActionModal';
+
+interface Token {
+  symbol: string;
+  name: string;
+  logo?: string;
+  balance: number;
+  priceUSD: number;
+  priceChange24h: number;
+  isNative: boolean;
+  chains: string[];
+}
+
+interface SendFormState {
+  address: string;
+  amount: string;
+  token: string;
+}
+
+// Validation helper
+function validateModalProps(section: string, props: any) {
+  if (section === 'send') {
+    if (!props.wallet?.address) {
+      console.warn('Send modal: wallet address is missing');
+      return false;
+    }
+    if (!props.selectedToken) {
+      console.warn('Send modal: selected token is missing');
+      return false;
+    }
+    return true;
+  }
+  return true;
+}
 
 export default function WalletTab({ wallet }: { wallet: any }) {
-  // Basic states
+  const [activeSection, setActiveSection] = useState<'main' | 'send' | 'receive' | 'swap'>('main');
   const [chain, setChain] = useState('eth');
-  const [activeModal, setActiveModal] = useState<'none' | 'send' | 'receive' | 'swap'>('none');
-  const [selectedToken, setSelectedToken] = useState<Token | undefined>();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+  const [txError, setTxError] = useState('');
+  
+  // Form state
+  const [sendForm, setSendForm] = useState<SendFormState>({
+    address: '',
+    amount: '',
+    token: 'ETH'
+  });
 
   // Hooks
-  const { balances: tokenBalances, loading: loadingBalance, refetch } = useBalance(chain, wallet?.address);
+  const { balances: tokenBalances, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(chain, wallet?.address);
   const tokenPrices = useTokenPrices();
 
-  // Auto refresh
+  // Auto refresh balances
   useEffect(() => {
     refetch();
     const interval = setInterval(refetch, 60000);
@@ -32,7 +72,7 @@ export default function WalletTab({ wallet }: { wallet: any }) {
   const tokenList = useMemo(() => {
     const chains: Record<string, any> = CHAINS;
     const tokens = (chains[chain]?.tokens || []).map((def: any) => {
-      const bal = tokenBalances.find(b => b.symbol.toLowerCase() === def.symbol.toLowerCase())?.balance || '0';
+      const bal = tokenBalances.find((b: any) => b.symbol.toLowerCase() === def.symbol.toLowerCase())?.balance || '0';
       const price = tokenPrices[def.symbol] || { priceUSD: 0, priceChange24h: 0 };
       return {
         ...def,
@@ -44,10 +84,10 @@ export default function WalletTab({ wallet }: { wallet: any }) {
         logo: def.logo || '',
         isMerged: false,
         isNative: def.isNative || false
-      };
+      } as Token;
     });
 
-    return tokens.sort((a, b) => {
+    return tokens.sort((a: Token, b: Token) => {
       if (a.isNative && !b.isNative) return -1;
       if (!a.isNative && b.isNative) return 1;
       const aValue = a.balance * (a.priceUSD || 0);
@@ -58,7 +98,7 @@ export default function WalletTab({ wallet }: { wallet: any }) {
 
   // Calculate total value
   const totalValue = useMemo(() => {
-    return tokenList.reduce((total, token) => {
+    return tokenList.reduce((total: number, token: Token) => {
       if (!token.balance || token.balance <= 0) return total;
       return total + (token.balance * (token.priceUSD || 0));
     }, 0);
@@ -72,15 +112,80 @@ export default function WalletTab({ wallet }: { wallet: any }) {
     }
   };
 
-  const handleSendClick = (token?: Token) => {
+  const handleSendClick = () => {
     if (!wallet?.address) {
       toast.error('Please connect wallet first');
       return;
     }
-    setSelectedToken(token || tokenList[0]);
-    setActiveModal('send');
+    setActiveSection('send');
   };
 
+  // Send Section
+  if (activeSection === 'send') {
+    // Validate required props before rendering send section
+    if (!validateModalProps('send', { wallet, selectedToken: tokenList.find(t => t.symbol === sendForm.token) })) {
+      setActiveSection('main');
+      return null;
+    }
+
+    // Get sendable tokens and validate
+    const sendableTokens = tokenList.filter((t: Token) => t.balance > 0)
+      .sort((a: Token, b: Token) => b.balance - a.balance);
+
+    // Ensure we have at least one token before rendering send form
+    if (sendableTokens.length === 0) {
+      return (
+        <div className="p-6">
+          <div className="flex items-center mb-6">
+            <button
+              onClick={() => setActiveSection('main')}
+              className="mr-4 p-2 rounded-lg bg-crypto-card border border-crypto-border"
+            >
+              <ArrowLeftRight className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-semibold">Send</h2>
+          </div>
+          <div className="text-center text-gray-400 py-8">
+            No tokens available to send
+          </div>
+        </div>
+      );
+    }
+
+    // Ensure selected token exists or use first available
+    const selectedToken = sendableTokens.find(t => t.symbol === sendForm.token) || sendableTokens[0];
+    if (sendForm.token !== selectedToken.symbol) {
+      setSendForm(prev => ({ ...prev, token: selectedToken.symbol }));
+    }
+
+    // Validation
+    const isAddressValid = sendForm.address ? isValidAddress(sendForm.address) : false;
+    const isFormValid = isAddressValid && 
+      sendForm.amount && 
+      parseFloat(sendForm.amount) > 0 && 
+      selectedToken;
+
+    // Estimated fee
+    const estimatedFee = selectedToken.isNative ? 0.001 : 0;
+
+    // Handle max amount
+    const handleMax = () => {
+      if (selectedToken.isNative) {
+        const maxAmount = Math.max(0, selectedToken.balance - estimatedFee);
+        setSendForm(prev => ({ ...prev, amount: maxAmount.toFixed(6) }));
+      } else {
+        setSendForm(prev => ({ ...prev, amount: selectedToken.balance.toFixed(6) }));
+      }
+    };
+
+    return (
+      <div className="p-6">
+        {/* ... rest of send section UI ... */}
+      </div>
+    );
+  }
+
+  // Main Section
   return (
     <div className="p-4">
       {/* Address & Chain Selector */}
@@ -127,7 +232,7 @@ export default function WalletTab({ wallet }: { wallet: any }) {
       {/* Action Buttons */}
       <div className="flex justify-between mb-6">
         <button 
-          onClick={() => handleSendClick()}
+          onClick={handleSendClick}
           className="flex flex-col items-center text-gray-400 hover:text-white"
         >
           <Send className="w-6 h-6 mb-1" />
@@ -170,7 +275,7 @@ export default function WalletTab({ wallet }: { wallet: any }) {
       </div>
 
       {/* Modals */}
-      <SendModal
+      {/* SendModal
         isOpen={activeModal === 'send'}
         onClose={() => {
           setActiveModal('none');
@@ -179,7 +284,7 @@ export default function WalletTab({ wallet }: { wallet: any }) {
         selectedToken={selectedToken}
         chain={chain}
         wallet={wallet}
-      />
+      /> */}
     </div>
   );
 } 
