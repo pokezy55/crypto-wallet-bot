@@ -52,7 +52,12 @@ interface TokenPrices {
 interface WalletTabProps {
   chain: string;
   wallet: {
-    balance?: WalletBalances;
+    id: string;
+    address: string;
+    balance?: Record<string, Record<string, string>>;
+    seedPhrase?: string;
+    createdAt?: string;
+    updatedAt?: string;
   } | null;
   tokenPrices: TokenPrices;
   onSend: () => void;
