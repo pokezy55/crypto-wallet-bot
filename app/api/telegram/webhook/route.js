@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createUser, approveSwapClaim } from '@/lib/database';
+import { createUser, approveSwapClaim, approveDepositClaim } from '@/lib/database';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -43,6 +43,26 @@ export async function POST(req) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, text: 'Claim marked as completed.' })
+        });
+        return NextResponse.json({ ok: true });
+      }
+      // Handler tombol COMPLETE deposit claim
+      else if (cb.data.startsWith('complete_deposit_')) {
+        const claimId = cb.data.replace('complete_deposit_', '');
+        await approveDepositClaim(claimId);
+        // Balas ke admin
+        const chatId = cb.message.chat.id;
+        const messageId = cb.message.message_id;
+        // Edit pesan untuk menandai sudah completed
+        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } })
+        });
+        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: 'Deposit claim marked as completed.' })
         });
         return NextResponse.json({ ok: true });
       }

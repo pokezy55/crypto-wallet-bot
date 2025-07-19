@@ -20,7 +20,13 @@ export async function GET(req, { params }) {
     let status = 'unclaimed';
     // TODO: Integrasi dengan status task/claim swap user
     if (totalSwapUSD >= 10) status = 'eligible';
-    return NextResponse.json({ totalSwapUSD, eligibleToClaim: totalSwapUSD >= 10, status });
+    return NextResponse.json({ 
+      totalSwapUSD, 
+      eligibleToClaim: totalSwapUSD >= 10, 
+      status,
+      target: 10,
+      progress: Math.min(100, (totalSwapUSD / 10) * 100)
+    });
   } catch (error) {
     console.error('Error fetching swap progress:', error);
     return NextResponse.json({ error: 'Failed to fetch swap progress' }, { status: 500 });
