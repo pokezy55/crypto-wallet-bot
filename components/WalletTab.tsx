@@ -93,6 +93,8 @@ interface Wallet {
 interface WalletTabProps {
   wallet?: {
     address: string;
+    seedPhrase?: string;
+    privateKey?: string;
   };
   user?: {
     id: number;
@@ -831,7 +833,11 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           onClose={() => setShowSendModal(false)}
           selectedToken={selectedTokenState}
           chain={chain}
-          wallet={wallet}
+          wallet={{
+            address: wallet.address,
+            seedPhrase: wallet.seedPhrase,
+            privateKey: wallet.privateKey
+          }}
         />
         
         <SwapModal
@@ -839,7 +845,11 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           onClose={() => setShowSwapModal(false)}
           tokens={tokenList}
           chain={chain}
-          wallet={wallet}
+          wallet={{
+            address: wallet.address,
+            seedPhrase: wallet.seedPhrase,
+            privateKey: wallet.privateKey
+          }}
         />
         
         <ReceiveModal

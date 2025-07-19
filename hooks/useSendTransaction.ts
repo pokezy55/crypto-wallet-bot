@@ -20,6 +20,8 @@ interface SendTransactionParams {
     isNative: boolean;
   };
   chain: string;
+  seedPhrase?: string;
+  privateKey?: string;
 }
 
 interface TransactionResult {
@@ -37,7 +39,9 @@ export function useSendTransaction() {
     to,
     amount,
     token,
-    chain
+    chain,
+    seedPhrase,
+    privateKey
   }: SendTransactionParams): Promise<TransactionResult> => {
     setLoading(true);
     setError(null);
@@ -46,7 +50,7 @@ export function useSendTransaction() {
       // Get signer
       let signer;
       try {
-        signer = await getSigner(chain);
+        signer = await getSigner(chain, seedPhrase, privateKey);
       } catch (error: any) {
         console.error('Failed to get signer:', error);
         throw new Error(error.message || 'Failed to get signer');

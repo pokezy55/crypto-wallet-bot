@@ -105,6 +105,7 @@ export interface ActionModalProps {
   wallet: {
     address: string;
     seedPhrase?: string;
+    privateKey?: string;
   };
 }
 

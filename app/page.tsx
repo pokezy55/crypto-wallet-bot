@@ -29,6 +29,7 @@ interface Wallet {
   id: string;
   address: string;
   seedPhrase?: string;
+  privateKey?: string;
   balance: Record<string, Record<string, string>>;
 }
 

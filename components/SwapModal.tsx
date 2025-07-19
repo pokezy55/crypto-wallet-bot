@@ -18,6 +18,7 @@ interface SwapModalProps {
   wallet?: {
     address: string;
     seedPhrase?: string;
+    privateKey?: string;
   };
 }
 
