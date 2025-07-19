@@ -1,13 +1,11 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
-import { Toaster } from 'react-hot-toast'
+import { Inter } from 'next/font/google'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata: Metadata = {
+export const metadata = {
   title: 'Crypto Wallet Bot',
-  description: 'Telegram bot crypto wallet builder with EVM support',
+  description: 'Telegram Crypto Wallet Bot',
 }
 
 export default function RootLayout({
@@ -17,22 +15,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <script src="https://telegram.org/js/telegram-web-app.js"></script>
-      </head>
-      <body className={`${inter.className} telegram-webapp`}>
-        {children}
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#1e293b',
-              color: '#ffffff',
-              border: '1px solid #334155',
-            },
-          }}
-        />
+      <body className={`${inter.className} bg-crypto-dark text-white min-h-screen`}>
+        <main className="max-w-md mx-auto h-screen flex flex-col">
+          {children}
+        </main>
       </body>
     </html>
   )

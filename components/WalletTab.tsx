@@ -119,17 +119,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-crypto-border">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">Wallet</h2>
-          <button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="p-2 rounded-lg hover:bg-crypto-hover disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+      <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigator.clipboard.writeText(wallet.address)}
@@ -138,11 +128,18 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             {formatAddress(wallet.address)}
             <Copy className="w-4 h-4" />
           </button>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-1 rounded-lg hover:bg-crypto-hover disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
       {/* Token List */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto px-4">
         {loadingBalance ? (
           <div className="flex justify-center items-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
@@ -156,7 +153,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             No tokens found
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {tokenList.map((token) => (
               <TokenRow
                 key={`${token.symbol}-${token.chain}`}
@@ -170,34 +167,34 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         )}
       </div>
 
-      {/* Action Buttons */}
+      {/* Bottom Navigation */}
       <div className="grid grid-cols-4 border-t border-crypto-border">
         <button
           onClick={() => handleTokenAction('send')}
-          className="flex flex-col items-center justify-center p-4 hover:bg-crypto-hover"
+          className="flex flex-col items-center justify-center py-3 hover:bg-crypto-hover"
         >
-          <Send className="w-6 h-6 mb-1" />
+          <Send className="w-5 h-5 mb-1" />
           <span className="text-xs">Send</span>
         </button>
         <button
           onClick={() => handleTokenAction('receive')}
-          className="flex flex-col items-center justify-center p-4 hover:bg-crypto-hover"
+          className="flex flex-col items-center justify-center py-3 hover:bg-crypto-hover"
         >
-          <Download className="w-6 h-6 mb-1" />
+          <Download className="w-5 h-5 mb-1" />
           <span className="text-xs">Receive</span>
         </button>
         <button
           onClick={() => handleTokenAction('swap')}
-          className="flex flex-col items-center justify-center p-4 hover:bg-crypto-hover"
+          className="flex flex-col items-center justify-center py-3 hover:bg-crypto-hover"
         >
-          <ArrowLeftRight className="w-6 h-6 mb-1" />
+          <ArrowLeftRight className="w-5 h-5 mb-1" />
           <span className="text-xs">Swap</span>
         </button>
         <button
           onClick={() => {/* TODO: Add token */}}
-          className="flex flex-col items-center justify-center p-4 hover:bg-crypto-hover"
+          className="flex flex-col items-center justify-center py-3 hover:bg-crypto-hover"
         >
-          <Plus className="w-6 h-6 mb-1" />
+          <Plus className="w-5 h-5 mb-1" />
           <span className="text-xs">Add</span>
         </button>
       </div>
