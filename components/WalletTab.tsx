@@ -110,41 +110,18 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   }, 0).toFixed(2);
 
   // HOOK: Fetch balance
-  const { tokens, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(wallet.address, chain);
+  const { balances: tokenBalances, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(chain, wallet?.address);
   const tokenPrices = useTokenPrices();
   // HOOK: Send token
   const { sendToken: hookSendToken, loading: loadingSend, error: hookSendError, txHash: hookTxHash } = useSendToken();
 
-  // Tambahkan log debug
-  console.log('getTokenList', chain, getTokenList(chain));
-
-  // 1. Default token list per chain
-  const defaultTokenListMap: Record<string, Array<{ symbol: string; name: string; logo: string; address: string; chainId: number }>> = {
-    eth: [
-      { symbol: 'ETH', name: 'Ethereum', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg', address: '', chainId: 1 },
-      { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', chainId: 1 },
-      { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', chainId: 1 },
-    ],
-    base: [
-      { symbol: 'ETH', name: 'Ethereum', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg', address: '', chainId: 8453 },
-      { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg', address: '0xA7D9ddBE1f17865597fBD27EC712455208B6b76D', chainId: 8453 },
-      { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg', address: '0xd9AAEC86B65d86f6A7B5B1b0c42FFA531710b6CA', chainId: 8453 },
-    ],
-    polygon: [
-      { symbol: 'MATIC', name: 'Polygon', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg', address: '', chainId: 137 },
-      { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg', address: '0x3813e82e6f7098b9583FC0F33a962D02018B6803', chainId: 137 },
-      { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg', address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', chainId: 137 },
-    ],
-    bsc: [
-      { symbol: 'BNB', name: 'BNB', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg', address: '', chainId: 56 },
-      { symbol: 'USDT', name: 'Tether USD', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdt.svg', address: '0x55d398326f99059fF775485246999027B3197955', chainId: 56 },
-      { symbol: 'USDC', name: 'USD Coin', logo: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/usdc.svg', address: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', chainId: 56 },
-    ],
-  };
-  const defaultTokenList = defaultTokenListMap[chain] || [];
-
   // Ambil balances dari wallet jika ada
-  const walletBalances: Record<string, any> = (wallet && 'balance' in wallet && wallet.balance) ? wallet.balance : {};
+  const walletBalances: Record<string, any> = {};
+  walletBalances[chain] = {};
+  tokenBalances.forEach((token: any) => {
+    walletBalances[chain][token.symbol.toLowerCase()] = token.balance;
+  });
+
   // Pilih balances sesuai chain aktif
   const activeBalances: Record<string, any> = walletBalances[chain] || {};
   let tokenList: any[] = [];
@@ -154,7 +131,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     const allTokens: any[] = [];
     Object.entries(CHAINS).forEach(([chainId, chainData]: [string, any]) => {
       const chainTokens = chainData.tokens.map((def: any) => {
-        const bal = balances[chainId]?.[def.symbol.toLowerCase()] || balances[chainId]?.[def.symbol] || '0';
+        const bal = tokenBalances[chainId]?.[def.symbol.toLowerCase()] || tokenBalances[chainId]?.[def.symbol] || '0';
         const price = tokenPrices[def.symbol] || { priceUSD: 0, priceChange24h: 0 };
         return {
           ...def,
