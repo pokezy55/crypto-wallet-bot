@@ -1,55 +1,75 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getTokenListStatic } from '../lib/chain';
+import { getTokenList } from '../lib/chain';
 
 export interface TokenBalance {
   symbol: string;
   balance: string;
-  decimals: number;
-  address: string;
-  isNative: boolean;
 }
 
-export function useBalance(address: string, chain: string) {
-  const [tokens, setTokens] = useState<TokenBalance[]>([]);
+interface Token {
+  symbol: string;
+  name: string;
+  logo?: string;
+  address?: string;
+  decimals: number;
+  isNative?: boolean;
+}
+
+export function useBalance(chain: string, address?: string) {
+  const [balances, setBalances] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refetch = useCallback(async () => {
-    if (!address || !chain) return;
-    setLoading(true);
-    setError(null);
+  const fetchBalances = useCallback(async () => {
+    if (!address) {
+      setBalances({});
+      return;
+    }
+
     try {
-      // Ambil daftar token default dari chain (static, tanpa env)
-      const tokenList = getTokenListStatic(chain);
-      console.log('tokenListStatic', chain, tokenList);
-      // Fetch balance dari backend
-      const res = await fetch('/api/balance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, chain }),
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`/api/balance?chain=${chain}&address=${address}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch balances');
+      }
+
+      const data = await response.json();
+      
+      // Normalize balances to lowercase for case-insensitive lookup
+      const normalizedBalances: Record<string, string> = {};
+      Object.entries(data).forEach(([symbol, balance]: [string, any]) => {
+        normalizedBalances[symbol.toLowerCase()] = balance;
       });
-      const data = await res.json();
-      // Gabungkan hasil API (array) ke tokenList
-      const result: TokenBalance[] = data.balances.map((token: any) => ({
-        symbol: token.symbol,
-        balance: token.balance,
-        decimals: token.decimals,
-        address: token.address,
-        isNative: token.isNative,
-      }));
-      console.log('tokenList with balances', result);
-      setTokens(result);
-    } catch (e: any) {
-      setError(e.message || 'Failed to fetch balances');
-      setTokens([]);
+
+      setBalances(normalizedBalances);
+    } catch (err: any) {
+      console.error('Error fetching balances:', err);
+      setError(err.message || 'Failed to fetch balances');
+      setBalances({});
     } finally {
       setLoading(false);
     }
-  }, [address, chain]);
+  }, [chain, address]);
 
   useEffect(() => {
-    refetch();
-  }, [refetch]);
+    fetchBalances();
+  }, [fetchBalances]);
 
-  return { tokens, loading, error, refetch };
+  // Get token list for the chain
+  const tokens = getTokenList(chain);
+  
+  // Map balances to token list
+  const tokenBalances = tokens.map((token: Token) => ({
+    symbol: token.symbol,
+    balance: balances[token.symbol.toLowerCase()] || '0'
+  }));
+
+  return {
+    balances: tokenBalances,
+    loading,
+    error,
+    refetch: fetchBalances
+  };
 } 
