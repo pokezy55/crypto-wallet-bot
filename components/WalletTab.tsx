@@ -147,52 +147,35 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const walletBalances: Record<string, any> = (wallet && 'balance' in wallet && wallet.balance) ? wallet.balance : {};
   // Pilih balances sesuai chain aktif
   const activeBalances: Record<string, any> = walletBalances[chain] || {};
-  // Gabungkan ke tokenList utama
   let tokenList: any[] = [];
+
   if (chain === 'all') {
-    // Fetch all tokens from all chains
+    // Get all tokens from all chains
     const allTokens: any[] = [];
-    Object.entries(CHAINS).forEach(([chainKey, chainObj]: any) => {
-      chainObj.tokens.forEach((token: any) => {
-        allTokens.push({
-          ...token,
-          chain: chainKey,
-        });
+    Object.entries(CHAINS).forEach(([chainId, chainData]: [string, any]) => {
+      const chainTokens = chainData.tokens.map((def: any) => {
+        const bal = balances[chainId]?.[def.symbol.toLowerCase()] || balances[chainId]?.[def.symbol] || '0';
+        const price = tokenPrices[def.symbol] || { priceUSD: 0, priceChange24h: 0 };
+        return {
+          ...def,
+          balance: parseFloat(bal),
+          priceUSD: price.priceUSD,
+          priceChange24h: price.priceChange24h,
+          chains: [chainId.toUpperCase()],
+          name: def.name || def.symbol,
+          logo: def.logo || '',
+          isMerged: false,
+          isNative: def.isNative || false // Mark native tokens
+        };
       });
-    });
-    tokenList = allTokens.map(def => {
-      const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
-      return {
-        ...def,
-        balance: parseFloat(bal),
-        priceUSD: tokenPrices[def.symbol]?.priceUSD ?? 0,
-        priceChange24h: tokenPrices[def.symbol]?.priceChange24h ?? 0,
-        chain: 'all', // Indicate it's from all chains
-      };
-    });
-  } else {
-    // Chain spesifik
-    const chains: Record<string, any> = CHAINS;
-    tokenList = (chains[chain]?.tokens || []).map((def: any) => {
-      const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
-      const price = tokenPrices[def.symbol] || { priceUSD: 0, priceChange24h: 0 };
-      return {
-        ...def,
-        balance: parseFloat(bal),
-        priceUSD: price.priceUSD,
-        priceChange24h: price.priceChange24h,
-        chains: [chain.toUpperCase()], // Ensure chains is always an array with at least one item
-        name: def.name || def.symbol, // Ensure name has fallback
-        logo: def.logo || '', // Ensure logo has fallback
-        isMerged: false // Default isMerged to false
-      };
+      allTokens.push(...chainTokens);
     });
 
-    // Merge tokens if needed
+    // Merge tokens
     const mergedTokens: Record<string, any> = {};
-    tokenList.forEach((token) => {
+    allTokens.forEach((token) => {
       if (shouldMergeToken(token.symbol)) {
-        // Merge token (USDT, USDC)
+        // Merge stablecoins
         if (!mergedTokens[token.symbol]) {
           const price = tokenPrices[token.symbol] || { priceUSD: 0, priceChange24h: 0 };
           mergedTokens[token.symbol] = {
@@ -203,26 +186,59 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             priceUSD: price.priceUSD,
             priceChange24h: price.priceChange24h,
             chains: [],
-            isMerged: true
+            isMerged: true,
+            isNative: false
           };
         }
         mergedTokens[token.symbol].balance += token.balance || 0;
         if (token.balance > 0) {
-          mergedTokens[token.symbol].chains.push(chain.toUpperCase());
+          mergedTokens[token.symbol].chains.push(token.chains[0]);
         }
       } else {
-        // Non-merged tokens
-        const key = `${token.symbol}-${chain}`;
-        mergedTokens[key] = {
-          ...token,
-          chains: [chain.toUpperCase()],
-          isMerged: false
-        };
+        // Keep native tokens and other tokens separate
+        const key = `${token.symbol}-${token.chains[0]}`;
+        if (!mergedTokens[key]) {
+          mergedTokens[key] = token;
+        }
       }
     });
 
-    // Convert merged tokens back to array and sort by balance value
+    // Convert to array and sort: native tokens first, then by value
     tokenList = Object.values(mergedTokens).sort((a, b) => {
+      // Native tokens always come first
+      if (a.isNative && !b.isNative) return -1;
+      if (!a.isNative && b.isNative) return 1;
+      
+      // Then sort by value
+      const aValue = a.balance * (a.priceUSD || 0);
+      const bValue = b.balance * (b.priceUSD || 0);
+      return bValue - aValue;
+    });
+
+  } else {
+    // Single chain logic (unchanged)
+    const chains: Record<string, any> = CHAINS;
+    tokenList = (chains[chain]?.tokens || []).map((def: any) => {
+      const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
+      const price = tokenPrices[def.symbol] || { priceUSD: 0, priceChange24h: 0 };
+      return {
+        ...def,
+        balance: parseFloat(bal),
+        priceUSD: price.priceUSD,
+        priceChange24h: price.priceChange24h,
+        chains: [chain.toUpperCase()],
+        name: def.name || def.symbol,
+        logo: def.logo || '',
+        isMerged: false,
+        isNative: def.isNative || false
+      };
+    });
+
+    // Sort tokens: native first, then by value
+    tokenList.sort((a, b) => {
+      if (a.isNative && !b.isNative) return -1;
+      if (!a.isNative && b.isNative) return 1;
+      
       const aValue = a.balance * (a.priceUSD || 0);
       const bValue = b.balance * (b.priceUSD || 0);
       return bValue - aValue;
