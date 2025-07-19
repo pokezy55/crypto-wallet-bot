@@ -14,6 +14,9 @@ import TokenRow from './TokenRow';
 import { useTokenPrices } from '../hooks/useTokenPrices';
 import { CHAINS, TOKEN_GROUPS, shouldMergeToken, isNativeToken, getTokenPriority } from '../lib/chain';
 import SendModal from './SendModal';
+import SwapModal from './SwapModal';
+import ReceiveModal from './ReceiveModal';
+import { Token } from './ActionModal';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -58,29 +61,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-// Send Modal Component
-interface SendModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  selectedToken: {
-    symbol: string;
-  };
-  onSend: () => void;
-  chain: string;
-}
-
-function SendModal({ isOpen, onClose, selectedToken, onSend, chain }: SendModalProps) {
-  if (!isOpen || !selectedToken) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-crypto-card border border-crypto-border rounded-xl p-6 w-full max-w-sm mx-4">
-        <h3 className="text-lg font-semibold mb-4">Send {selectedToken.symbol}</h3>
-        {/* Modal content */}
-      </div>
-    </div>
-  );
-}
+// Removed local SendModal definition as we're using the imported one
 
 // --- TypeScript types for backend response ---
 interface BalanceResponse {
@@ -231,17 +212,23 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       }
     });
 
-    // Convert to array and sort: native tokens first, then by value
-    tokenList = Object.values(mergedTokens).sort((a, b) => {
-      // Native tokens always come first
-      if (a.isNative && !b.isNative) return -1;
-      if (!a.isNative && b.isNative) return 1;
-      
-      // Then sort by value
-      const aValue = a.balance * (a.priceUSD || 0);
-      const bValue = b.balance * (b.priceUSD || 0);
-      return bValue - aValue;
-    });
+          // Convert to array and sort: native tokens first, then by value
+      tokenList = Object.values(mergedTokens).map(token => ({
+        ...token,
+        priceUSD: token.priceUSD || 0,
+        priceChange24h: token.priceChange24h || 0,
+        isNative: token.isNative || false,
+        chains: token.chains || [chain]
+      })).sort((a, b) => {
+        // Native tokens always come first
+        if (a.isNative && !b.isNative) return -1;
+        if (!a.isNative && b.isNative) return 1;
+        
+        // Then sort by value
+        const aValue = a.balance * (a.priceUSD || 0);
+        const bValue = b.balance * (b.priceUSD || 0);
+        return bValue - aValue;
+      });
 
   } else {
     // Single chain logic (unchanged)
@@ -621,6 +608,36 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       { key: 'base', label: 'Base', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
     ];
 
+    // Modal states
+    const [showSendModal, setShowSendModal] = useState(false);
+    const [showSwapModal, setShowSwapModal] = useState(false);
+    const [showReceiveModal, setShowReceiveModal] = useState(false);
+    const [selectedToken, setSelectedToken] = useState<Token | undefined>(undefined);
+
+      // Handle token selection for modals
+  const handleTokenAction = (token: Token, action: 'send' | 'receive' | 'swap') => {
+    // Ensure token has all required properties
+    const modalToken: Token = {
+      ...token,
+      priceUSD: token.priceUSD || 0,
+      priceChange24h: token.priceChange24h || 0,
+      isNative: token.isNative || false,
+      chains: token.chains || [chain]
+    };
+    setSelectedToken(modalToken);
+    switch (action) {
+      case 'send':
+        setShowSendModal(true);
+        break;
+      case 'receive':
+        setShowReceiveModal(true);
+        break;
+      case 'swap':
+        setShowSwapModal(true);
+        break;
+    }
+  };
+
     return (
       <div className="p-4">
         {/* Address & Copy + Chain Selector */}
@@ -690,21 +707,21 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         {/* Action Buttons */}
         <div className="flex justify-between items-center mb-4 px-2">
           <button 
-            onClick={() => setActiveSection('send')}
+            onClick={() => handleTokenAction(tokenList[0], 'send')}
             className="flex flex-col items-center hover:text-primary-500 transition-colors"
           >
             <Send className="w-6 h-6" />
             <span className="text-xs mt-1">Send</span>
           </button>
           <button 
-            onClick={() => setActiveSection('receive')}
+            onClick={() => handleTokenAction(tokenList[0], 'receive')}
             className="flex flex-col items-center hover:text-primary-500 transition-colors"
           >
             <Download className="w-6 h-6" />
             <span className="text-xs mt-1">Receive</span>
           </button>
           <button 
-            onClick={() => setActiveSection('swap')}
+            onClick={() => handleTokenAction(tokenList[0], 'swap')}
             className="flex flex-col items-center hover:text-primary-500 transition-colors"
           >
             <ArrowLeftRight className="w-6 h-6" />
@@ -828,20 +845,37 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             </div>
           </div>
         )}
+
+        {/* Modals */}
+        <SendModal
+          isOpen={showSendModal}
+          onClose={() => setShowSendModal(false)}
+          selectedToken={selectedToken}
+          chain={chain}
+          wallet={wallet}
+        />
+
+        <SwapModal
+          isOpen={showSwapModal}
+          onClose={() => setShowSwapModal(false)}
+          tokens={tokenList}
+          chain={chain}
+          wallet={wallet}
+        />
+
+        <ReceiveModal
+          isOpen={showReceiveModal}
+          onClose={() => setShowReceiveModal(false)}
+          wallet={wallet}
+          selectedToken={selectedToken}
+        />
       </div>
     );
   }
 } 
 
 // Separate Send Section Component
-interface Token {
-  symbol: string;
-  name: string;
-  logo?: string;
-  balance: number;
-  isNative: boolean;
-  chains: string[];
-}
+// Using Token type from ActionModal
 
 interface SendFormState {
   address: string;
