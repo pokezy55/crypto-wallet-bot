@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { isValidAddress } from '@/lib/address';
 import { BaseModal } from './ActionModal';
 import { getTokenList } from '@/lib/chain';
+import { useSendTransaction } from '@/hooks/useSendTransaction';
 import toast from 'react-hot-toast';
 
 interface SendFormState {
@@ -16,8 +17,7 @@ interface Token {
   balance: number;
   isNative: boolean;
   chains: string[];
-  priceUSD?: number;
-  decimals?: number;
+  decimals: number;
   address?: string;
 }
 
@@ -44,9 +44,10 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
 
   // States
   const [form, setForm] = useState<SendFormState>({ address: '', amount: '' });
-  const [status, setStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
-  const [error, setError] = useState('');
   const [selectedTokenState, setSelectedTokenState] = useState<Token>(defaultToken);
+
+  // Use send transaction hook
+  const { sendTransaction, loading, error } = useSendTransaction();
 
   // Validation
   const isAddressValid = form.address ? isValidAddress(form.address) : false;
@@ -80,97 +81,33 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
   const handleSend = async () => {
     if (!isFormValid || !wallet.seedPhrase) return;
 
-    setStatus('pending');
-    setError('');
-
     try {
       // Validate chain matches token
       if (!selectedTokenState.chains.includes(chain.toUpperCase())) {
         throw new Error(`${selectedTokenState.symbol} is not available on ${chain} network`);
       }
 
-      const response = await fetch('/api/transaction/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: wallet.address,
-          to: form.address,
-          token: selectedTokenState.symbol,
-          chain,
-          amount: form.amount,
-          seedPhrase: wallet.seedPhrase
-        })
+      const result = await sendTransaction({
+        from: wallet.address,
+        to: form.address,
+        amount: form.amount,
+        token: selectedTokenState,
+        chain,
+        seedPhrase: wallet.seedPhrase
       });
 
-      const result = await response.json();
-      
-      if (response.ok && result.success) {
-        setStatus('success');
-        // Show warning if token price is not available
-        if (!selectedTokenState.priceUSD) {
-          toast.error(`Price data not available for ${selectedTokenState.symbol}`);
-        }
-      } else {
-        throw new Error(result.error || 'Failed to send transaction');
+      if (result.success) {
+        onClose();
+        setForm({ address: '', amount: '' });
       }
-    } catch (error: unknown) {
-      console.error('Send transaction error:', error);
-      setStatus('error');
-      setError(error instanceof Error ? error.message : 'Failed to send transaction');
+    } catch (error: any) {
+      console.error('Send error:', error);
+      toast.error(error.message || 'Failed to send transaction');
     }
   };
 
-  // Handle close
-  const handleClose = () => {
-    setForm({ address: '', amount: '' });
-    setStatus('idle');
-    setError('');
-    onClose();
-  };
-
-  // Render different states
-  if (status === 'pending') {
-    return (
-      <BaseModal isOpen={isOpen} onClose={handleClose} title="Sending">
-        <div className="text-center py-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-2"></div>
-          <p>Processing transaction...</p>
-        </div>
-      </BaseModal>
-    );
-  }
-
-  if (status === 'success') {
-    return (
-      <BaseModal isOpen={isOpen} onClose={handleClose} title="Success">
-        <div className="text-center">
-          <p className="text-green-500 mb-4">Transaction sent successfully!</p>
-          <button onClick={handleClose} className="btn-primary w-full">
-            Done
-          </button>
-        </div>
-      </BaseModal>
-    );
-  }
-
-  if (status === 'error') {
-    return (
-      <BaseModal isOpen={isOpen} onClose={handleClose} title="Error">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button
-            onClick={() => setStatus('idle')}
-            className="btn-primary w-full"
-          >
-            Try Again
-          </button>
-        </div>
-      </BaseModal>
-    );
-  }
-
   return (
-    <BaseModal isOpen={isOpen} onClose={handleClose} title="Send">
+    <BaseModal isOpen={isOpen} onClose={onClose} title="Send">
       <div className="space-y-4">
         {/* Token Selector */}
         <div>
@@ -183,15 +120,9 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
             {availableTokens.map((token) => (
               <option key={token.symbol} value={token.symbol}>
                 {token.name} ({token.symbol})
-                {!token.priceUSD && ' - No price data'}
               </option>
             ))}
           </select>
-          {selectedTokenState && !selectedTokenState.priceUSD && (
-            <p className="text-yellow-500 text-xs mt-1">
-              Warning: Price data not available for this token
-            </p>
-          )}
         </div>
 
         {/* Recipient Address */}
@@ -252,10 +183,17 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
         {/* Send Button */}
         <button
           onClick={handleSend}
-          disabled={!isFormValid}
+          disabled={!isFormValid || loading}
           className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Send {selectedTokenState.symbol}
+          {loading ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>Sending...</span>
+            </div>
+          ) : (
+            `Send ${selectedTokenState.symbol}`
+          )}
         </button>
       </div>
     </BaseModal>

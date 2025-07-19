@@ -236,8 +236,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     tokenList = (chains[chain]?.tokens || []).map((def: any) => {
       const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
       const price = tokenPrices[def.symbol] || { priceUSD: 0, priceChange24h: 0 };
-      return {
-        ...def,
+    return {
+      ...def,
         balance: parseFloat(bal),
         priceUSD: price.priceUSD,
         priceChange24h: price.priceChange24h,
@@ -246,8 +246,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         logo: def.logo || '',
         isMerged: false,
         isNative: def.isNative || false
-      };
-    });
+    };
+  });
 
     // Sort tokens: native first, then by value
     tokenList.sort((a, b) => {
@@ -437,43 +437,43 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     setActiveSection('send');
   };
 
-  const handleSendConfirm = async () => {
+    const handleSendConfirm = async () => {
     const token = tokenList.find(t => t.symbol === sendForm.token);
     if (!wallet?.seedPhrase || !token) return;
 
-    setTxStatus('pending');
-    setTxError('');
+      setTxStatus('pending');
+      setTxError('');
     
-    try {
-      const response = await fetch('/api/transaction/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: wallet.address,
-          to: sendForm.address,
+      try {
+        const response = await fetch('/api/transaction/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: wallet.address,
+            to: sendForm.address,
           token: token.symbol,
           chain: chain,
-          amount: sendForm.amount,
+            amount: sendForm.amount,
           seedPhrase: wallet.seedPhrase
-        })
-      });
+          })
+        });
 
-      const result = await response.json();
+        const result = await response.json();
       
       if (response.ok && result.success) {
-        setTxStatus('success');
+          setTxStatus('success');
         // Refresh balances after successful send
         await refetch();
-      } else {
-        setTxStatus('error');
-        setTxError(result.error || 'Failed to send transaction');
-      }
+        } else {
+          setTxStatus('error');
+          setTxError(result.error || 'Failed to send transaction');
+        }
     } catch (error) {
       console.error('Send transaction error:', error);
-      setTxStatus('error');
-      setTxError('Failed to send transaction');
-    }
-  };
+        setTxStatus('error');
+        setTxError('Failed to send transaction');
+      }
+    };
 
   // Reset handler for error boundary
   const handleReset = () => {
@@ -651,9 +651,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             >
               <RefreshCw className={`w-4 h-4 text-white ${loadingBalance ? 'animate-spin' : ''}`} />
             </button>
-            <button onClick={copyAddress} className="p-1 bg-gray-700 rounded hover:bg-primary-700">
-              <Copy className="w-4 h-4 text-white" />
-            </button>
+          <button onClick={copyAddress} className="p-1 bg-gray-700 rounded hover:bg-primary-700">
+            <Copy className="w-4 h-4 text-white" />
+          </button>
             {/* Chain Selector Button */}
             <div className="relative">
               <button
@@ -684,9 +684,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                       <span className="text-white">{opt.label}</span>
                     </button>
                   ))}
-                </div>
+          </div>
               )}
-            </div>
+        </div>
           </div>
         </div>
 
