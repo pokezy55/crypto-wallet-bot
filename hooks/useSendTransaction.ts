@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { BrowserProvider, Contract, JsonRpcSigner, parseUnits, formatUnits } from 'ethers';
-import { getProvider } from '@/lib/chain';
+import { Contract, parseUnits } from 'ethers';
+import { getProvider, getSigner } from '@/lib/chain';
 import toast from 'react-hot-toast';
 
 const ERC20_ABI = [
@@ -20,6 +20,7 @@ interface SendTransactionParams {
     isNative: boolean;
   };
   chain: string;
+  seedPhrase?: string;
 }
 
 interface TransactionResult {
@@ -39,30 +40,13 @@ export function useSendTransaction() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Helper function to get signer
-  const getSigner = async (chain: string): Promise<JsonRpcSigner> => {
-    try {
-      // Get provider for chain
-      const provider = getProvider(chain) as unknown as BrowserProvider;
-      
-      // Request account access if needed
-      await provider.send('eth_requestAccounts', []);
-      
-      // Get signer
-      const signer = await provider.getSigner();
-      return signer;
-    } catch (error) {
-      console.error('Failed to get signer:', error);
-      throw new Error('Failed to connect wallet');
-    }
-  };
-
   const sendTransaction = useCallback(async ({
     from,
     to,
     amount,
     token,
     chain,
+    seedPhrase
   }: SendTransactionParams): Promise<TransactionResult> => {
     setLoading(true);
     setError(null);
@@ -77,7 +61,10 @@ export function useSendTransaction() {
       });
 
       // Get signer
-      const signer = await getSigner(chain);
+      const signer = await getSigner(chain, seedPhrase);
+      if (!signer) {
+        throw new Error('Failed to get signer');
+      }
       
       // Verify signer address matches sender
       const signerAddress = await signer.getAddress();
@@ -100,6 +87,9 @@ export function useSendTransaction() {
           });
 
           // Check native balance
+          if (!signer.provider) {
+            throw new Error('Provider not available');
+          }
           const balance = await signer.provider.getBalance(from);
           if (balance < valueInWei) {
             throw new Error(`Insufficient ${token.symbol} balance`);
@@ -123,7 +113,8 @@ export function useSendTransaction() {
         }
 
         try {
-          const tokenContract = new Contract(token.address, ERC20_ABI, signer);
+          // Use 'as any' to bypass type checking issues with ethers.js
+          const tokenContract = new Contract(token.address, ERC20_ABI, signer as any);
           
           // Parse amount to wei using token decimals
           const amountInWei = parseUnits(amount, token.decimals);
