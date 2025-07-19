@@ -68,7 +68,7 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
 
   // Use hooks
   const { sendTransaction, loading, error } = useSendTransaction();
-  const { fee: estimatedFee, loading: feeLoading, error: feeError } = useGasFee(
+  const { fee: estimatedFee, feeUSD, loading: feeLoading, error: feeError } = useGasFee(
     chain,
     selectedTokenState.isNative
   );
@@ -115,12 +115,19 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
         if (selectedTokenState.isNative) {
           const fee = feeError ? 0 : parseFloat(estimatedFee || '0');
           const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
-          if (value + fee > balance) {
+          // Convert to same decimal places for comparison
+          const valueWei = parseFloat(formatAmount(form.amount, selectedTokenState.decimals));
+          const balanceWei = parseFloat(formatAmount(balance.toString(), selectedTokenState.decimals));
+          const feeWei = parseFloat(formatAmount(fee.toString(), selectedTokenState.decimals));
+          if (valueWei + feeWei > balanceWei) {
             errors.amount = 'Insufficient balance (including fee)';
           }
         } else {
           const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
-          if (value > balance) {
+          // Convert to same decimal places for comparison
+          const valueWei = parseFloat(formatAmount(form.amount, selectedTokenState.decimals));
+          const balanceWei = parseFloat(formatAmount(balance.toString(), selectedTokenState.decimals));
+          if (valueWei > balanceWei) {
             errors.amount = 'Insufficient balance';
           }
         }
@@ -150,7 +157,10 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
       // For native tokens, subtract estimated fee
       const fee = feeError ? 0 : parseFloat(estimatedFee || '0');
       const balance = parseFloat(selectedTokenState.balance?.toString() || '0');
-      const maxAmount = Math.max(0, balance - fee);
+      // Convert to same decimal places for comparison
+      const balanceWei = parseFloat(formatAmount(balance.toString(), selectedTokenState.decimals));
+      const feeWei = parseFloat(formatAmount(fee.toString(), selectedTokenState.decimals));
+      const maxAmount = Math.max(0, balanceWei - feeWei);
       setForm(prev => ({ ...prev, amount: formatBalance(maxAmount) }));
     } else {
       setForm(prev => ({ ...prev, amount: formatBalance(selectedTokenState.balance) }));
@@ -322,7 +332,12 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
             ) : feeError ? (
               <p>Failed to estimate network fee</p>
             ) : (
-              <p>Estimated Network Fee: {estimatedFee} {selectedTokenState.symbol}</p>
+              <div className="flex justify-between">
+                <span>Estimated Network Fee:</span>
+                <span>
+                  {estimatedFee} {selectedTokenState.symbol} (${feeUSD})
+                </span>
+              </div>
             )}
           </div>
         )}

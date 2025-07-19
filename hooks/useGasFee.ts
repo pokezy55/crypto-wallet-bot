@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { formatUnits, parseUnits } from 'ethers';
 import { getProvider } from '@/lib/chain';
+import { useTokenPrices } from './useTokenPrices';
 
 interface GasFeeEstimate {
   fee: string;
+  feeUSD: string;
   loading: boolean;
   error: string | null;
 }
@@ -22,12 +24,24 @@ const DEFAULT_GAS_PRICE = {
   base: BigInt(1)  // 1 Gwei
 };
 
+// Native token symbols per chain
+const NATIVE_SYMBOLS = {
+  eth: 'ETH',
+  bsc: 'BNB',
+  polygon: 'MATIC',
+  base: 'ETH'
+};
+
 export function useGasFee(chain: string, isNative: boolean = true) {
   const [estimate, setEstimate] = useState<GasFeeEstimate>({
     fee: '0',
+    feeUSD: '0.00',
     loading: true,
     error: null
   });
+
+  // Get token prices
+  const tokenPrices = useTokenPrices();
 
   useEffect(() => {
     let mounted = true;
@@ -62,9 +76,15 @@ export function useGasFee(chain: string, isNative: boolean = true) {
         // Format fee to native token decimals (18)
         const formattedFee = formatUnits(totalFee, 18);
 
+        // Calculate USD value
+        const nativeSymbol = NATIVE_SYMBOLS[chain as keyof typeof NATIVE_SYMBOLS] || 'ETH';
+        const tokenPrice = tokenPrices[nativeSymbol]?.priceUSD || 0;
+        const feeUSD = (parseFloat(formattedFee) * tokenPrice).toFixed(4);
+
         if (mounted) {
           setEstimate({
             fee: formattedFee,
+            feeUSD,
             loading: false,
             error: null
           });
@@ -80,8 +100,14 @@ export function useGasFee(chain: string, isNative: boolean = true) {
             const totalFee = gasPrice * gasLimit;
             const formattedFee = formatUnits(totalFee, 18);
 
+            // Calculate USD value
+            const nativeSymbol = NATIVE_SYMBOLS[chain as keyof typeof NATIVE_SYMBOLS] || 'ETH';
+            const tokenPrice = tokenPrices[nativeSymbol]?.priceUSD || 0;
+            const feeUSD = (parseFloat(formattedFee) * tokenPrice).toFixed(4);
+
             setEstimate({
               fee: formattedFee,
+              feeUSD,
               loading: false,
               error: null
             });
@@ -108,7 +134,7 @@ export function useGasFee(chain: string, isNative: boolean = true) {
         clearInterval(pollInterval);
       }
     };
-  }, [chain, isNative]);
+  }, [chain, isNative, tokenPrices]);
 
   return estimate;
 } 
