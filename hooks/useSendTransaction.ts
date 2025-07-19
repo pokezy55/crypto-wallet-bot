@@ -44,13 +44,27 @@ export function useSendTransaction() {
 
     try {
       // Get signer
-      const signer = await getSigner(chain);
+      let signer;
+      try {
+        signer = await getSigner(chain);
+      } catch (error: any) {
+        console.error('Failed to get signer:', error);
+        throw new Error(error.message || 'Failed to get signer');
+      }
+
       if (!signer) {
-        throw new Error('Failed to get signer');
+        throw new Error('Please connect your wallet or import your account to send transactions');
       }
 
       // Verify signer address matches sender
-      const signerAddress = await signer.getAddress();
+      let signerAddress;
+      try {
+        signerAddress = await signer.getAddress();
+      } catch (error: any) {
+        console.error('Failed to get signer address:', error);
+        throw new Error('Please connect your wallet or import your account to send transactions');
+      }
+
       if (signerAddress.toLowerCase() !== from.toLowerCase()) {
         throw new Error('Signer address does not match sender');
       }
@@ -89,7 +103,9 @@ export function useSendTransaction() {
         }
 
         try {
-          const tokenContract = new Contract(token.address, ERC20_ABI, signer);
+          // Create contract with provider first
+          const provider = getProvider(chain);
+          const tokenContract = new Contract(token.address, ERC20_ABI, provider);
           
           // Parse amount to wei using token decimals
           const amountInWei = parseUnits(amount, token.decimals);
@@ -100,7 +116,12 @@ export function useSendTransaction() {
             throw new Error(`Insufficient ${token.symbol} balance`);
           }
 
-          tx = await tokenContract.transfer(to, amountInWei);
+          // Send transaction
+          const data = tokenContract.interface.encodeFunctionData('transfer', [to, amountInWei]);
+          tx = await signer.sendTransaction({
+            to: token.address,
+            data
+          });
         } catch (error: any) {
           console.error('ERC20 token transfer error:', error);
           if (error.message.includes('insufficient funds')) {
@@ -112,6 +133,9 @@ export function useSendTransaction() {
 
       // Wait for transaction confirmation
       const receipt = await tx.wait();
+      if (!receipt) {
+        throw new Error('Transaction failed: no receipt received');
+      }
       
       // Show success toast
       toast.success('Transaction sent!', {
