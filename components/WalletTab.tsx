@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Send, Download, ArrowLeftRight, Copy, QrCode, Plus, Settings, RefreshCw, ExternalLink, Globe } from 'lucide-react';
 import toast from 'react-hot-toast';
 import QRCode from 'qrcode.react';
@@ -225,6 +225,27 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
   // Setelah tokenList didefinisikan:
   // console.log('tokenList', tokenList);
+
+  // Calculate total portfolio value
+  const totalValue = useMemo(() => {
+    return tokenList.reduce((total, token) => {
+      if (!token.balance || token.balance <= 0) return total;
+      const value = token.balance * (token.priceUSD || 0);
+      return total + value;
+    }, 0);
+  }, [tokenList]);
+
+  // Auto refresh balances
+  useEffect(() => {
+    // Initial fetch
+    refetch();
+
+    // Set up polling every 60 seconds
+    const interval = setInterval(refetch, 60000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   // --- Send Form Validasi ---
   const selectedToken = tokenList.find(t => t.symbol === sendForm.token) || tokenList[0];
@@ -691,11 +712,11 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           <span className="font-mono text-xs text-gray-400">{wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}</span>
           <div className="flex items-center gap-2">
             <button 
-              onClick={refreshWallet}
-              disabled={isRefreshing}
+              onClick={refetch}
+              disabled={loadingBalance}
               className="p-1 bg-gray-700 rounded hover:bg-primary-700 disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 text-white ${loadingBalance ? 'animate-spin' : ''}`} />
             </button>
             <button onClick={copyAddress} className="p-1 bg-gray-700 rounded hover:bg-primary-700">
               <Copy className="w-4 h-4 text-white" />
@@ -735,15 +756,18 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             </div>
           </div>
         </div>
+
         {/* Total Worth */}
         <div className="text-center mb-2">
-          <div className="text-3xl font-bold text-white">${totalWorth}</div>
+          <div className="text-3xl font-bold text-white">
+            ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
           <div className="text-xs text-gray-400 flex items-center justify-center gap-1">
             <span>Total Portfolio Value</span>
             <span className="text-gray-500">|</span>
             <span className="flex items-center gap-1">
               <Eth className="w-3 h-3" />
-              {parseFloat(balances['ETH'] ?? '0').toFixed(4)}
+              {tokenList.find(t => t.symbol === 'ETH')?.balance.toFixed(4) || '0.0000'}
             </span>
           </div>
         </div>
