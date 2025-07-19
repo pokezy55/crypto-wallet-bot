@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { isValidAddress } from '@/lib/address';
+import { useState, useEffect } from 'react';
 import { BaseModal } from './ActionModal';
 import { getTokenList } from '@/lib/chain';
 import { useSendTransaction } from '@/hooks/useSendTransaction';
 import { useGasFee } from '@/hooks/useGasFee';
+import { isValidEthereumAddress, isValidAmountFormat, formatAmount, isSensitiveData } from '@/lib/validation';
 import toast from 'react-hot-toast';
 
 interface SendFormState {
@@ -46,49 +46,63 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
   // States
   const [form, setForm] = useState<SendFormState>({ address: '', amount: '' });
   const [selectedTokenState, setSelectedTokenState] = useState<Token>(defaultToken);
+  const [validationErrors, setValidationErrors] = useState({
+    address: '',
+    amount: ''
+  });
 
-  // Use send transaction hook
+  // Use hooks
   const { sendTransaction, loading, error } = useSendTransaction();
-
-  // Get real-time gas fee estimate
   const { fee: estimatedFee, loading: feeLoading, error: feeError } = useGasFee(
     chain,
     selectedTokenState.isNative
   );
 
-  // Validation
-  const isAddressValid = form.address ? isValidAddress(form.address) : false;
-  
-  // Amount validation with fee consideration
-  const validateAmount = (amount: string): boolean => {
-    if (!amount) return false;
-    
-    // Remove commas and spaces
-    const cleanAmount = amount.replace(/,/g, '').trim();
-    
-    // Check format
-    if (!/^\d*\.?\d*$/.test(cleanAmount)) return false;
-    
-    // Parse value
-    const value = parseFloat(cleanAmount);
-    if (isNaN(value) || value <= 0) return false;
-    
-    // For native tokens, check balance including estimated fee
-    if (selectedTokenState.isNative) {
-      const fee = feeError ? 0 : parseFloat(estimatedFee);
-      return value + fee <= selectedTokenState.balance;
-    }
-    
-    // For other tokens, just check balance
-    return value <= selectedTokenState.balance;
-  };
+  // Real-time validation
+  useEffect(() => {
+    const errors = {
+      address: '',
+      amount: ''
+    };
 
-  const isAmountValid = validateAmount(form.amount);
-  const isFormValid = isAddressValid && isAmountValid && selectedTokenState;
+    // Validate address
+    if (form.address) {
+      if (isSensitiveData(form.address)) {
+        errors.address = 'This looks like a private key or mnemonic. Please enter a recipient address.';
+      } else if (!isValidEthereumAddress(form.address)) {
+        errors.address = 'Invalid Ethereum address format';
+      }
+    }
+
+    // Validate amount
+    if (form.amount) {
+      if (!isValidAmountFormat(form.amount)) {
+        errors.amount = 'Invalid amount format';
+      } else {
+        const value = parseFloat(form.amount);
+        if (selectedTokenState.isNative) {
+          const fee = feeError ? 0 : parseFloat(estimatedFee);
+          if (value + fee > selectedTokenState.balance) {
+            errors.amount = 'Insufficient balance (including fee)';
+          }
+        } else if (value > selectedTokenState.balance) {
+          errors.amount = 'Insufficient balance';
+        }
+      }
+    }
+
+    setValidationErrors(errors);
+  }, [form, selectedTokenState, estimatedFee, feeError]);
+
+  // Check if form is valid
+  const isFormValid = !validationErrors.address && 
+                     !validationErrors.amount && 
+                     form.address && 
+                     form.amount;
 
   // Handle amount change
   const handleAmountChange = (value: string) => {
-    // Allow only numbers and one decimal point
+    // Only allow numbers and one decimal point
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setForm(prev => ({ ...prev, amount: value }));
     }
@@ -120,15 +134,24 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
     if (!isFormValid || !wallet.seedPhrase) return;
 
     try {
-      // Validate chain matches token
-      if (!selectedTokenState.chains.includes(chain.toUpperCase())) {
-        throw new Error(`${selectedTokenState.symbol} is not available on ${chain} network`);
+      // Final validation before sending
+      if (!isValidEthereumAddress(form.address)) {
+        toast.error('Invalid recipient address');
+        return;
       }
+
+      if (!isValidAmountFormat(form.amount)) {
+        toast.error('Invalid amount format');
+        return;
+      }
+
+      // Format amount according to token decimals
+      const formattedAmount = formatAmount(form.amount, selectedTokenState.decimals);
 
       const result = await sendTransaction({
         from: wallet.address,
         to: form.address,
-        amount: form.amount,
+        amount: formattedAmount,
         token: selectedTokenState,
         chain,
         seedPhrase: wallet.seedPhrase
@@ -171,10 +194,10 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
             value={form.address}
             onChange={e => setForm(prev => ({ ...prev, address: e.target.value }))}
             placeholder="0x..."
-            className="input-field w-full"
+            className={`input-field w-full ${validationErrors.address ? 'border-red-500' : ''}`}
           />
-          {form.address && !isAddressValid && (
-            <p className="text-red-500 text-xs mt-1">Invalid address</p>
+          {validationErrors.address && (
+            <p className="text-red-500 text-xs mt-1">{validationErrors.address}</p>
           )}
         </div>
 
@@ -187,7 +210,7 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
               value={form.amount}
               onChange={e => handleAmountChange(e.target.value)}
               placeholder="0.0"
-              className="input-field flex-1"
+              className={`input-field flex-1 ${validationErrors.amount ? 'border-red-500' : ''}`}
               pattern="^\d*\.?\d*$"
             />
             <button
@@ -201,8 +224,8 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
             <p className="text-gray-400">
               Available: {selectedTokenState.balance.toFixed(selectedTokenState.decimals)} {selectedTokenState.symbol}
             </p>
-            {form.amount && !isAmountValid && (
-              <p className="text-red-500">Invalid amount</p>
+            {validationErrors.amount && (
+              <p className="text-red-500">{validationErrors.amount}</p>
             )}
           </div>
         </div>
@@ -240,13 +263,6 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
               </p>
             )}
           </div>
-        )}
-
-        {/* Network Warning */}
-        {selectedTokenState && !selectedTokenState.chains.includes(chain.toUpperCase()) && (
-          <p className="text-red-500 text-sm">
-            Warning: {selectedTokenState.symbol} is not available on {chain} network
-          </p>
         )}
 
         {/* Send Button */}
