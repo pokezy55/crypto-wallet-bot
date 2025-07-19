@@ -20,7 +20,6 @@ interface SendTransactionParams {
     isNative: boolean;
   };
   chain: string;
-  seedPhrase?: string;
 }
 
 interface TransactionResult {
@@ -28,13 +27,6 @@ interface TransactionResult {
   txHash?: string;
   error?: string;
 }
-
-// Debug logging function
-const debugLog = (stage: string, data: any) => {
-  console.group(`🔍 Debug [${stage}]`);
-  console.log(JSON.stringify(data, null, 2));
-  console.groupEnd();
-};
 
 export function useSendTransaction() {
   const [loading, setLoading] = useState(false);
@@ -45,27 +37,18 @@ export function useSendTransaction() {
     to,
     amount,
     token,
-    chain,
-    seedPhrase
+    chain
   }: SendTransactionParams): Promise<TransactionResult> => {
     setLoading(true);
     setError(null);
 
     try {
-      debugLog('Transaction Params', {
-        from,
-        to,
-        amount,
-        token,
-        chain
-      });
-
       // Get signer
-      const signer = await getSigner(chain, seedPhrase);
+      const signer = await getSigner(chain);
       if (!signer) {
         throw new Error('Failed to get signer');
       }
-      
+
       // Verify signer address matches sender
       const signerAddress = await signer.getAddress();
       if (signerAddress.toLowerCase() !== from.toLowerCase()) {
@@ -79,13 +62,6 @@ export function useSendTransaction() {
           // Parse amount to wei (always 18 decimals for native tokens)
           const valueInWei = parseUnits(amount, 18);
           
-          debugLog('Native Token Transaction', {
-            to,
-            valueInWei: valueInWei.toString(),
-            chain,
-            decimals: 18
-          });
-
           // Check native balance
           if (!signer.provider) {
             throw new Error('Provider not available');
@@ -113,18 +89,10 @@ export function useSendTransaction() {
         }
 
         try {
-          // Use 'as any' to bypass type checking issues with ethers.js
-          const tokenContract = new Contract(token.address, ERC20_ABI, signer as any);
+          const tokenContract = new Contract(token.address, ERC20_ABI, signer);
           
           // Parse amount to wei using token decimals
           const amountInWei = parseUnits(amount, token.decimals);
-
-          debugLog('ERC20 Token Transaction', {
-            to,
-            tokenAddress: token.address,
-            amountInWei: amountInWei.toString(),
-            decimals: token.decimals
-          });
 
           // Check token balance
           const balance = await tokenContract.balanceOf(from);
@@ -145,13 +113,6 @@ export function useSendTransaction() {
       // Wait for transaction confirmation
       const receipt = await tx.wait();
       
-      debugLog('Transaction Success', {
-        hash: receipt.hash,
-        from,
-        to,
-        amount
-      });
-
       // Show success toast
       toast.success('Transaction sent!', {
         duration: 5000,
@@ -165,12 +126,6 @@ export function useSendTransaction() {
 
     } catch (error: any) {
       console.error('Transaction error:', error);
-      debugLog('Transaction Error', {
-        message: error.message,
-        code: error.code,
-        data: error.data
-      });
-
       const errorMessage = error.message || 'Transaction failed';
       setError(errorMessage);
       toast.error(errorMessage);

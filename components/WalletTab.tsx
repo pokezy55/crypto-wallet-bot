@@ -16,7 +16,7 @@ import { CHAINS, TOKEN_GROUPS, shouldMergeToken, isNativeToken, getTokenPriority
 import SendModal from './SendModal';
 import SwapModal from './SwapModal';
 import ReceiveModal from './ReceiveModal';
-import { Token } from './ActionModal';
+import { Token, ActionModalProps } from './ActionModal';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -86,15 +86,22 @@ interface User {
 interface Wallet {
   id: string;
   address: string;
-  seedPhrase?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 interface WalletTabProps {
-  wallet: Wallet;
-  user: User;
-  onWalletUpdate?: (wallet: Wallet) => void;
+  wallet?: {
+    address: string;
+  };
+  user?: {
+    id: number;
+    first_name: string;
+    last_name?: string;
+    username?: string;
+    photo_url?: string;
+  };
+  onWalletUpdate?: (wallet: any) => void;
   onHistoryUpdate?: (history: any[]) => void;
 }
 
@@ -112,7 +119,36 @@ interface TokenBalance {
 const TOKEN_ORDER = ['ETH', 'BNB', 'MATIC', 'POL', 'BASE', 'USDT', 'USDC', 'USDbC'];
 const STABLECOINS = ['USDT', 'USDC', 'USDbC'];
 
+interface TokenRowProps {
+  token: Token;
+  onSend: () => void;
+  onReceive: () => void;
+  onSwap: () => void;
+}
+
+interface SwapModalProps extends ActionModalProps {}
+interface ReceiveModalProps extends ActionModalProps {}
+interface SendModalProps extends ActionModalProps {}
+
 export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdate }: WalletTabProps) {
+  // Early return if no wallet
+  if (!wallet?.address) {
+    return (
+      <div className="p-6 text-center">
+        <p>Please connect your wallet to continue</p>
+      </div>
+    );
+  }
+
+  // Early return if no user
+  if (!user?.id) {
+    return (
+      <div className="p-6 text-center">
+        <p>Please log in to continue</p>
+      </div>
+    );
+  }
+
   const [activeSection, setActiveSection] = useState<'main' | 'receive' | 'send' | 'swap'>('main');
   const [sendForm, setSendForm] = useState({ address: '', amount: '', token: 'ETH' });
   const [activeTab, setActiveTab] = useState<'token' | 'history'>('token');
@@ -121,25 +157,27 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [isLoadingSend, setIsLoadingSend] = useState(false);
   const [balances, setBalances] = useState<Record<string, string>>({});
-  // Ganti default state chain ke 'eth'
   const [chain, setChain] = useState('eth');
-  // Hapus state tokenPrices dan lastPriceUpdate lama
-  // const [tokenPrices, setTokenPrices] = useState<Record<string, { price: number; change24h: number; lastUpdated: number }>>({});
-  // const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [txError, setTxError] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // Tambahkan deklarasi state swapForm jika masih digunakan
   const [swapForm, setSwapForm] = useState({ fromToken: 'ETH', toToken: 'USDT', amount: '' });
-  // Tambahkan deklarasi state yang hilang
   const [showAddToken, setShowAddToken] = useState(false);
   const [newToken, setNewToken] = useState({ network: 'ETH', contract: '' });
-  // Hitung totalWorth dari balances
-  const totalWorth = Object.entries(balances).reduce((sum, [symbol, amount]) => {
-    const price = tokenPrices[symbol]?.priceUSD ?? 1.0;
-    return sum + parseFloat(amount) * price;
-  }, 0).toFixed(2);
+  const [showChainMenu, setShowChainMenu] = useState(false);
+  const [selectedChain, setSelectedChain] = useState<string>('eth');
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [selectedTokenState, setSelectedTokenState] = useState<Token | undefined>(undefined);
+
+  const CHAIN_OPTIONS = [
+    { key: 'eth', label: 'Ethereum', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
+    { key: 'bsc', label: 'BSC', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg' },
+    { key: 'polygon', label: 'Polygon', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg' },
+    { key: 'base', label: 'Base', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
+  ];
 
   // HOOK: Fetch balance
   const { balances: tokenBalances, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(chain, wallet?.address);
@@ -290,7 +328,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   // --- Send Form Validasi ---
   const selectedToken = tokenList.find(t => t.symbol === sendForm.token) || tokenList[0];
   const isAddressValid = isValidAddress(sendForm.address);
-  const isFormValid = isAddressValid && sendForm.amount && parseFloat(sendForm.amount) > 0 && selectedToken && wallet.seedPhrase;
+  const isFormValid = isAddressValid && sendForm.amount && parseFloat(sendForm.amount) > 0 && selectedToken;
 
   // --- UI & Handler ---
   // ... (lanjutkan dengan render dan handler, gunakan state baru di atas)
@@ -425,8 +463,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       isFormValid: addressValid && 
         form.amount && 
         parseFloat(form.amount) > 0 && 
-        token && 
-        wallet?.seedPhrase
+        token
     };
   };
 
@@ -441,7 +478,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
     const handleSendConfirm = async () => {
     const token = tokenList.find(t => t.symbol === sendForm.token);
-    if (!wallet?.seedPhrase || !token) return;
+    if (!token) return;
 
       setTxStatus('pending');
       setTxError('');
@@ -455,8 +492,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             to: sendForm.address,
           token: token.symbol,
           chain: chain,
-            amount: sendForm.amount,
-          seedPhrase: wallet.seedPhrase
+            amount: sendForm.amount
           })
         });
 
@@ -486,24 +522,52 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     setShowConfirm(false);
   };
 
+  // Handle token selection for modals
+  const handleTokenAction = (token: Token, action: 'send' | 'receive' | 'swap') => {
+    // Validate wallet first
+    if (!wallet?.address) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    // Ensure token has all required properties
+    const modalToken: Token = {
+      ...token,
+      priceUSD: token.priceUSD || 0,
+      priceChange24h: token.priceChange24h || 0,
+      isNative: token.isNative || false,
+      chains: token.chains || [chain],
+      decimals: token.decimals || 18
+    };
+
+    setSelectedTokenState(modalToken);
+
+    switch (action) {
+      case 'send':
+        setShowSendModal(true);
+        break;
+      case 'receive':
+        setShowReceiveModal(true);
+        break;
+      case 'swap':
+        setShowSwapModal(true);
+        break;
+    }
+  };
+
   // Render Send Section with Error Boundary
   if (activeSection === 'send') {
     return (
       <ErrorBoundary onReset={handleReset}>
-        <SendSection
-          wallet={wallet}
-          tokenList={tokenList}
-          sendForm={sendForm}
-          setSendForm={setSendForm}
-          showConfirm={showConfirm}
-          setShowConfirm={setShowConfirm}
-          txStatus={txStatus}
-          setTxStatus={setTxStatus}
-          txError={txError}
-          setTxError={setTxError}
-          onBack={() => setActiveSection('main')}
-          chain={chain}
-        />
+        <div className="p-6">
+          <div className="flex items-center mb-6">
+            <button onClick={() => setActiveSection('main')} className="mr-4 p-2 rounded-lg bg-crypto-card border border-crypto-border">
+              <ArrowLeftRight className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-semibold">Send</h2>
+          </div>
+          {/* Send form content */}
+        </div>
       </ErrorBoundary>
     );
   }
@@ -601,54 +665,6 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   }
 
   if (activeSection === 'main') {
-    const [showChainMenu, setShowChainMenu] = useState(false);
-    const [selectedChain, setSelectedChain] = useState<string>('eth');
-    const CHAIN_OPTIONS = [
-      { key: 'eth', label: 'Ethereum', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
-      { key: 'bsc', label: 'BSC', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg' },
-      { key: 'polygon', label: 'Polygon', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg' },
-      { key: 'base', label: 'Base', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
-    ];
-
-    // Modal states
-    const [showSendModal, setShowSendModal] = useState(false);
-    const [showSwapModal, setShowSwapModal] = useState(false);
-    const [showReceiveModal, setShowReceiveModal] = useState(false);
-    const [selectedToken, setSelectedToken] = useState<Token | undefined>(undefined);
-
-      // Handle token selection for modals
-  const handleTokenAction = (token: Token, action: 'send' | 'receive' | 'swap') => {
-    // Validate wallet first
-    if (!wallet?.address || !wallet?.seedPhrase) {
-      toast.error('Wallet configuration is incomplete');
-      return;
-    }
-
-    // Ensure token has all required properties
-    const modalToken: Token = {
-      ...token,
-      priceUSD: token.priceUSD || 0,
-      priceChange24h: token.priceChange24h || 0,
-      isNative: token.isNative || false,
-      chains: token.chains || [chain],
-      decimals: token.decimals || 18
-    };
-
-    setSelectedToken(modalToken);
-
-    switch (action) {
-      case 'send':
-        setShowSendModal(true);
-        break;
-      case 'receive':
-        setShowReceiveModal(true);
-        break;
-      case 'swap':
-        setShowSwapModal(true);
-        break;
-    }
-  };
-
     return (
       <div className="p-4">
         {/* Address & Copy + Chain Selector */}
@@ -662,9 +678,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             >
               <RefreshCw className={`w-4 h-4 text-white ${loadingBalance ? 'animate-spin' : ''}`} />
             </button>
-          <button onClick={copyAddress} className="p-1 bg-gray-700 rounded hover:bg-primary-700">
-            <Copy className="w-4 h-4 text-white" />
-          </button>
+            <button onClick={copyAddress} className="p-1 bg-gray-700 rounded hover:bg-primary-700">
+              <Copy className="w-4 h-4 text-white" />
+            </button>
             {/* Chain Selector Button */}
             <div className="relative">
               <button
@@ -695,9 +711,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                       <span className="text-white">{opt.label}</span>
                     </button>
                   ))}
-          </div>
+                </div>
               )}
-        </div>
+            </div>
           </div>
         </div>
 
@@ -715,6 +731,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             </span>
           </div>
         </div>
+
         {/* Action Buttons */}
         <div className="flex justify-between items-center mb-4 px-2">
           <button 
@@ -746,114 +763,65 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             <span className="text-xs mt-1">Add</span>
           </button>
         </div>
+
         {/* Tab Token/NFT/History */}
         <div className="flex gap-4 border-b border-gray-700 mb-2">
-          <button className={`pb-2 px-2 text-sm ${activeTab === 'token' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('token')}>Token</button>
-          <button className={`pb-2 px-2 text-sm ${activeTab === 'history' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} onClick={() => setActiveTab('history')}>History</button>
+          <button 
+            className={`pb-2 px-2 text-sm ${activeTab === 'token' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} 
+            onClick={() => setActiveTab('token')}
+          >
+            Token
+          </button>
+          <button 
+            className={`pb-2 px-2 text-sm ${activeTab === 'history' ? 'border-b-2 border-primary-500 text-white' : 'text-gray-400'}`} 
+            onClick={() => setActiveTab('history')}
+          >
+            History
+          </button>
         </div>
+
+        {/* Token List */}
         {activeTab === 'token' && (
-          <div className="flex flex-col gap-3 mt-2">
-            {tokenList.map((token) => (
+          <div className="space-y-2">
+            {tokenList.map((token, index) => (
               <TokenRow
-                key={token.isMerged ? `${token.symbol}-merged` : `${token.symbol}-${token.chains[0]}`}
-                symbol={token.symbol}
-                name={token.name}
-                logo={token.logo}
-                balance={token.balance}
-                priceUSD={token.priceUSD}
-                priceChange24h={token.priceChange24h}
-                chains={token.chains}
-                isMerged={token.isMerged}
+                key={`${token.symbol}-${index}`}
+                token={token}
+                onSend={() => handleTokenAction(token, 'send')}
+                onReceive={() => handleTokenAction(token, 'receive')}
+                onSwap={() => handleTokenAction(token, 'swap')}
               />
             ))}
-            {tokenList.length === 0 && (
-              <div className="text-center text-gray-500 py-8">No tokens found</div>
-            )}
-          </div>
-        )}
-        {activeTab === 'history' && (
-          <div className="space-y-3 mt-2">
-            {loadingHistory ? (
-              <div className="text-center text-gray-500 py-8">Loading history...</div>
-            ) : history.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">No transaction history found</div>
-            ) : (
-              history.map((tx, idx) => (
-                <div key={idx} className="p-3 bg-crypto-card rounded-lg border border-crypto-border flex items-center justify-between">
-                  <div>
-                    {tx.type === 'Send' && (
-                      <div className="text-red-400 font-medium">Send {tx.amount} {tx.token} to <span className="font-mono">{tx.to.slice(0, 6)}...{tx.to.slice(-4)}</span></div>
-                    )}
-                    {tx.type === 'Receive' && (
-                      <div className="text-green-400 font-medium">Receive {tx.amount} {tx.token} from <span className="font-mono">{tx.from.slice(0, 6)}...{tx.from.slice(-4)}</span></div>
-                    )}
-                    {tx.type === 'Swap' && (
-                      <div className="text-blue-400 font-medium">Swap {tx.amountIn} {tx.tokenIn} to {tx.amountOut} {tx.tokenOut}</div>
-                    )}
-                  </div>
-                  <a href={`https://etherscan.io/tx/${tx.txHash}`} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary-500 flex items-center gap-1 text-xs">
-                    TxLink <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              ))
-            )}
           </div>
         )}
 
-        {/* Add Token Modal */}
-        {showAddToken && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-crypto-card border border-crypto-border rounded-xl p-6 w-full max-w-sm mx-4">
-              <h3 className="text-lg font-semibold mb-4">Add Custom Token</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Network</label>
-                  <select
-                    value={newToken.network}
-                    onChange={(e) => setNewToken({ ...newToken, network: e.target.value })}
-                    className="input-field w-full"
-                  >
-                    <option value="ETH">Ethereum</option>
-                    <option value="BSC">BSC</option>
-                    <option value="POLYGON">Polygon</option>
-                    <option value="BASE">Base</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Contract Address</label>
-                  <input
-                    type="text"
-                    value={newToken.contract}
-                    onChange={(e) => setNewToken({ ...newToken, contract: e.target.value })}
-                    placeholder="0x..."
-                    className="input-field w-full"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowAddToken(false)}
-                    className="flex-1 btn-secondary"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (newToken.contract) {
-                        // setCustomTokens([...customTokens, newToken]); // customTokens is not defined
-                        setNewToken({ network: 'ETH', contract: '' });
-                        setShowAddToken(false);
-                        toast.success('Token added successfully!');
-                      } else {
-                        toast.error('Please enter contract address');
-                      }
-                    }}
-                    className="flex-1 btn-primary"
-                  >
-                    Add Token
-                  </button>
-                </div>
+        {/* History */}
+        {activeTab === 'history' && (
+          <div className="space-y-2">
+            {loadingHistory ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
               </div>
-            </div>
+            ) : history.length > 0 ? (
+              history.map((tx, index) => (
+                <div key={index} className="p-3 bg-crypto-card rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm">{tx.type}</div>
+                      <div className="text-xs text-gray-400">{tx.date}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm">{tx.amount} {tx.token}</div>
+                      <div className="text-xs text-gray-400">{tx.status}</div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-400 py-4">
+                No transaction history
+              </div>
+            )}
           </div>
         )}
 
@@ -861,25 +829,19 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         <SendModal
           isOpen={showSendModal}
           onClose={() => setShowSendModal(false)}
-          selectedToken={selectedToken}
+          selectedToken={selectedTokenState}
           chain={chain}
-          wallet={{
-            address: wallet.address,
-            seedPhrase: wallet.seedPhrase
-          }}
+          wallet={wallet}
         />
-
+        
         <SwapModal
           isOpen={showSwapModal}
           onClose={() => setShowSwapModal(false)}
           tokens={tokenList}
           chain={chain}
-          wallet={{
-            address: wallet.address,
-            seedPhrase: wallet.seedPhrase
-          }}
+          wallet={wallet}
         />
-
+        
         <ReceiveModal
           isOpen={showReceiveModal}
           onClose={() => setShowReceiveModal(false)}
@@ -888,316 +850,6 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       </div>
     );
   }
-} 
 
-// Separate Send Section Component
-// Using Token type from ActionModal
-
-interface SendFormState {
-  address: string;
-  amount: string;
-  token: string;
+  return null;
 }
-
-interface SendSectionProps {
-  wallet: {
-    address: string;
-    seedPhrase?: string;
-  };
-  tokenList: Token[];
-  sendForm: SendFormState;
-  setSendForm: (form: SendFormState | ((prev: SendFormState) => SendFormState)) => void;
-  showConfirm: boolean;
-  setShowConfirm: (show: boolean) => void;
-  txStatus: 'idle' | 'pending' | 'success' | 'error';
-  setTxStatus: (status: 'idle' | 'pending' | 'success' | 'error') => void;
-  txError: string;
-  setTxError: (error: string) => void;
-  onBack: () => void;
-  chain: string;
-}
-
-function SendSection({
-  wallet,
-  tokenList,
-  sendForm,
-  setSendForm,
-  showConfirm,
-  setShowConfirm,
-  txStatus,
-  setTxStatus,
-  txError,
-  setTxError,
-  onBack,
-  chain
-}: SendSectionProps) {
-  // Get sendable tokens and validate
-  const sendableTokens = useMemo(() => 
-    tokenList.filter(t => t.balance > 0)
-      .sort((a, b) => b.balance - a.balance),
-    [tokenList]
-  );
-
-  // Early return if no tokens
-  if (sendableTokens.length === 0) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center mb-6">
-          <button onClick={onBack} className="mr-4 p-2 rounded-lg bg-crypto-card border border-crypto-border">
-            <ArrowLeftRight className="w-5 h-5" />
-          </button>
-          <h2 className="text-xl font-semibold">Send</h2>
-        </div>
-        <div className="text-center text-gray-400 py-8">
-          No tokens available to send
-        </div>
-      </div>
-    );
-  }
-
-  // Ensure selected token exists or use first available
-  const selectedToken = sendableTokens.find(t => t.symbol === sendForm.token) || sendableTokens[0];
-
-  // Validation
-  const isAddressValid = sendForm.address ? isValidAddress(sendForm.address) : false;
-  const isFormValid = isAddressValid && 
-    sendForm.amount && 
-    parseFloat(sendForm.amount) > 0 && 
-    selectedToken;
-
-  // Estimated fee
-  const estimatedFee = selectedToken.isNative ? 0.001 : 0;
-
-  // Handle max amount
-  const handleMax = () => {
-    if (selectedToken.isNative) {
-      const maxAmount = Math.max(0, selectedToken.balance - estimatedFee);
-      setSendForm(prev => ({ ...prev, amount: maxAmount.toFixed(6) }));
-    } else {
-      setSendForm(prev => ({ ...prev, amount: selectedToken.balance.toFixed(6) }));
-    }
-  };
-
-  // Handle send confirmation
-  const handleSendConfirm = async () => {
-    if (!wallet?.seedPhrase || !selectedToken || !isFormValid) return;
-
-    setTxStatus('pending');
-    setTxError('');
-    
-    try {
-      const response = await fetch('/api/transaction/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: wallet.address,
-          to: sendForm.address,
-          token: selectedToken.symbol,
-          chain,
-          amount: sendForm.amount,
-          seedPhrase: wallet.seedPhrase
-        })
-      });
-
-      const result = await response.json();
-      
-      if (response.ok && result.success) {
-        setTxStatus('success');
-      } else {
-        throw new Error(result.error || 'Failed to send transaction');
-      }
-    } catch (error: unknown) {
-      console.error('Send transaction error:', error);
-      setTxStatus('error');
-      setTxError(error instanceof Error ? error.message : 'Failed to send transaction');
-    }
-  };
-
-  return (
-    <div className="p-6">
-      <div className="flex items-center mb-6">
-        <button
-          onClick={() => {
-            onBack();
-            setSendForm({ address: '', amount: '', token: 'ETH' });
-            setTxStatus('idle');
-            setTxError('');
-            setShowConfirm(false);
-          }}
-          className="mr-4 p-2 rounded-lg bg-crypto-card border border-crypto-border"
-        >
-          <ArrowLeftRight className="w-5 h-5" />
-        </button>
-        <h2 className="text-xl font-semibold">Send</h2>
-      </div>
-
-      <div className="card">
-        {/* Token Selector */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Token</label>
-          <div className="relative">
-            <select
-              value={selectedToken.symbol}
-              onChange={e => setSendForm(prev => ({ ...prev, token: e.target.value }))}
-              className="input-field w-full pl-12"
-            >
-              {sendableTokens.map(token => (
-                <option key={token.symbol} value={token.symbol}>
-                  {token.name} ({token.balance.toFixed(4)} {token.symbol})
-                </option>
-              ))}
-            </select>
-            {selectedToken.logo && (
-              <img 
-                src={selectedToken.logo} 
-                alt={selectedToken.symbol}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full"
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Recipient Address */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Recipient Address</label>
-          <input
-            type="text"
-            value={sendForm.address}
-            onChange={e => setSendForm(prev => ({ ...prev, address: e.target.value }))}
-            placeholder="0x..."
-            className="input-field w-full"
-          />
-          {sendForm.address && !isAddressValid && (
-            <p className="text-red-500 text-xs mt-1">Invalid address</p>
-          )}
-        </div>
-
-        {/* Amount */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Amount</label>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              value={sendForm.amount}
-              onChange={e => setSendForm(prev => ({ ...prev, amount: e.target.value }))}
-              placeholder="0.0"
-              className="input-field flex-1"
-              min="0"
-              step="any"
-              max={selectedToken.isNative ? selectedToken.balance - estimatedFee : selectedToken.balance}
-            />
-            <button
-              onClick={handleMax}
-              className="btn-secondary px-3"
-            >
-              MAX
-            </button>
-          </div>
-          <p className="text-xs text-gray-400 mt-1">
-            Available: {formatBalance(selectedToken.balance)} {selectedToken.symbol}
-          </p>
-        </div>
-
-        {/* Network Fee */}
-        {selectedToken.isNative && (
-          <p className="text-xs text-gray-400">
-            Estimated Network Fee: {estimatedFee} {selectedToken.symbol}
-          </p>
-        )}
-
-        {/* Send Button */}
-        <button
-          onClick={() => setShowConfirm(true)}
-          disabled={!isFormValid}
-          className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Send {selectedToken.symbol}
-        </button>
-      </div>
-
-      {/* Confirmation Modal with Error Boundary */}
-      <ErrorBoundary onReset={() => setShowConfirm(false)}>
-        {showConfirm && selectedToken && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-crypto-card border border-crypto-border rounded-xl p-6 w-full max-w-sm mx-4">
-              <h3 className="text-lg font-semibold mb-4">Confirm Transaction</h3>
-              
-              <div className="space-y-2 mb-4">
-                <p>Send <b>{sendForm.amount} {selectedToken.symbol}</b></p>
-                <p className="text-sm text-gray-400">to</p>
-                <p className="font-mono text-primary-500 break-all">{sendForm.address}</p>
-                {selectedToken.isNative && (
-                  <p className="text-sm text-gray-400">
-                    Network Fee: {estimatedFee} {selectedToken.symbol}
-                  </p>
-                )}
-              </div>
-
-              {txStatus === 'idle' && (
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setShowConfirm(false)} 
-                    className="btn-secondary flex-1"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleSendConfirm}
-                    className="btn-primary flex-1"
-                  >
-                    Confirm
-                  </button>
-                </div>
-              )}
-
-              {txStatus === 'pending' && (
-                <div className="text-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-2"></div>
-                  <p>Processing transaction...</p>
-                </div>
-              )}
-
-              {txStatus === 'success' && (
-                <div className="text-center">
-                  <p className="text-green-500 mb-4">Transaction sent successfully!</p>
-                  <button
-                    onClick={() => {
-                      setShowConfirm(false);
-                      onBack();
-                      setSendForm({ address: '', amount: '', token: 'ETH' });
-                      setTxStatus('idle');
-                    }}
-                    className="btn-primary w-full"
-                  >
-                    Done
-                  </button>
-                </div>
-              )}
-
-              {txStatus === 'error' && (
-                <div className="text-center">
-                  <p className="text-red-500 mb-4">{txError}</p>
-                  <button
-                    onClick={() => {
-                      setTxStatus('idle');
-                      setTxError('');
-                    }}
-                    className="btn-primary w-full"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </ErrorBoundary>
-    </div>
-  );
-} 
-
-// Format balance helper
-function formatBalance(balance: string | number, decimals: number = 6): string {
-  const num = typeof balance === 'string' ? parseFloat(balance) : balance;
-  return num.toFixed(decimals).replace(/\.?0+$/, '');
-} 

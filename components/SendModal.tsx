@@ -35,7 +35,6 @@ interface SendModalProps {
   chain: string;
   wallet?: {
     address: string;
-    seedPhrase?: string;
   };
 }
 
@@ -182,7 +181,11 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
       }
     } catch (error: any) {
       console.error('Send error:', error);
-      toast.error(error.message || 'Failed to send transaction');
+      if (error.message.includes('Failed to get signer')) {
+        toast.error('Please connect your wallet or import your account to send transactions');
+      } else {
+        toast.error(error.message || 'Failed to send transaction');
+      }
     }
   };
 
