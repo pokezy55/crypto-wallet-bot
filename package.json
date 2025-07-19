@@ -1,7 +1,7 @@
 {
   "name": "telegram-crypto-wallet-bot",
   "version": "1.0.0",
-  "description": "Telegram bot crypto wallet builder with EVM support",
+  "description": "Cointwo Wallet builder with EVM support",
   "private": true,
   "scripts": {
     "dev": "next dev",
