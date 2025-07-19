@@ -66,9 +66,9 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
 
   const chatAdmin = () => {
     if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-      window.Telegram.WebApp.openTelegramLink('https://t.me/AdminUsername')
+      window.Telegram.WebApp.openTelegramLink('https://t.me/CoinTwoSupport')
     } else {
-      window.open('https://t.me/AdminUsername', '_blank')
+      window.open('https://t.me/CoinTwoSupport', '_blank')
     }
   }
 

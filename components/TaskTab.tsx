@@ -131,7 +131,7 @@ export default function TaskTab({ user }: TaskTabProps) {
             </p>
             <div className="flex items-center gap-2 text-sm">
               <span className="text-gray-400">Reward:</span>
-              <span className="text-green-400 font-medium">$5 USDT</span>
+              <span className="text-green-400 font-medium">$3 USDT</span>
               <Gift className="w-4 h-4 text-green-400" />
             </div>
           </div>

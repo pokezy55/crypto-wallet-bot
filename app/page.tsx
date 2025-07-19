@@ -41,20 +41,70 @@ export default function Home() {
   const [showImportWallet, setShowImportWallet] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Parse Telegram WebApp data
   useEffect(() => {
-    // Initialize Telegram WebApp
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-      window.Telegram.WebApp.ready()
-      window.Telegram.WebApp.expand()
-      // Get user data from Telegram
-      const telegramUser = window.Telegram.WebApp.initDataUnsafe.user
-      if (telegramUser) {
-        setUser(telegramUser)
-        checkUserWallet(telegramUser.id)
+    const initTelegramWebApp = () => {
+      try {
+        if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+          // Initialize Telegram WebApp
+          const webApp = window.Telegram.WebApp;
+          webApp.ready();
+          webApp.expand();
+          
+          // Get user data
+          if (webApp.initDataUnsafe?.user) {
+            const telegramUser = webApp.initDataUnsafe.user;
+            setUser({
+              id: telegramUser.id,
+              first_name: telegramUser.first_name,
+              last_name: telegramUser.last_name,
+              username: telegramUser.username,
+              photo_url: telegramUser.photo_url
+            });
+            
+            // Check user wallet
+            checkUserWallet(telegramUser.id);
+            
+            // Check for referral code in start param
+            const startParam = webApp.initDataUnsafe?.start_param;
+            if (startParam && startParam.startsWith('REF')) {
+              // Track referral
+              trackReferral(startParam, telegramUser.id);
+            }
+          }
+        }
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error initializing Telegram WebApp:', error);
+        setIsLoading(false);
       }
+    };
+    
+    initTelegramWebApp();
+  }, []);
+
+  // Track referral
+  const trackReferral = async (referralCode: string, newUserId: number) => {
+    try {
+      const response = await fetch('/api/referral/track', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          referralCode,
+          newUserId
+        }),
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        console.error('Error tracking referral:', data.error);
+      }
+    } catch (error) {
+      console.error('Failed to track referral:', error);
     }
-    setIsLoading(false)
-  }, [])
+  };
 
   // Selalu fetch wallet dari backend setiap kali tab wallet aktif
   useEffect(() => {
