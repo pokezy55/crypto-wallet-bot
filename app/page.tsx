@@ -122,42 +122,44 @@ export default function Home() {
 
   if (!wallet) {
     return (
-      <div className="min-h-screen bg-crypto-dark flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-crypto-dark flex flex-col items-center p-6">
         {/* Logo */}
-        <div className="mb-8">
-          <div className="w-24 h-24 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center mb-4">
-            <Wallet className="w-12 h-12 text-white" />
+        <div className="flex-1 flex flex-col items-center justify-center max-w-md w-full">
+          <div className="mb-8">
+            <div className="w-24 h-24 bg-primary-500 rounded-full flex items-center justify-center mb-6 mx-auto">
+              <Wallet className="w-12 h-12 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-white text-center">Crypto Wallet Bot</h1>
           </div>
-          <h1 className="text-2xl font-bold text-white text-center">Crypto Wallet Bot</h1>
-        </div>
 
-        {/* Description */}
-        <div className="text-center mb-8 max-w-md">
-          <p className="text-gray-300 mb-4">
-            Welcome to your secure crypto wallet! Create a new wallet or import an existing one to start managing your digital assets.
-          </p>
-          <p className="text-sm text-gray-400">
-            Support for all EVM-compatible networks including Ethereum, BSC, Polygon, and more.
-          </p>
-        </div>
+          {/* Description */}
+          <div className="text-center mb-12 w-full">
+            <p className="text-gray-300 mb-4">
+              Welcome to your secure crypto wallet! Create a new wallet or import an existing one to start managing your digital assets.
+            </p>
+            <p className="text-sm text-gray-400">
+              Support for all EVM-compatible networks including Ethereum, BSC, Polygon, and more.
+            </p>
+          </div>
 
-        {/* Action Buttons */}
-        <div className="w-full max-w-sm space-y-4">
-          <button
-            onClick={handleCreateWallet}
-            className="w-full btn-primary flex items-center justify-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Create New Wallet
-          </button>
-          
-          <button
-            onClick={handleImportWallet}
-            className="w-full btn-secondary flex items-center justify-center gap-2"
-          >
-            <Download className="w-5 h-5" />
-            Import Wallet
-          </button>
+          {/* Action Buttons */}
+          <div className="w-full space-y-4">
+            <button
+              onClick={handleCreateWallet}
+              className="w-full btn-primary flex items-center justify-center gap-2 py-3"
+            >
+              <Plus className="w-5 h-5" />
+              Create New Wallet
+            </button>
+            
+            <button
+              onClick={handleImportWallet}
+              className="w-full btn-secondary flex items-center justify-center gap-2 py-3"
+            >
+              <Download className="w-5 h-5" />
+              Import Wallet
+            </button>
+          </div>
         </div>
 
         {/* Modals */}
