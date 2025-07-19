@@ -678,7 +678,6 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     const [showChainMenu, setShowChainMenu] = useState(false);
     const [selectedChain, setSelectedChain] = useState<string>('eth');
     const CHAIN_OPTIONS = [
-      { key: 'all', label: 'All Networks', icon: '', emoji: '🌐' },
       { key: 'eth', label: 'Ethereum', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
       { key: 'bsc', label: 'BSC', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg' },
       { key: 'polygon', label: 'Polygon', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg' },
@@ -707,15 +706,11 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                 className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-colors"
                 onClick={() => setShowChainMenu(v => !v)}
               >
-                {selectedChain === 'all' ? (
-                  <Globe className="w-6 h-6 text-white" />
-                ) : (
-                  <img
-                    src={CHAIN_OPTIONS.find(c => c.key === selectedChain)?.icon || ''}
-                    alt={selectedChain}
-                    className="w-6 h-6 rounded-full"
-                  />
-                )}
+                <img
+                  src={CHAIN_OPTIONS.find(c => c.key === selectedChain)?.icon || ''}
+                  alt={selectedChain}
+                  className="w-6 h-6 rounded-full"
+                />
               </button>
               {/* Dropdown/Popover */}
               {showChainMenu && (
@@ -726,17 +721,12 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                       className={`flex items-center gap-2 w-full px-4 py-2 text-left hover:bg-primary-600/20 transition-colors ${selectedChain === opt.key ? 'bg-primary-900/40' : ''}`}
                       onClick={() => {
                         setSelectedChain(opt.key);
-                        setChain(opt.key === 'all' ? 'eth' : opt.key); // fallback fetch eth for useBalance
+                        setChain(opt.key);
                         setShowChainMenu(false);
                         refetch();
-                        console.log('selectedChain', opt.key);
                       }}
                     >
-                      {opt.key === 'all' ? (
-                        <Globe className="w-5 h-5 text-white" />
-                      ) : (
-                        <img src={opt.icon} alt={opt.label} className="w-5 h-5 rounded-full" />
-                      )}
+                      <img src={opt.icon} alt={opt.label} className="w-5 h-5 rounded-full" />
                       <span className="text-white">{opt.label}</span>
                     </button>
                   ))}
