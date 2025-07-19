@@ -25,39 +25,59 @@ export default function ImportWalletModal({ isOpen, onClose, onWalletImported, u
   const [showSeedPhrase, setShowSeedPhrase] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
+  const validateAndCleanSeedPhrase = (phrase: string): string => {
+    // Remove any leading/trailing whitespace and normalize spaces
+    const cleaned = phrase.trim().replace(/\s+/g, ' ');
+    
+    // Remove any 0x prefix if present
+    const withoutPrefix = cleaned.replace(/^0x\s*/, '');
+    
+    // Split into words and check count
+    const words = withoutPrefix.split(' ');
+    if (words.length !== 12) {
+      throw new Error('Seed phrase must contain exactly 12 words');
+    }
+
+    // Validate each word (basic check)
+    for (const word of words) {
+      if (word.length < 3) {
+        throw new Error('Invalid word in seed phrase');
+      }
+      if (!/^[a-zA-Z]+$/.test(word)) {
+        throw new Error('Seed phrase can only contain letters');
+      }
+    }
+
+    return withoutPrefix;
+  }
+
   const handleImportWallet = async () => {
     if (!seedPhrase.trim()) {
       toast.error('Please enter your seed phrase')
       return
     }
 
-    const words = seedPhrase.trim().split(/\s+/)
-    if (words.length !== 12) {
-      toast.error('Seed phrase must contain exactly 12 words')
-      return
-    }
-
     setIsLoading(true)
 
     try {
-      // Clean seed phrase
-      const cleanSeedPhrase = seedPhrase.trim().replace(/\s+/g, ' ')
+      // Clean and validate seed phrase
+      const cleanedPhrase = validateAndCleanSeedPhrase(seedPhrase);
 
-      // Validate seed phrase by trying to create a wallet
-      let wallet: Wallet
+      // Try creating wallet to validate seed phrase
+      let wallet: Wallet;
       try {
-        wallet = new Wallet(cleanSeedPhrase)
+        wallet = new Wallet(cleanedPhrase);
       } catch (error) {
-        console.error('Invalid seed phrase:', error)
-        toast.error('Invalid seed phrase format')
-        return
+        console.error('Invalid seed phrase:', error);
+        toast.error('Invalid seed phrase format');
+        return;
       }
 
       // Create wallet object
       const importedWallet: WalletData = {
         id: `wallet_${userId}`,
         address: wallet.address,
-        seedPhrase: cleanSeedPhrase,
+        seedPhrase: cleanedPhrase,
         balance: {
           eth: { eth: '0.0', usdt: '0.00' },
           bsc: { bnb: '0.0', usdt: '0.00' },
@@ -75,12 +95,13 @@ export default function ImportWalletModal({ isOpen, onClose, onWalletImported, u
         body: JSON.stringify({
           userId,
           address: importedWallet.address,
-          seedPhrase: importedWallet.seedPhrase
+          seedPhrase: cleanedPhrase
         })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to save wallet')
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save wallet');
       }
 
       onWalletImported(importedWallet)
@@ -136,7 +157,7 @@ export default function ImportWalletModal({ isOpen, onClose, onWalletImported, u
                   value={seedPhrase}
                   onChange={(e) => setSeedPhrase(e.target.value)}
                   placeholder="Enter your 12-word seed phrase..."
-                  className={`input-field w-full h-24 resize-none ${!showSeedPhrase ? 'text-security-disc' : ''}`}
+                  className={`input-field w-full h-24 resize-none ${!showSeedPhrase ? 'font-mono password-input' : ''}`}
                   style={{ paddingRight: '80px' }}
                 />
                 <div className="absolute right-2 top-2 flex gap-1">
