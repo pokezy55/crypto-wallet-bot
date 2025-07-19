@@ -1,43 +1,52 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Wallet, Clipboard, Users, Settings, Plus, Download } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Wallet as WalletIcon, Clipboard, Users, Settings, Plus, Download, Send, ArrowLeftRight } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 // Components
-import TelegramLogin from '@/components/TelegramLogin'
-import WalletTab from '@/components/WalletTab'
-import TaskTab from '@/components/TaskTab'
-import ReferralTab from '@/components/ReferralTab'
-import MenuTab from '@/components/MenuTab'
-import CreateWalletModal from '@/components/CreateWalletModal'
-import ImportWalletModal from '@/components/ImportWalletModal'
+import TelegramLogin from '@/components/TelegramLogin';
+import WalletTab from '@/components/WalletTab';
+import TaskTab from '@/components/TaskTab';
+import ReferralTab from '@/components/ReferralTab';
+import MenuTab from '@/components/MenuTab';
+import CreateWalletModal from '@/components/CreateWalletModal';
+import ImportWalletModal from '@/components/ImportWalletModal';
+import { useTokenPrices } from '@/hooks/useTokenPrices';
 
 // Prevent prerendering
 export const dynamic = 'force-dynamic';
 
 // Types
 interface User {
-  id: number
-  first_name: string
-  last_name?: string
-  username?: string
-  photo_url?: string
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
 }
 
 interface Wallet {
   id: string;
   address: string;
+  balance?: Record<string, Record<string, string>>;
   seedPhrase?: string;
-  balance: Record<string, Record<string, string>>;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export default function Home() {
-  const [user, setUser] = useState<User | null>(null)
-  const [wallet, setWallet] = useState<Wallet | null>(null)
-  const [activeTab, setActiveTab] = useState<'wallet' | 'task' | 'referral' | 'menu'>('wallet')
-  const [showCreateWallet, setShowCreateWallet] = useState(false)
-  const [showImportWallet, setShowImportWallet] = useState(false)
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [activeTab, setActiveTab] = useState<'wallet' | 'task' | 'referral' | 'menu'>('wallet');
+  const [selectedChain, setSelectedChain] = useState('eth');
+  const [activeSection, setActiveSection] = useState('main');
+  const [showAddToken, setShowAddToken] = useState(false);
+  const [showCreateWallet, setShowCreateWallet] = useState(false);
+  const [showImportWallet, setShowImportWallet] = useState(false);
+  const tokenPrices = useTokenPrices();
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -88,6 +97,11 @@ export default function Home() {
     }
   }
 
+  const handleAuth = (user: User) => {
+    setUser(user);
+    checkUserWallet(user.id);
+  };
+
   const handleCreateWallet = async () => {
     setShowCreateWallet(true)
   }
@@ -116,122 +130,118 @@ export default function Home() {
     )
   }
 
-  if (!user) {
-    return <TelegramLogin onLogin={setUser} />
-  }
-
-  if (!wallet) {
-    return (
-      <div className="min-h-screen bg-crypto-dark flex flex-col items-center justify-center p-6">
-        {/* Logo */}
-        <div className="mb-8">
-          <div className="w-24 h-24 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center mb-4">
-            <Wallet className="w-12 h-12 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white text-center">Crypto Wallet Bot</h1>
-        </div>
-
-        {/* Description */}
-        <div className="text-center mb-8 max-w-md">
-          <p className="text-gray-300 mb-4">
-            Welcome to your secure crypto wallet! Create a new wallet or import an existing one to start managing your digital assets.
-          </p>
-          <p className="text-sm text-gray-400">
-            Support for all EVM-compatible networks including Ethereum, BSC, Polygon, and more.
-          </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="w-full max-w-sm space-y-4">
-          <button
-            onClick={handleCreateWallet}
-            className="w-full btn-primary flex items-center justify-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Create New Wallet
-          </button>
-          
-          <button
-            onClick={handleImportWallet}
-            className="w-full btn-secondary flex items-center justify-center gap-2"
-          >
-            <Download className="w-5 h-5" />
-            Import Wallet
-          </button>
-        </div>
-
-        {/* Modals */}
-        <CreateWalletModal
-          isOpen={showCreateWallet}
-          onClose={() => setShowCreateWallet(false)}
-          onWalletCreated={handleWalletCreated}
-          userId={user.id}
-        />
-        
-        <ImportWalletModal
-          isOpen={showImportWallet}
-          onClose={() => setShowImportWallet(false)}
-          onWalletImported={handleWalletImported}
-          userId={user.id}
-        />
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-crypto-dark flex flex-col">
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto pb-20">
-        {activeTab === 'wallet' && <WalletTab wallet={wallet} user={user} />}
-        {activeTab === 'task' && <TaskTab user={user} />}
-        {activeTab === 'referral' && <ReferralTab user={user} />}
-        {activeTab === 'menu' && <MenuTab wallet={wallet} user={user} />}
-      </div>
-
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-crypto-card border-t border-crypto-border">
-        <div className="flex justify-around py-2">
-          <button
-            onClick={() => setActiveTab('wallet')}
-            className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
-              activeTab === 'wallet' ? 'text-primary-500' : 'text-gray-400'
-            }`}
-          >
-            <Wallet className="w-6 h-6 mb-1" />
-            <span className="text-xs">Wallet</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('task')}
-            className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
-              activeTab === 'task' ? 'text-primary-500' : 'text-gray-400'
-            }`}
-          >
-            <Clipboard className="w-6 h-6 mb-1" />
-            <span className="text-xs">Task</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('referral')}
-            className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
-              activeTab === 'referral' ? 'text-primary-500' : 'text-gray-400'
-            }`}
-          >
-            <Users className="w-6 h-6 mb-1" />
-            <span className="text-xs">Referral</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('menu')}
-            className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
-              activeTab === 'menu' ? 'text-primary-500' : 'text-gray-400'
-            }`}
-          >
-            <Settings className="w-6 h-6 mb-1" />
-            <span className="text-xs">Menu</span>
-          </button>
+    <main className="min-h-screen bg-crypto-dark text-white">
+      {!user ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <TelegramLogin onAuth={handleAuth} />
         </div>
-      </div>
-    </div>
-  )
+      ) : !wallet ? (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4">
+          <h1 className="text-2xl font-bold mb-8">Welcome to Crypto Wallet</h1>
+          <div className="flex gap-4">
+            <button
+              onClick={() => setShowCreateWallet(true)}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Create New Wallet
+            </button>
+            <button
+              onClick={() => setShowImportWallet(true)}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <Download className="w-5 h-5" />
+              Import Wallet
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Main Content */}
+          <div className="flex-1 overflow-y-auto pb-20">
+            {activeTab === 'wallet' && (
+              <WalletTab 
+                chain={selectedChain}
+                wallet={wallet}
+                tokenPrices={tokenPrices}
+                onSend={() => setActiveSection('send')}
+                onReceive={() => setActiveSection('receive')}
+                onSwap={() => setActiveSection('swap')}
+                onAdd={() => setShowAddToken(true)}
+              />
+            )}
+            {activeTab === 'task' && <TaskTab user={user} />}
+            {activeTab === 'referral' && <ReferralTab user={user} />}
+            {activeTab === 'menu' && <MenuTab wallet={wallet} user={user} />}
+          </div>
+
+          {/* Bottom Navigation */}
+          <nav className="fixed bottom-0 left-0 right-0 bg-crypto-card border-t border-crypto-border">
+            <div className="flex justify-around p-2">
+              <button
+                onClick={() => setActiveTab('wallet')}
+                className={`flex flex-col items-center p-2 rounded-lg ${
+                  activeTab === 'wallet' ? 'text-primary-500' : 'text-gray-400'
+                }`}
+              >
+                <WalletIcon className="w-6 h-6" />
+                <span className="text-xs mt-1">Wallet</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('task')}
+                className={`flex flex-col items-center p-2 rounded-lg ${
+                  activeTab === 'task' ? 'text-primary-500' : 'text-gray-400'
+                }`}
+              >
+                <Clipboard className="w-6 h-6" />
+                <span className="text-xs mt-1">Task</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('referral')}
+                className={`flex flex-col items-center p-2 rounded-lg ${
+                  activeTab === 'referral' ? 'text-primary-500' : 'text-gray-400'
+                }`}
+              >
+                <Users className="w-6 h-6" />
+                <span className="text-xs mt-1">Referral</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('menu')}
+                className={`flex flex-col items-center p-2 rounded-lg ${
+                  activeTab === 'menu' ? 'text-primary-500' : 'text-gray-400'
+                }`}
+              >
+                <Settings className="w-6 h-6" />
+                <span className="text-xs mt-1">Menu</span>
+              </button>
+            </div>
+          </nav>
+
+          {/* Modals */}
+          {showCreateWallet && (
+            <CreateWalletModal
+              onClose={() => setShowCreateWallet(false)}
+              onSuccess={(newWallet) => {
+                setWallet(newWallet);
+                setShowCreateWallet(false);
+                toast.success('Wallet created successfully!');
+              }}
+            />
+          )}
+
+          {showImportWallet && (
+            <ImportWalletModal
+              onClose={() => setShowImportWallet(false)}
+              onSuccess={(importedWallet) => {
+                setWallet(importedWallet);
+                setShowImportWallet(false);
+                toast.success('Wallet imported successfully!');
+              }}
+            />
+          )}
+        </>
+      )}
+    </main>
+  );
 } 

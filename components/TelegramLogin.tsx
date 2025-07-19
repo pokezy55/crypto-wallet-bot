@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react';
 import { useEffect } from 'react'
 import { Wallet } from 'lucide-react'
 
@@ -12,19 +13,19 @@ interface User {
 }
 
 interface TelegramLoginProps {
-  onLogin: (user: User) => void
+  onAuth: (user: User) => void;
 }
 
-export default function TelegramLogin({ onLogin }: TelegramLoginProps) {
+export default function TelegramLogin({ onAuth }: TelegramLoginProps) {
   useEffect(() => {
     // Check if we're in Telegram WebApp
     if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
       const telegramUser = window.Telegram.WebApp.initDataUnsafe.user
       if (telegramUser) {
-        onLogin(telegramUser)
+        onAuth(telegramUser)
       }
     }
-  }, [onLogin])
+  }, [onAuth])
 
   return (
     <div className="min-h-screen bg-crypto-dark flex flex-col items-center justify-center p-6">
