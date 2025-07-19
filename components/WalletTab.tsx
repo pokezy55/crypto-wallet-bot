@@ -1094,7 +1094,7 @@ function SendSection({
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            Available: {selectedToken.balance.toFixed(6)} {selectedToken.symbol}
+            Available: {formatBalance(selectedToken.balance)} {selectedToken.symbol}
           </p>
         </div>
 
@@ -1194,4 +1194,10 @@ function SendSection({
       </ErrorBoundary>
     </div>
   );
+} 
+
+// Format balance helper
+function formatBalance(balance: string | number, decimals: number = 6): string {
+  const num = typeof balance === 'string' ? parseFloat(balance) : balance;
+  return num.toFixed(decimals).replace(/\.?0+$/, '');
 } 

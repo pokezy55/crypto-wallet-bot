@@ -6,6 +6,12 @@ import { useGasFee } from '@/hooks/useGasFee';
 import { isValidEthereumAddress, isValidAmountFormat, formatAmount, isSensitiveData } from '@/lib/validation';
 import toast from 'react-hot-toast';
 
+// Format balance helper
+function formatBalance(balance: string | number, decimals: number = 6): string {
+  const num = typeof balance === 'string' ? parseFloat(balance) : balance;
+  return num.toFixed(decimals).replace(/\.?0+$/, '');
+}
+
 interface SendFormState {
   address: string;
   amount: string;
@@ -114,9 +120,9 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
       // For native tokens, subtract estimated fee
       const fee = feeError ? 0 : parseFloat(estimatedFee);
       const maxAmount = Math.max(0, selectedTokenState.balance - fee);
-      setForm(prev => ({ ...prev, amount: maxAmount.toFixed(selectedTokenState.decimals) }));
+      setForm(prev => ({ ...prev, amount: formatBalance(maxAmount) }));
     } else {
-      setForm(prev => ({ ...prev, amount: selectedTokenState.balance.toFixed(selectedTokenState.decimals) }));
+      setForm(prev => ({ ...prev, amount: formatBalance(selectedTokenState.balance) }));
     }
   };
 
@@ -131,24 +137,17 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
 
   // Handle send
   const handleSend = async () => {
+    if (!isFormValid) {
+      toast.error('Please fill in all fields correctly');
+      return;
+    }
+
+    if (!wallet?.seedPhrase) {
+      toast.error('Wallet seed phrase is missing');
+      return;
+    }
+
     try {
-      // Validate form first
-      if (!isFormValid) {
-        toast.error('Please fill in all fields correctly');
-        return;
-      }
-
-      // Validate wallet configuration
-      if (!wallet?.address) {
-        toast.error('Wallet address is required');
-        return;
-      }
-
-      if (!wallet?.seedPhrase) {
-        toast.error('Wallet seed phrase is missing');
-        return;
-      }
-
       // Final validation before sending
       if (!isValidEthereumAddress(form.address)) {
         toast.error('Invalid recipient address');
@@ -163,45 +162,24 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
       // Format amount according to token decimals
       const formattedAmount = formatAmount(form.amount, selectedTokenState.decimals);
 
-      // Remove any 0x prefix if accidentally added to seed phrase
-      const cleanSeedPhrase = wallet.seedPhrase.replace(/^0x/, '').trim();
-
-      // Pick only required token properties
-      const { symbol, address, decimals, isNative } = selectedTokenState;
-
-      console.log('Sending transaction with:', {
-        from: wallet.address,
-        to: form.address,
-        amount: formattedAmount,
-        token: {
-          symbol,
-          address,
-          decimals,
-          isNative
-        },
-        chain
-      });
-
       const result = await sendTransaction({
         from: wallet.address,
         to: form.address,
         amount: formattedAmount,
         token: {
-          symbol,
-          address,
-          decimals,
-          isNative
+          symbol: selectedTokenState.symbol,
+          address: selectedTokenState.address,
+          decimals: selectedTokenState.decimals,
+          isNative: selectedTokenState.isNative
         },
         chain,
-        seedPhrase: cleanSeedPhrase
+        seedPhrase: wallet.seedPhrase
       });
 
       if (result.success) {
         onClose();
         setForm({ address: '', amount: '' });
         toast.success('Transaction sent successfully!');
-      } else if (result.error) {
-        throw new Error(result.error);
       }
     } catch (error: any) {
       console.error('Send error:', error);
@@ -264,7 +242,7 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
           </div>
           <div className="flex justify-between text-xs mt-1">
             <p className="text-gray-400">
-              Available: {selectedTokenState.balance.toFixed(selectedTokenState.decimals)} {selectedTokenState.symbol}
+              Available: {formatBalance(selectedTokenState.balance)} {selectedTokenState.symbol}
             </p>
             {validationErrors.amount && (
               <p className="text-red-500">{validationErrors.amount}</p>
@@ -283,7 +261,7 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
                 ) : feeError ? (
                   <span className="text-yellow-500">Using default fee</span>
                 ) : (
-                  `${parseFloat(estimatedFee).toFixed(8)} ${selectedTokenState.symbol}`
+                  `${formatBalance(estimatedFee)} ${selectedTokenState.symbol}`
                 )}
               </span>
             </div>
@@ -294,7 +272,7 @@ export default function SendModal({ isOpen, onClose, selectedToken, chain, walle
                   {feeLoading ? (
                     <span className="animate-pulse">Calculating...</span>
                   ) : (
-                    `${(parseFloat(form.amount) + (feeError ? 0 : parseFloat(estimatedFee))).toFixed(8)} ${selectedTokenState.symbol}`
+                    `${formatBalance(parseFloat(form.amount) + (feeError ? 0 : parseFloat(estimatedFee)))} ${selectedTokenState.symbol}`
                   )}
                 </span>
               </div>
