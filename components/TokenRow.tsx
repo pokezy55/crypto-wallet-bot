@@ -1,7 +1,17 @@
 import React from 'react';
-import { Globe } from 'lucide-react';
-import { Eth, Bnb, Pol, Base } from './TokenIcons';
-import { Token } from './ActionModal';
+
+interface Token {
+  symbol: string;
+  name: string;
+  logo?: string;
+  balance: string;
+  decimals: number;
+  isNative: boolean;
+  address?: string;
+  chain: string;
+  price: number;
+  change: number;
+}
 
 interface TokenRowProps {
   token: Token;
@@ -11,8 +21,9 @@ interface TokenRowProps {
 }
 
 export default function TokenRow({ token, onSend, onReceive, onSwap }: TokenRowProps) {
-  const balanceUSD = token.balance * token.priceUSD;
-  const changeColor = token.priceChange24h > 0 ? 'text-green-500' : token.priceChange24h < 0 ? 'text-red-500' : 'text-gray-400';
+  const balance = parseFloat(token.balance);
+  const balanceUSD = balance * token.price;
+  const changeColor = token.change > 0 ? 'text-green-500' : token.change < 0 ? 'text-red-500' : 'text-gray-400';
 
   return (
     <div className="p-3 bg-crypto-card rounded-lg border border-crypto-border flex items-center justify-between">
@@ -27,25 +38,40 @@ export default function TokenRow({ token, onSend, onReceive, onSwap }: TokenRowP
         <div>
           <div className="font-medium flex items-center gap-2">
             <span>{token.name || token.symbol}</span>
-            {token.chains.length > 1 && (
-              <span className="text-xs bg-primary-500/20 text-primary-500 px-1.5 py-0.5 rounded-full">
-                Multi-chain
-              </span>
-            )}
           </div>
           <div className="text-xs text-gray-400 flex items-center gap-2">
-            <span>${token.priceUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</span>
-            {token.priceChange24h !== 0 && (
+            <span>${token.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</span>
+            {token.change !== 0 && (
               <span className={changeColor}>
-                {token.priceChange24h > 0 ? '+' : ''}{token.priceChange24h.toFixed(2)}%
+                {token.change > 0 ? '+' : ''}{token.change.toFixed(2)}%
               </span>
             )}
           </div>
         </div>
       </div>
       <div className="text-right">
-        <div className="font-medium">{token.balance.toFixed(4)} {token.symbol}</div>
+        <div className="font-medium">{balance.toFixed(6)} {token.symbol}</div>
         <div className="text-xs text-gray-400">${balanceUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+      </div>
+      <div className="flex gap-2 ml-4">
+        <button
+          onClick={onSend}
+          className="px-3 py-1 text-sm rounded-lg hover:bg-crypto-hover"
+        >
+          Send
+        </button>
+        <button
+          onClick={onReceive}
+          className="px-3 py-1 text-sm rounded-lg hover:bg-crypto-hover"
+        >
+          Receive
+        </button>
+        <button
+          onClick={onSwap}
+          className="px-3 py-1 text-sm rounded-lg hover:bg-crypto-hover"
+        >
+          Swap
+        </button>
       </div>
     </div>
   );

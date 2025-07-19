@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { BaseModal } from './ActionModal';
-import { X, Copy } from 'lucide-react';
+import { BaseModal } from './BaseModal';
 import QRCode from 'qrcode.react';
+import { Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface ReceiveModalProps {
@@ -10,32 +9,32 @@ interface ReceiveModalProps {
   address: string;
 }
 
-export default function ReceiveModal({ isOpen, onClose, address }: ReceiveModalProps) {
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(address);
-      toast.success('Address copied to clipboard!');
-    } catch (error) {
-      toast.error('Failed to copy address');
-    }
+export function ReceiveModal({ isOpen, onClose, address }: ReceiveModalProps) {
+  const handleCopy = () => {
+    navigator.clipboard.writeText(address);
+    toast.success('Address copied to clipboard');
   };
 
-  if (!isOpen) return null;
-
   return (
-    <BaseModal isOpen={isOpen} onClose={onClose} title="Receive">
-      <div className="space-y-6">
-        <div className="flex flex-col items-center">
-          <div className="bg-white p-4 rounded-lg mb-4">
-            <QRCode value={address} size={200} />
-          </div>
-          <div className="flex items-center gap-2">
-            <code className="font-mono text-sm bg-crypto-card p-2 rounded">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Receive"
+    >
+      <div className="space-y-4">
+        <div className="flex justify-center">
+          <QRCode value={address} size={200} />
+        </div>
+
+        <div className="text-center">
+          <p className="text-sm text-gray-400 mb-2">Your wallet address</p>
+          <div className="flex items-center justify-center gap-2">
+            <code className="text-sm bg-crypto-dark p-2 rounded break-all">
               {address}
             </code>
             <button
               onClick={handleCopy}
-              className="p-2 hover:bg-crypto-border rounded"
+              className="p-2 rounded hover:bg-crypto-hover"
             >
               <Copy className="w-4 h-4" />
             </button>
