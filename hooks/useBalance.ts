@@ -30,7 +30,17 @@ export function useBalance(chain: string, address?: string) {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/balance?chain=${chain}&address=${address}`);
+      const response = await fetch('/api/balance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          address,
+          chain
+        })
+      });
+
       if (!response.ok) {
         throw new Error('Failed to fetch balances');
       }
@@ -39,8 +49,8 @@ export function useBalance(chain: string, address?: string) {
       
       // Normalize balances to lowercase for case-insensitive lookup
       const normalizedBalances: Record<string, string> = {};
-      Object.entries(data).forEach(([symbol, balance]: [string, any]) => {
-        normalizedBalances[symbol.toLowerCase()] = balance;
+      data.balances.forEach((token: any) => {
+        normalizedBalances[token.symbol.toLowerCase()] = token.balance;
       });
 
       setBalances(normalizedBalances);
