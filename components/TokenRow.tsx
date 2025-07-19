@@ -11,6 +11,7 @@ interface TokenRowProps {
   priceChange24h?: number;
   chains: string[];
   isMerged?: boolean;
+  isNative?: boolean;
 }
 
 export default function TokenRow({ 
@@ -21,15 +22,16 @@ export default function TokenRow({
   priceUSD = 0, 
   priceChange24h = 0,
   chains = [],
-  isMerged = false
+  isMerged = false,
+  isNative = false
 }: TokenRowProps) {
   const balanceUSD = balance * priceUSD;
   const changeColor = priceChange24h > 0 ? 'text-green-500' : priceChange24h < 0 ? 'text-red-500' : 'text-gray-400';
 
   return (
-    <div className="p-3 bg-crypto-card rounded-lg border border-crypto-border flex items-center justify-between">
+    <div className={`p-3 bg-crypto-card rounded-lg border ${isNative ? 'border-primary-500/20' : 'border-crypto-border'} flex items-center justify-between`}>
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isNative ? 'bg-primary-500/10' : 'bg-gray-800'}`}>
           {logo ? (
             <img src={logo} alt={symbol} className="w-6 h-6" />
           ) : (
@@ -42,6 +44,11 @@ export default function TokenRow({
             {isMerged && (
               <span className="text-xs bg-primary-500/20 text-primary-500 px-1.5 py-0.5 rounded-full">
                 Multi-chain
+              </span>
+            )}
+            {isNative && !isMerged && chains[0] && (
+              <span className="text-xs bg-primary-500/10 text-primary-500 px-1.5 py-0.5 rounded-full">
+                {chains[0]}
               </span>
             )}
           </div>
