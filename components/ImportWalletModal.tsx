@@ -4,17 +4,19 @@ import { useState } from 'react'
 import { X, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatAddress, isValidAddress } from '@/lib/address'
+import { Wallet } from 'ethers'
 
-interface Wallet {
+interface WalletData {
   id: string;
   address: string;
+  seedPhrase: string;
   balance: Record<string, Record<string, string>>;
 }
 
 interface ImportWalletModalProps {
   isOpen: boolean
   onClose: () => void
-  onWalletImported: (wallet: Wallet) => void
+  onWalletImported: (wallet: WalletData) => void
   userId: number
 }
 
@@ -38,13 +40,24 @@ export default function ImportWalletModal({ isOpen, onClose, onWalletImported, u
     setIsLoading(true)
 
     try {
-      // In a real app, this would use ethers.js to import the wallet
-      // For demo purposes, we'll simulate the import
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Clean seed phrase
+      const cleanSeedPhrase = seedPhrase.trim().replace(/\s+/g, ' ')
 
-      const importedWallet: Wallet = {
-        id: 'wallet_' + Math.random().toString(16).substr(2, 10),
-        address: '0x' + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join(''),
+      // Validate seed phrase by trying to create a wallet
+      let wallet: Wallet
+      try {
+        wallet = new Wallet(cleanSeedPhrase)
+      } catch (error) {
+        console.error('Invalid seed phrase:', error)
+        toast.error('Invalid seed phrase format')
+        return
+      }
+
+      // Create wallet object
+      const importedWallet: WalletData = {
+        id: `wallet_${userId}`,
+        address: wallet.address,
+        seedPhrase: cleanSeedPhrase,
         balance: {
           eth: { eth: '0.0', usdt: '0.00' },
           bsc: { bnb: '0.0', usdt: '0.00' },
@@ -53,12 +66,28 @@ export default function ImportWalletModal({ isOpen, onClose, onWalletImported, u
         }
       }
 
-      // Save wallet to localStorage (in real app, this would be saved to database)
-      localStorage.setItem(`wallet_${userId}`, JSON.stringify(importedWallet))
+      // Save wallet to backend
+      const response = await fetch('/api/wallet/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId,
+          address: importedWallet.address,
+          seedPhrase: importedWallet.seedPhrase
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save wallet')
+      }
+
       onWalletImported(importedWallet)
       toast.success('Wallet imported successfully!')
-    } catch (error) {
-      toast.error('Failed to import wallet. Please check your seed phrase.')
+    } catch (error: any) {
+      console.error('Import error:', error)
+      toast.error(error.message || 'Failed to import wallet')
     } finally {
       setIsLoading(false)
     }
@@ -107,7 +136,7 @@ export default function ImportWalletModal({ isOpen, onClose, onWalletImported, u
                   value={seedPhrase}
                   onChange={(e) => setSeedPhrase(e.target.value)}
                   placeholder="Enter your 12-word seed phrase..."
-                  className="input-field w-full h-24 resize-none"
+                  className={`input-field w-full h-24 resize-none ${!showSeedPhrase ? 'text-security-disc' : ''}`}
                   style={{ paddingRight: '80px' }}
                 />
                 <div className="absolute right-2 top-2 flex gap-1">

@@ -1,36 +1,105 @@
--- Create wallets table for storing user wallets with seed phrases
-CREATE TABLE IF NOT EXISTS wallets (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    address VARCHAR(42) NOT NULL UNIQUE, -- Ethereum address (0x + 40 hex chars)
-    seed_phrase TEXT NOT NULL, -- 12-word mnemonic phrase (not encrypted for backup purposes)
-    balance_eth DECIMAL(20, 8) DEFAULT '0.0',
-    balance_usdt DECIMAL(20, 8) DEFAULT '0.00',
-    balance_bnb DECIMAL(20, 8) DEFAULT '0.0',
-    balance_pol DECIMAL(20, 8) DEFAULT '0.0',
-    balance_base DECIMAL(20, 8) DEFAULT '0.0',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Users table
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  telegram_id BIGINT UNIQUE,
+  username VARCHAR(255),
+  first_name VARCHAR(255),
+  last_name VARCHAR(255),
+  photo_url TEXT,
+  banned BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create index for faster queries
-CREATE INDEX IF NOT EXISTS idx_wallets_user_id ON wallets(user_id);
-CREATE INDEX IF NOT EXISTS idx_wallets_address ON wallets(address);
+-- Wallets table
+CREATE TABLE wallets (
+  id SERIAL PRIMARY KEY,
+  user_id BIGINT REFERENCES users(id),
+  address VARCHAR(42) UNIQUE NOT NULL,
+  seed_phrase TEXT NOT NULL, -- Encrypted seed phrase (format: iv:authTag:encryptedData)
+  balance_eth DECIMAL(20,8) DEFAULT 0,
+  balance_usdt DECIMAL(20,2) DEFAULT 0,
+  balance_bnb DECIMAL(20,8) DEFAULT 0,
+  balance_pol DECIMAL(20,8) DEFAULT 0,
+  balance_base DECIMAL(20,8) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Add trigger to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
+-- Tasks table
+CREATE TABLE tasks (
+  id SERIAL PRIMARY KEY,
+  user_id BIGINT REFERENCES users(id),
+  task_type VARCHAR(50) NOT NULL,
+  description TEXT,
+  reward_amount DECIMAL(20,8),
+  reward_token VARCHAR(10),
+  completed BOOLEAN DEFAULT FALSE,
+  claimed BOOLEAN DEFAULT FALSE,
+  completed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-CREATE TRIGGER update_wallets_updated_at 
-    BEFORE UPDATE ON wallets 
-    FOR EACH ROW 
-    EXECUTE FUNCTION update_updated_at_column();
+-- Referrals table
+CREATE TABLE referrals (
+  id SERIAL PRIMARY KEY,
+  referrer_id BIGINT REFERENCES users(id),
+  referred_id BIGINT REFERENCES users(id) UNIQUE,
+  referral_code VARCHAR(20),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Add comment to table
-COMMENT ON TABLE wallets IS 'Stores user wallets with seed phrases for backup/restore functionality';
-COMMENT ON COLUMN wallets.seed_phrase IS '12-word mnemonic phrase stored in plain text for backup purposes when user account gets banned'; 
+-- Claims table
+CREATE TABLE claims (
+  id SERIAL PRIMARY KEY,
+  user_id BIGINT REFERENCES users(id),
+  type VARCHAR(50) NOT NULL,
+  amount DECIMAL(20,8),
+  token VARCHAR(10),
+  status VARCHAR(20) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Transactions table
+CREATE TABLE transactions (
+  id SERIAL PRIMARY KEY,
+  wallet_id INTEGER REFERENCES wallets(id),
+  tx_hash VARCHAR(66) UNIQUE,
+  tx_type VARCHAR(20),
+  from_address VARCHAR(42),
+  to_address VARCHAR(42),
+  token_symbol VARCHAR(10),
+  amount DECIMAL(20,8),
+  usd_value DECIMAL(20,2),
+  network VARCHAR(20),
+  status VARCHAR(20),
+  block_number BIGINT,
+  gas_used DECIMAL(20,8),
+  gas_price DECIMAL(20,8),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User settings table
+CREATE TABLE user_settings (
+  id SERIAL PRIMARY KEY,
+  user_id BIGINT REFERENCES users(id) UNIQUE,
+  pin_hash VARCHAR(255),
+  notifications_enabled BOOLEAN DEFAULT TRUE,
+  theme VARCHAR(20) DEFAULT 'dark',
+  language VARCHAR(10) DEFAULT 'en',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes
+CREATE INDEX idx_wallets_user_id ON wallets(user_id);
+CREATE INDEX idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX idx_referrals_referrer_id ON referrals(referrer_id);
+CREATE INDEX idx_claims_user_id ON claims(user_id);
+CREATE INDEX idx_transactions_wallet_id ON transactions(wallet_id);
+CREATE INDEX idx_transactions_tx_hash ON transactions(tx_hash);
+
+-- Add comments
+COMMENT ON TABLE wallets IS 'Stores user wallets with encrypted seed phrases';
+COMMENT ON COLUMN wallets.seed_phrase IS 'Encrypted seed phrase in format: iv:authTag:encryptedData'; 
