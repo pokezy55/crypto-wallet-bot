@@ -377,110 +377,109 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     }
   };
 
-  if (activeSection === 'receive') {
-    return (
-      <div className="p-6">
-        <div className="flex items-center mb-6">
-          <button
-            onClick={() => setActiveSection('main')}
-            className="mr-4 p-2 rounded-lg bg-crypto-card border border-crypto-border"
-          >
-            <ArrowLeftRight className="w-5 h-5" />
-          </button>
-          <h2 className="text-xl font-semibold">Receive</h2>
-        </div>
+  // Validation helpers
+  const validateSendForm = (form: any, token: any) => {
+    const addressValid = isValidAddress(form.address);
+    return {
+      isAddressValid: addressValid,
+      isFormValid: addressValid && 
+        form.amount && 
+        parseFloat(form.amount) > 0 && 
+        token && 
+        wallet?.seedPhrase
+    };
+  };
 
-        <div className="card text-center">
-          <div className="mb-4">
-            <QRCode value={wallet.address} size={200} className="mx-auto" />
-          </div>
-          
-          <div className="mb-4">
-            <p className="text-sm text-gray-400 mb-2">Your Wallet Address</p>
-            <div className="flex items-center justify-center gap-2">
-              <code className="text-sm bg-crypto-dark px-3 py-2 rounded-lg flex-1 break-all">
-                {formatAddress(wallet.address)}
-              </code>
-              <button
-                onClick={copyAddress}
-                className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+  // Send Form Handlers
+  const handleSendClick = () => {
+    if (!wallet?.address) {
+      toast.error('Please connect wallet first');
+      return;
+    }
+    setActiveSection('send');
+  };
 
-          <p className="text-xs text-gray-400">
-            Share this address to receive crypto from other wallets
-          </p>
-        </div>
-      </div>
-    )
-  }
+  const handleSendConfirm = async () => {
+    const token = tokenList.find(t => t.symbol === sendForm.token);
+    if (!wallet?.seedPhrase || !token) return;
+
+    setTxStatus('pending');
+    setTxError('');
+    
+    try {
+      const response = await fetch('/api/transaction/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: wallet.address,
+          to: sendForm.address,
+          token: token.symbol,
+          chain: chain,
+          amount: sendForm.amount,
+          seedPhrase: wallet.seedPhrase
+        })
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        setTxStatus('success');
+        // Refresh balances after successful send
+        await refetch();
+      } else {
+        setTxStatus('error');
+        setTxError(result.error || 'Failed to send transaction');
+      }
+    } catch (error) {
+      console.error('Send transaction error:', error);
+      setTxStatus('error');
+      setTxError('Failed to send transaction');
+    }
+  };
 
   if (activeSection === 'send') {
-    // Ambil token dengan balance > 0, urut dari balance terbesar
-    const sendableTokens = tokenList.filter(t => t.balance > 0).sort((a, b) => b.balance - a.balance);
-    const selectedToken = sendableTokens.find(t => t.symbol === sendForm.token) || sendableTokens[0];
-    // Dummy fee (bisa diganti fetch fee dari backend)
-    const estimatedFee = 0.001; // contoh fee
-    // Fungsi handle MAX
+    // Get tokens with balance > 0
+    const sendableTokens = tokenList.filter(t => t.balance > 0)
+      .sort((a, b) => b.balance - a.balance);
+
+    const selectedToken = sendableTokens.find(t => t.symbol === sendForm.token);
+    const { isAddressValid, isFormValid } = validateSendForm(sendForm, selectedToken);
+
+    // Estimated fee (can be fetched from backend later)
+    const estimatedFee = selectedToken?.isNative ? 0.001 : 0;
+
     const handleMax = () => {
-      // Jika native token, kurangi fee
-      if (selectedToken.symbol === selectedToken.symbol) {
-        setSendForm({ ...sendForm, amount: (selectedToken.balance - estimatedFee).toFixed(6) });
+      if (!selectedToken) return;
+      
+      // If native token, subtract fee
+      if (selectedToken.isNative) {
+        const maxAmount = Math.max(0, selectedToken.balance - estimatedFee);
+        setSendForm({ ...sendForm, amount: maxAmount.toFixed(6) });
       } else {
         setSendForm({ ...sendForm, amount: selectedToken.balance.toFixed(6) });
       }
     };
-    // Validasi address
-    const isAddressValid = isValidAddress(sendForm.address);
-    // Validasi form
-    const isFormValid = isAddressValid && sendForm.amount && parseFloat(sendForm.amount) > 0 && selectedToken;
-    // Fungsi kirim
-    const handleSendConfirm = async () => {
-      setTxStatus('pending');
-      setTxError('');
-      try {
-        // Kirim request ke backend
-        const response = await fetch('/api/transaction/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            from: wallet.address,
-            to: sendForm.address,
-            token: selectedToken.symbol,
-            chain: selectedToken.symbol,
-            amount: sendForm.amount,
-            seedPhrase: wallet.seedPhrase // <-- tambahkan ini!
-          })
-        });
-        const result = await response.json();
-        if (result.success) {
-          setTxStatus('success');
-        } else {
-          setTxStatus('error');
-          setTxError(result.error || 'Failed to send transaction');
-        }
-      } catch (e) {
-        setTxStatus('error');
-        setTxError('Failed to send transaction');
-      }
-    };
+
     return (
       <div className="p-6">
         <div className="flex items-center mb-6">
           <button
-            onClick={() => setActiveSection('main')}
+            onClick={() => {
+              setActiveSection('main');
+              setSendForm({ address: '', amount: '', token: 'ETH' });
+              setTxStatus('idle');
+              setTxError('');
+            }}
             className="mr-4 p-2 rounded-lg bg-crypto-card border border-crypto-border"
           >
             <ArrowLeftRight className="w-5 h-5" />
           </button>
           <h2 className="text-xl font-semibold">Send</h2>
         </div>
+
         <div className="card">
           <div className="space-y-4">
-            {/* Token Dropdown */}
+            {/* Token Selector */}
             <div>
               <label className="block text-sm font-medium mb-2">Token</label>
               <div className="relative">
@@ -490,25 +489,22 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                   className="input-field w-full pl-12"
                 >
                   {sendableTokens.map(token => (
-                    <option key={token.symbol + token.symbol} value={token.symbol}>
-                      {token.name}
+                    <option key={token.symbol} value={token.symbol}>
+                      {token.name} ({token.balance.toFixed(4)} {token.symbol})
                     </option>
                   ))}
                 </select>
-                {/* Logo di kiri */}
                 {selectedToken && (
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2">{selectedToken.symbol}</span>
+                  <img 
+                    src={selectedToken.logo} 
+                    alt={selectedToken.symbol}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full"
+                  />
                 )}
               </div>
-              {/* Nama + balance di kanan */}
-              {selectedToken && (
-                <div className="flex justify-between text-xs mt-1">
-                  <span>{selectedToken.name}</span>
-                  <span>{selectedToken.balance.toFixed(6)} {selectedToken.symbol}</span>
-                </div>
-              )}
             </div>
-            {/* Recipient */}
+
+            {/* Recipient Address */}
             <div>
               <label className="block text-sm font-medium mb-2">Recipient Address</label>
               <input
@@ -519,82 +515,126 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                 className="input-field w-full"
               />
               {!isAddressValid && sendForm.address && (
-                <div className="text-red-500 text-xs mt-1">Invalid address</div>
+                <p className="text-red-500 text-xs mt-1">Invalid address</p>
               )}
             </div>
+
             {/* Amount */}
             <div>
               <label className="block text-sm font-medium mb-2">Amount</label>
               <div className="flex gap-2">
-              <input
-                type="number"
-                value={sendForm.amount}
+                <input
+                  type="number"
+                  value={sendForm.amount}
                   onChange={e => setSendForm({ ...sendForm, amount: e.target.value })}
-                placeholder="0.0"
+                  placeholder="0.0"
                   className="input-field flex-1"
                   min="0"
-                  max={selectedToken ? selectedToken.balance : undefined}
-              />
+                  step="any"
+                />
                 <button
-                  type="button"
                   onClick={handleMax}
                   className="btn-secondary px-3"
-                >MAX</button>
-            </div>
+                >
+                  MAX
+                </button>
+              </div>
               {selectedToken && (
-                <div className="text-xs text-gray-400 mt-1">Available: {selectedToken.balance.toFixed(6)} {selectedToken.symbol}</div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Available: {selectedToken.balance.toFixed(6)} {selectedToken.symbol}
+                </p>
               )}
             </div>
-            {/* Estimated Fee */}
-            <div className="text-xs text-gray-400 mb-2">Estimated Fee: {estimatedFee} {selectedToken ? selectedToken.symbol : ''}</div>
+
+            {/* Network Fee */}
+            {selectedToken?.isNative && (
+              <p className="text-xs text-gray-400">
+                Estimated Network Fee: {estimatedFee} {selectedToken.symbol}
+              </p>
+            )}
+
             {/* Send Button */}
             <button
               onClick={() => setShowConfirm(true)}
               disabled={!isFormValid}
-              className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
+              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Send Transaction
+              Send {selectedToken?.symbol || 'Token'}
             </button>
           </div>
         </div>
-        {/* Modal Konfirmasi */}
+
+        {/* Confirmation Modal */}
         {showConfirm && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-            onClick={() => { setShowConfirm(false); setActiveSection('main'); setSendForm({ address: '', amount: '', token: sendableTokens[0]?.symbol || '' }); }}
-          >
-            <div
-              className="bg-crypto-card border border-crypto-border rounded-xl p-6 w-full max-w-sm mx-4"
-              onClick={e => e.stopPropagation()}
-            >
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-crypto-card border border-crypto-border rounded-xl p-6 w-full max-w-sm mx-4">
               <h3 className="text-lg font-semibold mb-4">Confirm Transaction</h3>
-              <div className="mb-4">
-                <div>Send <b>{sendForm.amount} {selectedToken.symbol}</b> to</div>
-                <div className="break-all text-primary-500 font-mono">{sendForm.address}</div>
-                <div className="mt-2 text-xs text-gray-400">Fee: {estimatedFee} {selectedToken.symbol}</div>
+              
+              <div className="space-y-2 mb-4">
+                <p>Send <b>{sendForm.amount} {selectedToken?.symbol}</b></p>
+                <p className="text-sm text-gray-400">to</p>
+                <p className="font-mono text-primary-500 break-all">{sendForm.address}</p>
+                {selectedToken?.isNative && (
+                  <p className="text-sm text-gray-400">
+                    Network Fee: {estimatedFee} {selectedToken.symbol}
+                  </p>
+                )}
               </div>
+
               {txStatus === 'idle' && (
                 <div className="flex gap-2">
-                  <button onClick={() => setShowConfirm(false)} className="btn-secondary flex-1">Cancel</button>
-                  <button onClick={handleSendConfirm} className="btn-primary flex-1">Confirm</button>
+                  <button 
+                    onClick={() => setShowConfirm(false)} 
+                    className="btn-secondary flex-1"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleSendConfirm}
+                    className="btn-primary flex-1"
+                  >
+                    Confirm
+                  </button>
                 </div>
               )}
+
               {txStatus === 'pending' && (
-                <div className="text-center py-4">Processing transaction...</div>
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-2"></div>
+                  <p>Processing transaction...</p>
+                </div>
               )}
+
               {txStatus === 'success' && (
-                <>
-                  <div className="text-green-500 text-center py-4">Transaction sent successfully!</div>
-                  <button onClick={() => {
-                    setShowConfirm(false);
-                    setActiveSection('main');
-                    setSendForm({ address: '', amount: '', token: sendableTokens[0]?.symbol || '' });
-                    refreshWalletAndHistory();
-                  }} className="btn-primary w-full mt-4">OK</button>
-                </>
+                <div className="text-center">
+                  <p className="text-green-500 mb-4">Transaction sent successfully!</p>
+                  <button
+                    onClick={() => {
+                      setShowConfirm(false);
+                      setActiveSection('main');
+                      setSendForm({ address: '', amount: '', token: 'ETH' });
+                      setTxStatus('idle');
+                    }}
+                    className="btn-primary w-full"
+                  >
+                    Done
+                  </button>
+                </div>
               )}
+
               {txStatus === 'error' && (
-                <div className="text-red-500 text-center py-4">{txError}</div>
+                <div className="text-center">
+                  <p className="text-red-500 mb-4">{txError}</p>
+                  <button
+                    onClick={() => {
+                      setTxStatus('idle');
+                      setTxError('');
+                    }}
+                    className="btn-primary w-full"
+                  >
+                    Try Again
+                  </button>
+                </div>
               )}
             </div>
           </div>
