@@ -59,8 +59,18 @@ export default function ReferralTab({ user }: ReferralTabProps) {
     const fetchReferralData = async () => {
       setLoading(true)
       try {
+        // Add a small delay to prevent immediate fetch
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         console.log('Fetching referral data for user:', user.id);
-        const res = await fetch(`/api/referral/progress?user=${user.id}`)
+        const res = await fetch(`/api/referral/progress?user=${user.id}`, {
+          // Add cache control to prevent browser caching
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        })
         
         if (!res.ok) {
           console.error('API returned error status:', res.status);
@@ -70,11 +80,16 @@ export default function ReferralTab({ user }: ReferralTabProps) {
         const data = await res.json()
         console.log('Referral data received:', data);
         
+        // Check if data has the expected structure
+        if (!data || typeof data !== 'object') {
+          throw new Error('Invalid data format received');
+        }
+        
         setReferrals(data.referrals || [])
-        setStats(data.stats || {
-          totalReferrals: 0,
-          totalEarned: 0,
-          referralCode: `REF${user.id}`
+        setStats({
+          totalReferrals: data.stats?.totalReferrals || 0,
+          totalEarned: data.stats?.totalEarned || 0,
+          referralCode: data.stats?.referralCode || `REF${user.id}`
         })
       } catch (error) {
         console.error('Error fetching referral data:', error)
