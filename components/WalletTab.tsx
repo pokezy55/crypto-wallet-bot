@@ -317,14 +317,69 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
   // Auto refresh balances
   useEffect(() => {
-    // Initial fetch
-    refetch();
+    // Throttle polling or data fetching
+    const lastFetchTime = sessionStorage.getItem('lastBalanceFetch');
+    const now = Date.now();
+    
+    // Only fetch if it's been more than 30 seconds since last fetch or no fetch has happened
+    if (!lastFetchTime || (now - parseInt(lastFetchTime)) > 30000) {
+      console.log('Fetching balance data (throttled)');
+      sessionStorage.setItem('lastBalanceFetch', now.toString());
+      
+      // Initial fetch
+      refetch();
+    } else {
+      console.log('Skipping balance fetch - throttled');
+    }
 
-    // Set up polling every 60 seconds
-    const interval = setInterval(refetch, 60000);
+    // Set up polling with longer interval (2 minutes instead of 60 seconds)
+    // and only if the tab is visible
+    let interval: NodeJS.Timeout | null = null;
+    
+    const setupPolling = () => {
+      if (interval) clearInterval(interval);
+      
+      interval = setInterval(() => {
+        // Check if tab is visible
+        if (document.visibilityState === 'visible') {
+          const lastPollTime = sessionStorage.getItem('lastBalanceFetch');
+          const currentTime = Date.now();
+          
+          // Only poll if it's been more than 30 seconds
+          if (!lastPollTime || (currentTime - parseInt(lastPollTime)) > 30000) {
+            console.log('Polling balance data');
+            sessionStorage.setItem('lastBalanceFetch', currentTime.toString());
+            refetch();
+          } else {
+            console.log('Skipping balance poll - throttled');
+          }
+        } else {
+          console.log('Tab not visible, skipping balance poll');
+        }
+      }, 120000); // 2 minutes
+    };
+    
+    // Set up initial polling
+    setupPolling();
+    
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab became visible, setting up polling');
+        setupPolling();
+      } else {
+        console.log('Tab hidden, clearing polling interval');
+        if (interval) clearInterval(interval);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Cleanup interval on unmount
-    return () => clearInterval(interval);
+    // Cleanup interval and event listener on unmount
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [refetch]);
 
   // --- Send Form Validasi ---
@@ -338,12 +393,24 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
   useEffect(() => {
     if (activeTab === 'history') {
-      setLoadingHistory(true);
-      fetch(`/api/wallet/${user.id}/history`)
-        .then(res => res.json())
-        .then(data => setHistory(data.history || []))
-        .catch(() => setHistory([]))
-        .finally(() => setLoadingHistory(false));
+      // Throttle history fetching
+      const lastHistoryFetch = sessionStorage.getItem('lastHistoryFetch');
+      const now = Date.now();
+      
+      // Only fetch if it's been more than 1 minute since last fetch or no fetch has happened
+      if (!lastHistoryFetch || (now - parseInt(lastHistoryFetch)) > 60000) {
+        console.log('Fetching transaction history (throttled)');
+        sessionStorage.setItem('lastHistoryFetch', now.toString());
+        
+        setLoadingHistory(true);
+        fetch(`/api/wallet/${user.id}/history`)
+          .then(res => res.json())
+          .then(data => setHistory(data.history || []))
+          .catch(() => setHistory([]))
+          .finally(() => setLoadingHistory(false));
+      } else {
+        console.log('Skipping history fetch - throttled');
+      }
     }
   }, [activeTab, user.id]);
 
@@ -445,15 +512,28 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
   // Tambahkan fungsi refreshWalletAndHistory di dalam WalletTab
   const refreshWalletAndHistory = async () => {
-    // Panggil ulang API wallet
-    const walletRes = await fetch(`/api/wallet/${user.id}`);
-    if (walletRes.ok) {
-      if (onWalletUpdate) onWalletUpdate(await walletRes.json());
-    }
-    // Panggil ulang API history
-    const historyRes = await fetch(`/api/wallet/${user.id}/history`);
-    if (historyRes.ok) {
-      if (onHistoryUpdate) onHistoryUpdate((await historyRes.json()).history || []);
+    // Throttle refresh
+    const lastRefreshTime = sessionStorage.getItem('lastWalletRefresh');
+    const now = Date.now();
+    
+    // Only refresh if it's been more than 10 seconds since last refresh or no refresh has happened
+    if (!lastRefreshTime || (now - parseInt(lastRefreshTime)) > 10000) {
+      console.log('Refreshing wallet and history (throttled)');
+      sessionStorage.setItem('lastWalletRefresh', now.toString());
+      
+      // Panggil ulang API wallet
+      const walletRes = await fetch(`/api/wallet/${user.id}`);
+      if (walletRes.ok) {
+        if (onWalletUpdate) onWalletUpdate(await walletRes.json());
+      }
+      // Panggil ulang API history
+      const historyRes = await fetch(`/api/wallet/${user.id}/history`);
+      if (historyRes.ok) {
+        if (onHistoryUpdate) onHistoryUpdate((await historyRes.json()).history || []);
+      }
+    } else {
+      console.log('Skipping wallet and history refresh - throttled');
+      toast.error('Please wait before refreshing again');
     }
   };
 

@@ -101,10 +101,26 @@ export default function Home() {
 
   // Always fetch wallet from backend when wallet tab is active
   useEffect(() => {
-    if (activeTab === 'wallet' && user?.id && !isLoading) {
-      checkUserWallet(user.id)
-    }
-  }, [activeTab, user?.id, isLoading])
+    // Prevent multiple requests
+    const fetchWalletOnce = () => {
+      // Use a flag in sessionStorage to prevent repeated requests
+      const lastFetchTime = sessionStorage.getItem('lastWalletFetch');
+      const now = Date.now();
+      
+      // Only fetch if it's been more than 5 seconds since last fetch or no fetch has happened
+      if (!lastFetchTime || (now - parseInt(lastFetchTime)) > 5000) {
+        if (activeTab === 'wallet' && user?.id && !isLoading) {
+          console.log('Fetching wallet data (throttled)');
+          sessionStorage.setItem('lastWalletFetch', now.toString());
+          checkUserWallet(user.id);
+        }
+      } else {
+        console.log('Skipping wallet fetch - throttled');
+      }
+    };
+    
+    fetchWalletOnce();
+  }, [activeTab, user?.id, isLoading]);
 
   if (isLoading) {
     return (
