@@ -7,11 +7,7 @@ interface TelegramAuthProps {
 const TelegramAuth: React.FC<TelegramAuthProps> = ({ onAuth }) => {
   useEffect(() => {
     // Check if auth has already happened in this session
-    const hasAuthenticated = sessionStorage.getItem('hasAuthenticated') === 'true';
-    if (hasAuthenticated) {
-      console.log('Auth already happened in this session, skipping');
-      return;
-    }
+    // Hapus penggunaan hasAuthenticated, biarkan autentikasi terjadi setiap kali komponen dimuat
     
     // Always call onAuth with fallback user after a short delay if not called by Telegram WebApp
     const fallbackTimeout = setTimeout(() => {
@@ -24,9 +20,6 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ onAuth }) => {
           username: 'testuser',
           photo_url: null
         });
-        
-        // Mark as authenticated
-        sessionStorage.setItem('hasAuthenticated', 'true');
       }
     }, 2000); // 2 seconds timeout
     
@@ -74,9 +67,6 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ onAuth }) => {
                 username: telegramUser.username,
                 photo_url: telegramUser.photo_url
               });
-              
-              // Mark as authenticated
-              sessionStorage.setItem('hasAuthenticated', 'true');
               
               // Clear fallback timeout since we've authenticated via Telegram
               clearTimeout(fallbackTimeout);

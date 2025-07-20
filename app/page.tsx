@@ -103,19 +103,10 @@ export default function Home() {
   useEffect(() => {
     // Prevent multiple requests
     const fetchWalletOnce = () => {
-      // Use a flag in sessionStorage to prevent repeated requests
-      const lastFetchTime = sessionStorage.getItem('lastWalletFetch');
-      const now = Date.now();
-      
-      // Only fetch if it's been more than 5 seconds since last fetch or no fetch has happened
-      if (!lastFetchTime || (now - parseInt(lastFetchTime)) > 5000) {
-        if (activeTab === 'wallet' && user?.id && !isLoading) {
-          console.log('Fetching wallet data (throttled)');
-          sessionStorage.setItem('lastWalletFetch', now.toString());
-          checkUserWallet(user.id);
-        }
-      } else {
-        console.log('Skipping wallet fetch - throttled');
+      // Hapus throttling untuk memastikan wallet selalu diambil
+      if (activeTab === 'wallet' && user?.id && !isLoading) {
+        console.log('Fetching wallet data');
+        checkUserWallet(user.id);
       }
     };
     

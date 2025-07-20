@@ -38,6 +38,8 @@ export default function ReferralTab({ user }: ReferralTabProps) {
     referralCode: ''
   })
   const [loading, setLoading] = useState(true)
+  const [manualRefCode, setManualRefCode] = useState('')
+  const [submittingRefCode, setSubmittingRefCode] = useState(false)
 
   // Get referral code from Telegram WebApp or user ID
   const getTelegramUsername = () => {
@@ -53,6 +55,45 @@ export default function ReferralTab({ user }: ReferralTabProps) {
 
   const referralCode = stats.referralCode || `REF${user.id}`
   const referralLink = `https://t.me/cointwobot/wallet?start=two${referralCode.replace('REF', '')}`
+
+  // Submit manual referral code
+  const submitReferralCode = async () => {
+    if (!manualRefCode || manualRefCode.trim() === '') {
+      toast.error('Please enter a referral code')
+      return
+    }
+
+    setSubmittingRefCode(true)
+    try {
+      // Add a small delay to simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const response = await fetch('/api/referral/track', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          referralCode: manualRefCode.trim(),
+          userId: user.id,
+          walletAddress: '' // This will be filled by backend
+        }),
+      })
+      
+      if (response.ok) {
+        toast.success('Referral code applied successfully!')
+        setManualRefCode('')
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to apply referral code')
+      }
+    } catch (error) {
+      console.error('Error submitting referral code:', error)
+      toast.error('Failed to apply referral code')
+    } finally {
+      setSubmittingRefCode(false)
+    }
+  }
 
   // Fetch referral data
   useEffect(() => {
@@ -183,6 +224,36 @@ export default function ReferralTab({ user }: ReferralTabProps) {
                 <Share2 className="w-4 h-4" />
                 Share Referral Link
               </button>
+            </div>
+          </div>
+
+          {/* Manual Referral Code Input */}
+          <div className="card mb-6">
+            <h3 className="text-lg font-medium mb-4">Apply Manual Referral Code</h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={manualRefCode}
+                  onChange={(e) => setManualRefCode(e.target.value)}
+                  placeholder="Enter referral code"
+                  className="input-field flex-1 text-sm"
+                />
+                <button
+                  onClick={submitReferralCode}
+                  disabled={submittingRefCode}
+                  className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submittingRefCode ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Share2 className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <p className="text-sm text-gray-400">
+                If you received a referral code from a friend, you can apply it here to earn rewards.
+              </p>
             </div>
           </div>
 
