@@ -1,15 +1,15 @@
 interface TelegramUser {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  language_code?: string;
+            id: number;
+            first_name: string;
+            last_name?: string;
+            username?: string;
+            photo_url?: string;
+            language_code?: string;
 }
 
 interface TelegramWebAppInitData {
   user?: TelegramUser;
-  start_param?: string;
+          start_param?: string;
   auth_date?: string;
   hash?: string;
   query_id?: string;
@@ -21,18 +21,18 @@ interface TelegramWebApp {
   close: () => void;
   initData: string;
   initDataUnsafe: TelegramWebAppInitData;
-  colorScheme: 'light' | 'dark';
-  viewportHeight: number;
-  viewportStableHeight: number;
-  headerColor: string;
-  backgroundColor: string;
+        colorScheme: 'light' | 'dark';
+        viewportHeight: number;
+        viewportStableHeight: number;
+        headerColor: string;
+        backgroundColor: string;
   isExpanded: boolean;
-  MainButton: {
-    text: string;
-    color: string;
-    textColor: string;
-    isVisible: boolean;
-    isActive: boolean;
+        MainButton: {
+          text: string;
+          color: string;
+          textColor: string;
+          isVisible: boolean;
+          isActive: boolean;
     isProgressVisible: boolean;
     setText: (text: string) => void;
     onClick: (callback: () => void) => void;
@@ -48,8 +48,8 @@ interface TelegramWebApp {
     onClick: (callback: () => void) => void;
     show: () => void;
     hide: () => void;
-  };
-  HapticFeedback: {
+        };
+        HapticFeedback: {
     impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void;
     notificationOccurred: (type: 'error' | 'success' | 'warning') => void;
     selectionChanged: () => void;

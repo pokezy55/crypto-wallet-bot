@@ -402,12 +402,12 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         console.log('Fetching transaction history (throttled)');
         sessionStorage.setItem('lastHistoryFetch', now.toString());
         
-        setLoadingHistory(true);
-        fetch(`/api/wallet/${user.id}/history`)
-          .then(res => res.json())
-          .then(data => setHistory(data.history || []))
-          .catch(() => setHistory([]))
-          .finally(() => setLoadingHistory(false));
+      setLoadingHistory(true);
+      fetch(`/api/wallet/${user.id}/history`)
+        .then(res => res.json())
+        .then(data => setHistory(data.history || []))
+        .catch(() => setHistory([]))
+        .finally(() => setLoadingHistory(false));
       } else {
         console.log('Skipping history fetch - throttled');
       }
@@ -521,15 +521,15 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       console.log('Refreshing wallet and history (throttled)');
       sessionStorage.setItem('lastWalletRefresh', now.toString());
       
-      // Panggil ulang API wallet
-      const walletRes = await fetch(`/api/wallet/${user.id}`);
-      if (walletRes.ok) {
-        if (onWalletUpdate) onWalletUpdate(await walletRes.json());
-      }
-      // Panggil ulang API history
-      const historyRes = await fetch(`/api/wallet/${user.id}/history`);
-      if (historyRes.ok) {
-        if (onHistoryUpdate) onHistoryUpdate((await historyRes.json()).history || []);
+    // Panggil ulang API wallet
+    const walletRes = await fetch(`/api/wallet/${user.id}`);
+    if (walletRes.ok) {
+      if (onWalletUpdate) onWalletUpdate(await walletRes.json());
+    }
+    // Panggil ulang API history
+    const historyRes = await fetch(`/api/wallet/${user.id}/history`);
+    if (historyRes.ok) {
+      if (onHistoryUpdate) onHistoryUpdate((await historyRes.json()).history || []);
       }
     } else {
       console.log('Skipping wallet and history refresh - throttled');
@@ -649,7 +649,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           <h2 className="text-xl font-semibold">Send</h2>
         </div>
           {/* Send form content */}
-        </div>
+              </div>
       </ErrorBoundary>
     );
   }
@@ -793,9 +793,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                       <span className="text-white">{opt.label}</span>
                     </button>
                   ))}
-                </div>
+          </div>
               )}
-            </div>
+        </div>
           </div>
         </div>
 
@@ -812,7 +812,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
               {tokenList.find(t => t.symbol === 'ETH')?.balance.toFixed(4) || '0.0000'}
             </span>
           </div>
-        </div>
+            </div>
 
         {/* Action Buttons */}
         <div className="flex justify-between items-center mb-4 px-2">
@@ -891,7 +891,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                   <div>
                       <div className="text-sm">{tx.type}</div>
                       <div className="text-xs text-gray-400">{tx.date}</div>
-                    </div>
+                  </div>
                     <div className="text-right">
                       <div className="text-sm">{tx.amount} {tx.token}</div>
                       <div className="text-xs text-gray-400">{tx.status}</div>

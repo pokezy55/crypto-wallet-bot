@@ -7,10 +7,10 @@ const ERC20_ABI = [
 
 export async function POST(request) {
   try {
-    const { address, chain } = await request.json();
-    if (!address || !chain) {
-      return Response.json({ error: 'Missing address or chain' }, { status: 400 });
-    }
+  const { address, chain } = await request.json();
+  if (!address || !chain) {
+    return Response.json({ error: 'Missing address or chain' }, { status: 400 });
+  }
 
     // Validate & normalize address
     let normalizedAddress;
@@ -19,16 +19,16 @@ export async function POST(request) {
     } catch (e) {
       console.warn('Address validation error:', e.message);
       return Response.json({ error: 'Invalid address format' }, { status: 400 });
-    }
+  }
 
-    let provider, tokens;
-    try {
-      provider = getProvider(chain);
-      tokens = getTokenList(chain);
-    } catch (e) {
-      console.warn('Chain/provider error:', e.message);
-      return Response.json({ error: e.message }, { status: 400 });
-    }
+  let provider, tokens;
+  try {
+    provider = getProvider(chain);
+    tokens = getTokenList(chain);
+  } catch (e) {
+    console.warn('Chain/provider error:', e.message);
+    return Response.json({ error: e.message }, { status: 400 });
+  }
 
     const balances = [];
     const errors = [];
@@ -36,17 +36,17 @@ export async function POST(request) {
     for (const token of tokens) {
       try {
         let bal;
-        if (token.isNative) {
+      if (token.isNative) {
           bal = await provider.getBalance(normalizedAddress);
           bal = formatEther(bal);
-        } else {
+      } else {
           if (!token.address) {
             throw new Error(`Token ${token.symbol} has no contract address`);
           }
-          const contract = new Contract(token.address, ERC20_ABI, provider);
+        const contract = new Contract(token.address, ERC20_ABI, provider);
           bal = await contract.balanceOf(normalizedAddress);
           bal = formatUnits(bal, token.decimals || 18);
-        }
+      }
         balances.push({ symbol: token.symbol, balance: bal });
       } catch (e) {
         console.warn(`Error fetching balance for ${token.symbol}:`, e.message);
