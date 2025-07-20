@@ -15,6 +15,20 @@ interface User {
   custom_code?: string
 }
 
+interface Referral {
+  username: string
+  address: string
+  joinedAt: string
+  isValid: boolean
+  rewardStatus: string
+}
+
+interface ReferralStats {
+  totalReferrals: number
+  totalEarned: number
+  referralCode: string
+}
+
 interface ReferralTabProps {
   user: User
   wallet?: {
@@ -22,20 +36,6 @@ interface ReferralTabProps {
   }
   onUpdateReferralStatus?: (referredBy: number) => void
   onUpdateCustomCode?: (customCode: string) => void
-}
-
-interface Referral {
-  username: string
-  address?: string
-  joinedAt: string
-  isValid: boolean
-  rewardStatus?: string
-}
-
-interface ReferralStats {
-  totalReferrals: number
-  totalEarned: number
-  referralCode: string
 }
 
 export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUpdateCustomCode }: ReferralTabProps) {
@@ -56,13 +56,10 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
   const [settingCode, setSettingCode] = useState(false)
   const [codeError, setCodeError] = useState('')
 
-  // Get referral code from user or wallet address
-  const referralCode = user.custom_code || user.referral_code || stats.referralCode || (wallet ? `REF${wallet.address.substring(2, 8)}` : `REF${user.id}`)
-  
-  // Custom referral link
+  // Get referral link using only custom code
   const referralLink = user.custom_code 
     ? `https://t.me/cointwobot/wallet?start=${user.custom_code}`
-    : `https://t.me/cointwobot/wallet?start=${referralCode}`
+    : ''
 
   // Fetch referral data
   useEffect(() => {
@@ -78,7 +75,7 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
         setStats(data.stats || {
           totalReferrals: 0,
           totalEarned: 0,
-          referralCode: `REF${user.id}`
+          referralCode: ''
         })
       } catch (error) {
         console.error('Error fetching referral data:', error)
@@ -102,11 +99,13 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
   }, [cooldown])
 
   const copyReferralCode = () => {
-    navigator.clipboard.writeText(referralCode)
+    if (!user.custom_code) return
+    navigator.clipboard.writeText(user.custom_code)
     toast.success('Referral code copied!')
   }
   
   const copyReferralLink = () => {
+    if (!referralLink) return
     navigator.clipboard.writeText(referralLink)
     toast.success('Referral link copied!')
   }
@@ -115,10 +114,10 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
     if (!friendCode || submitting || cooldown > 0 || !wallet) return
     
     setSubmitting(true)
-    setCooldown(5) // 5 second cooldown
+    setCooldown(10) // 10 second cooldown
     
     try {
-      const res = await fetch('/api/referral/claim', {
+      const res = await fetch('/api/referral/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -132,10 +131,10 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
       const data = await res.json()
       
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to claim referral')
+        throw new Error(data.error || 'Failed to submit referral code')
       }
       
-      toast.success('Referral linked successfully!')
+      toast.success('Referral code submitted successfully!')
       setReferredBy(data.referredBy)
       setFriendCode('')
       
@@ -144,8 +143,8 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
         onUpdateReferralStatus(data.referredBy)
       }
     } catch (error: any) {
-      console.error('Error claiming referral:', error)
-      toast.error(error.message || 'Failed to claim referral')
+      console.error('Error submitting referral code:', error)
+      toast.error(error.message || 'Failed to submit referral code')
     } finally {
       setSubmitting(false)
     }
@@ -262,66 +261,47 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
               </div>
             ) : (
               <div className="space-y-3">
+                <h4 className="text-sm font-medium mb-2">Set Your Referral Code</h4>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    value={referralCode}
-                    readOnly
+                    value={customCode}
+                    onChange={(e) => {
+                      setCustomCode(e.target.value);
+                      setCodeError('');
+                    }}
+                    placeholder="4-12 characters (letters, numbers, underscore)"
                     className="input-field flex-1 text-sm"
+                    disabled={settingCode}
+                    maxLength={12}
                   />
                   <button
-                    onClick={copyReferralCode}
-                    className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700"
+                    onClick={setCustomReferralCode}
+                    disabled={!customCode || settingCode || cooldown > 0}
+                    className={`p-2 rounded-lg ${
+                      !customCode || settingCode || cooldown > 0
+                        ? 'bg-gray-600 cursor-not-allowed'
+                        : 'bg-primary-600 hover:bg-primary-700'
+                    }`}
                   >
-                    <Copy className="w-4 h-4" />
+                    {settingCode ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : cooldown > 0 ? (
+                      <span className="text-xs px-1">{cooldown}s</span>
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
-                
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium mb-2">Set Custom Code</h4>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={customCode}
-                      onChange={(e) => {
-                        setCustomCode(e.target.value);
-                        setCodeError('');
-                      }}
-                      placeholder="Enter custom code"
-                      className="input-field flex-1 text-sm"
-                      disabled={settingCode}
-                      maxLength={12}
-                    />
-                    <button
-                      onClick={setCustomReferralCode}
-                      disabled={!customCode || settingCode || cooldown > 0}
-                      className={`p-2 rounded-lg ${
-                        !customCode || settingCode || cooldown > 0
-                          ? 'bg-gray-600 cursor-not-allowed'
-                          : 'bg-primary-600 hover:bg-primary-700'
-                      }`}
-                    >
-                      {settingCode ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : cooldown > 0 ? (
-                        <span className="text-xs px-1">{cooldown}s</span>
-                      ) : (
-                        <Check className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                  {codeError && (
-                    <p className="text-red-500 text-xs mt-1">{codeError}</p>
-                  )}
-                  <p className="text-xs text-gray-400 mt-1">
-                    4-12 characters (letters, numbers, underscore). Can only be set once.
-                  </p>
-                </div>
+                {codeError && <p className="text-red-500 text-xs mt-1">{codeError}</p>}
+                <p className="text-xs text-gray-400 mt-1">
+                  You can only set your referral code once. Choose carefully!
+                </p>
               </div>
             )}
           </div>
 
-          {/* Got Invited? */}
+          {/* Friend Code Input */}
           {!referredBy && (
             <div className="card mb-6">
               <h3 className="text-lg font-medium mb-4">Got Invited?</h3>
@@ -359,37 +339,14 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
 
           {/* Referral Rewards Info */}
           <div className="card mb-6">
-            <h3 className="text-lg font-medium mb-4">How It Works</h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
-                  1
-                </div>
-                <div>
-                  <p className="font-medium">Share your referral code</p>
-                  <p className="text-gray-400">Send the code to friends and family</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
-                  2
-                </div>
-                <div>
-                  <p className="font-medium">They complete both tasks</p>
-                  <p className="text-gray-400">Deposit ≥ $20 and Swap ≥ $10</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
-                  3
-                </div>
-                <div>
-                  <p className="font-medium">Earn $0.5 USDT per valid referral</p>
-                  <p className="text-gray-400">Reward is automatically added to your wallet</p>
-                </div>
-              </div>
+            <h3 className="text-lg font-medium mb-4">Referral Rewards</h3>
+            <div className="space-y-2 text-sm">
+              <p>Invite friends to earn rewards:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>$0.5 for each valid referral</li>
+                <li>Friends must complete deposit and swap tasks</li>
+                <li>Rewards are added automatically</li>
+              </ul>
             </div>
           </div>
 

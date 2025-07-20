@@ -48,7 +48,7 @@ export default function Home() {
     const initTelegramWebApp = () => {
       try {
         if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-          // Initialize Telegram WebApp
+    // Initialize Telegram WebApp
           const webApp = window.Telegram.WebApp;
           webApp.ready();
           webApp.expand();
@@ -69,12 +69,12 @@ export default function Home() {
             
             // Check for referral code in start param
             const startParam = webApp.initDataUnsafe?.start_param;
-            if (startParam && startParam.startsWith('REF')) {
-              // Track referral
+            if (startParam) {
+              // Track referral using custom code
               trackReferral(startParam, telegramUser.id);
             }
-          }
-        }
+      }
+    }
         setIsLoading(false);
       } catch (error) {
         console.error('Error initializing Telegram WebApp:', error);
@@ -198,40 +198,40 @@ export default function Home() {
       <div className="min-h-screen bg-crypto-dark flex flex-col items-center p-6">
         {/* Logo */}
         <div className="flex-1 flex flex-col items-center justify-center max-w-md w-full">
-          <div className="mb-8">
+        <div className="mb-8">
             <div className="w-24 h-24 bg-primary-500 rounded-full flex items-center justify-center mb-6 mx-auto">
-              <Wallet className="w-12 h-12 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-white text-center">Crypto Wallet Bot</h1>
+            <Wallet className="w-12 h-12 text-white" />
           </div>
+          <h1 className="text-2xl font-bold text-white text-center">Crypto Wallet Bot</h1>
+        </div>
 
-          {/* Description */}
+        {/* Description */}
           <div className="text-center mb-12 w-full">
-            <p className="text-gray-300 mb-4">
-              Welcome to your secure crypto wallet! Create a new wallet or import an existing one to start managing your digital assets.
-            </p>
-            <p className="text-sm text-gray-400">
-              Support for all EVM-compatible networks including Ethereum, BSC, Polygon, and more.
-            </p>
-          </div>
+          <p className="text-gray-300 mb-4">
+            Welcome to your secure crypto wallet! Create a new wallet or import an existing one to start managing your digital assets.
+          </p>
+          <p className="text-sm text-gray-400">
+            Support for all EVM-compatible networks including Ethereum, BSC, Polygon, and more.
+          </p>
+        </div>
 
-          {/* Action Buttons */}
+        {/* Action Buttons */}
           <div className="w-full space-y-4">
-            <button
-              onClick={handleCreateWallet}
+          <button
+            onClick={handleCreateWallet}
               className="w-full btn-primary flex items-center justify-center gap-2 py-3"
-            >
-              <Plus className="w-5 h-5" />
-              Create New Wallet
-            </button>
-            
-            <button
-              onClick={handleImportWallet}
+          >
+            <Plus className="w-5 h-5" />
+            Create New Wallet
+          </button>
+          
+          <button
+            onClick={handleImportWallet}
               className="w-full btn-secondary flex items-center justify-center gap-2 py-3"
-            >
-              <Download className="w-5 h-5" />
-              Import Wallet
-            </button>
+          >
+            <Download className="w-5 h-5" />
+            Import Wallet
+          </button>
           </div>
         </div>
 
