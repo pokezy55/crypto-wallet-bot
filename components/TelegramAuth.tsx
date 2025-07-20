@@ -6,6 +6,20 @@ interface TelegramAuthProps {
 
 const TelegramAuth: React.FC<TelegramAuthProps> = ({ onAuth }) => {
   useEffect(() => {
+    // Always call onAuth with fallback user after a short delay if not called by Telegram WebApp
+    const fallbackTimeout = setTimeout(() => {
+      console.log('Fallback authentication triggered');
+      if (onAuth) {
+        onAuth({
+          id: 12345678,
+          first_name: 'Test',
+          last_name: 'User',
+          username: 'testuser',
+          photo_url: null
+        });
+      }
+    }, 2000); // 2 seconds timeout
+    
     // Parse referral code from URL
     const parseReferralCode = () => {
       try {
@@ -50,6 +64,9 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ onAuth }) => {
                 username: telegramUser.username,
                 photo_url: telegramUser.photo_url
               });
+              
+              // Clear fallback timeout since we've authenticated via Telegram
+              clearTimeout(fallbackTimeout);
             }
             return true; // Successfully authenticated
           } else {
@@ -60,42 +77,11 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ onAuth }) => {
         }
         
         // If we get here, either Telegram WebApp is not available or user data is missing
-        console.log('Using fallback authentication');
-        
-        // Fallback for development or testing
-        if (onAuth) {
-          console.log('Calling onAuth with fallback user');
-          
-          // Use setTimeout to ensure this runs after the component mounts
-          setTimeout(() => {
-            onAuth({
-              id: 12345678,
-              first_name: 'Test',
-              last_name: 'User',
-              username: 'testuser',
-              photo_url: null
-            });
-          }, 100);
-        }
+        // The fallback timeout will handle authentication
         return false;
       } catch (error) {
         console.error('Error initializing Telegram WebApp:', error);
-        
-        // Fallback for error cases
-        if (onAuth) {
-          console.log('Calling onAuth with error fallback user');
-          
-          // Use setTimeout to ensure this runs after the component mounts
-          setTimeout(() => {
-            onAuth({
-              id: 12345678,
-              first_name: 'Test',
-              last_name: 'User',
-              username: 'testuser',
-              photo_url: null
-            });
-          }, 100);
-        }
+        // Fallback will be handled by timeout
         return false;
       }
     };
@@ -103,6 +89,9 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ onAuth }) => {
     // Parse referral code first, then init WebApp
     parseReferralCode();
     initTelegramWebApp();
+    
+    // Clean up timeout on unmount
+    return () => clearTimeout(fallbackTimeout);
   }, [onAuth]);
 
   return null; // This component doesn't render anything

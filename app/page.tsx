@@ -36,13 +36,29 @@ export default function Home() {
         setWallet(data)
       } else {
         console.log('User has no wallet yet, status:', res.status)
+        // Explicitly set wallet to null to exit loading state
+        setWallet(null)
       }
       setIsLoading(false)
     } catch (error) {
       console.error('Error checking wallet:', error)
+      // Explicitly set wallet to null to exit loading state
+      setWallet(null)
       setIsLoading(false)
     }
   }
+  
+  // Add a timeout to exit loading state after 10 seconds
+  useEffect(() => {
+    if (isLoading) {
+      const timeout = setTimeout(() => {
+        console.log('Loading timeout reached, forcing exit from loading state');
+        setIsLoading(false);
+      }, 10000); // 10 seconds timeout
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [isLoading]);
 
   // Handle wallet creation
   const handleWalletCreated = (newWallet: any) => {
