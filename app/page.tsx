@@ -23,6 +23,7 @@ interface User {
   last_name?: string
   username?: string
   photo_url?: string
+  referred_by?: number
 }
 
 interface Wallet {
@@ -159,6 +160,16 @@ export default function Home() {
     toast.success('Wallet imported successfully!')
   }
 
+  // Update user referral status
+  const updateUserReferralStatus = (referredBy: number) => {
+    if (user) {
+      setUser({
+        ...user,
+        referred_by: referredBy
+      });
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -237,7 +248,7 @@ export default function Home() {
       <div className="flex-1 overflow-y-auto pb-20">
         {activeTab === 'wallet' && <WalletTab wallet={wallet} user={user} />}
         {activeTab === 'task' && <TaskTab user={user} />}
-        {activeTab === 'referral' && <ReferralTab user={user} />}
+        {activeTab === 'referral' && <ReferralTab user={user} wallet={wallet} onUpdateReferralStatus={updateUserReferralStatus} />}
         {activeTab === 'menu' && <MenuTab wallet={wallet} user={user} />}
       </div>
 

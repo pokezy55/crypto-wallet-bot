@@ -124,6 +124,8 @@ BEGIN
     first_name VARCHAR(255),
     last_name VARCHAR(255),
     photo_url TEXT,
+    referral_code VARCHAR(20),
+    referred_by BIGINT REFERENCES users(id),
     banned BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

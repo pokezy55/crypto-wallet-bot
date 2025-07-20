@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Copy, Users, DollarSign, Share2, Loader2 } from 'lucide-react'
+import { Copy, Users, DollarSign, Loader2, Edit, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface User {
@@ -10,10 +10,16 @@ interface User {
   last_name?: string
   username?: string
   photo_url?: string
+  referral_code?: string
+  referred_by?: number
 }
 
 interface ReferralTabProps {
   user: User
+  wallet?: {
+    address: string
+  }
+  onUpdateReferralStatus?: (referredBy: number) => void
 }
 
 interface Referral {
@@ -30,7 +36,7 @@ interface ReferralStats {
   referralCode: string
 }
 
-export default function ReferralTab({ user }: ReferralTabProps) {
+export default function ReferralTab({ user, wallet, onUpdateReferralStatus }: ReferralTabProps) {
   const [referrals, setReferrals] = useState<Referral[]>([])
   const [stats, setStats] = useState<ReferralStats>({
     totalReferrals: 0,
@@ -38,21 +44,13 @@ export default function ReferralTab({ user }: ReferralTabProps) {
     referralCode: ''
   })
   const [loading, setLoading] = useState(true)
+  const [friendCode, setFriendCode] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
+  const [referredBy, setReferredBy] = useState(user.referred_by)
 
-  // Get referral code from Telegram WebApp or user ID
-  const getTelegramUsername = () => {
-    try {
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initDataUnsafe?.user?.username) {
-        return window.Telegram.WebApp.initDataUnsafe.user.username;
-      }
-    } catch (e) {
-      console.error('Error getting Telegram username:', e);
-    }
-    return null;
-  }
-
-  const referralCode = stats.referralCode || `REF${user.id}`
-  const referralLink = `https://t.me/cointwobot?start=${referralCode}`
+  // Get referral code from user or wallet address
+  const referralCode = user.referral_code || stats.referralCode || (wallet ? `REF${wallet.address.substring(2, 8)}` : `REF${user.id}`)
 
   // Fetch referral data
   useEffect(() => {
@@ -81,20 +79,58 @@ export default function ReferralTab({ user }: ReferralTabProps) {
     fetchReferralData()
   }, [user.id])
 
-  const copyReferralLink = () => {
-    navigator.clipboard.writeText(referralLink)
-    toast.success('Referral link copied!')
+  // Cooldown timer
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => {
+        setCooldown(cooldown - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [cooldown])
+
+  const copyReferralCode = () => {
+    navigator.clipboard.writeText(referralCode)
+    toast.success('Referral code copied!')
   }
 
-  const shareReferralLink = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'Join Crypto Wallet Bot',
-        text: 'Create your crypto wallet and earn rewards!',
-        url: referralLink,
+  const submitFriendCode = async () => {
+    if (!friendCode || submitting || cooldown > 0 || !wallet) return
+    
+    setSubmitting(true)
+    setCooldown(5) // 5 second cooldown
+    
+    try {
+      const res = await fetch('/api/referral/claim', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userAddress: wallet.address,
+          friendCode
+        }),
       })
-    } else {
-      copyReferralLink()
+      
+      const data = await res.json()
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to claim referral')
+      }
+      
+      toast.success('Referral linked successfully!')
+      setReferredBy(data.referredBy)
+      setFriendCode('')
+      
+      // Update parent component
+      if (onUpdateReferralStatus && data.referredBy) {
+        onUpdateReferralStatus(data.referredBy)
+      }
+    } catch (error: any) {
+      console.error('Error claiming referral:', error)
+      toast.error(error.message || 'Failed to claim referral')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -123,34 +159,62 @@ export default function ReferralTab({ user }: ReferralTabProps) {
             </div>
           </div>
 
-          {/* Referral Link */}
+          {/* Your Referral Code */}
           <div className="card mb-6">
-            <h3 className="text-lg font-medium mb-4">Your Referral Link</h3>
+            <h3 className="text-lg font-medium mb-4">Your Referral Code</h3>
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={referralLink}
+                  value={referralCode}
                   readOnly
                   className="input-field flex-1 text-sm"
                 />
                 <button
-                  onClick={copyReferralLink}
+                  onClick={copyReferralCode}
                   className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700"
                 >
                   <Copy className="w-4 h-4" />
                 </button>
               </div>
-              
-              <button
-                onClick={shareReferralLink}
-                className="w-full btn-primary flex items-center justify-center gap-2"
-              >
-                <Share2 className="w-4 h-4" />
-                Share Referral Link
-              </button>
             </div>
           </div>
+
+          {/* Got Invited? */}
+          {!referredBy && (
+            <div className="card mb-6">
+              <h3 className="text-lg font-medium mb-4">Got Invited?</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={friendCode}
+                    onChange={(e) => setFriendCode(e.target.value)}
+                    placeholder="Enter friend's referral code"
+                    className="input-field flex-1 text-sm"
+                    disabled={submitting}
+                  />
+                  <button
+                    onClick={submitFriendCode}
+                    disabled={!friendCode || submitting || cooldown > 0}
+                    className={`p-2 rounded-lg ${
+                      !friendCode || submitting || cooldown > 0
+                        ? 'bg-gray-600 cursor-not-allowed'
+                        : 'bg-primary-600 hover:bg-primary-700'
+                    }`}
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : cooldown > 0 ? (
+                      <span className="text-xs px-1">{cooldown}s</span>
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Referral Rewards Info */}
           <div className="card mb-6">
@@ -161,8 +225,8 @@ export default function ReferralTab({ user }: ReferralTabProps) {
                   1
                 </div>
                 <div>
-                  <p className="font-medium">Share your referral link</p>
-                  <p className="text-gray-400">Send the link to friends and family</p>
+                  <p className="font-medium">Share your referral code</p>
+                  <p className="text-gray-400">Send the code to friends and family</p>
                 </div>
               </div>
               
@@ -192,7 +256,7 @@ export default function ReferralTab({ user }: ReferralTabProps) {
           <div className="card">
             <h3 className="text-lg font-medium mb-4">Your Referrals</h3>
             {referrals.length === 0 ? (
-              <p className="text-gray-400 text-center py-4">No referrals yet. Share your link to start earning!</p>
+              <p className="text-gray-400 text-center py-4">No referrals yet. Share your code to start earning!</p>
             ) : (
               <div className="space-y-3">
                 {referrals.map((referral, index) => (
