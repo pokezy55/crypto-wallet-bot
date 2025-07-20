@@ -6,63 +6,9 @@ export const dynamic = 'force-dynamic'
 
 const CHAINS = ['eth', 'polygon', 'bsc', 'base']
 
-// Generate dummy transaction history
-const generateDummyHistory = (userId) => {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  
-  return [
-    {
-      type: 'Receive',
-      amount: '0.1',
-      token: 'ETH',
-      from: '0x' + '1'.repeat(40),
-      txHash: '0x' + '1'.repeat(64),
-      chain: 'eth',
-      timestamp: new Date(now - 2 * day).toISOString()
-    },
-    {
-      type: 'Send',
-      amount: '0.05',
-      token: 'ETH',
-      to: '0x' + '2'.repeat(40),
-      txHash: '0x' + '2'.repeat(64),
-      chain: 'eth',
-      timestamp: new Date(now - day).toISOString()
-    },
-    {
-      type: 'Swap',
-      amountIn: '0.02',
-      tokenIn: 'ETH',
-      amountOut: '50',
-      tokenOut: 'USDT',
-      txHash: '0x' + '3'.repeat(64),
-      chain: 'eth',
-      timestamp: new Date(now - 0.5 * day).toISOString()
-    },
-    {
-      type: 'Receive',
-      amount: '0.2',
-      token: 'BNB',
-      from: '0x' + '4'.repeat(40),
-      txHash: '0x' + '4'.repeat(64),
-      chain: 'bsc',
-      timestamp: new Date(now - 0.2 * day).toISOString()
-    }
-  ];
-};
-
 export async function GET(request, { params }) {
   try {
     const { userId } = params
-    
-    // Return dummy history data
-    console.log('Returning dummy history for user:', userId);
-    return NextResponse.json({ 
-      history: generateDummyHistory(userId) 
-    });
-    
-    /* Original implementation commented out
     const walletData = await getWalletByUserId(userId)
     if (!walletData) {
       return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
@@ -107,13 +53,8 @@ export async function GET(request, { params }) {
       history = history.concat(formatted)
     }
     return NextResponse.json({ history })
-    */
   } catch (error) {
     console.error('Error fetching wallet history:', error)
-    
-    // Return dummy history data on error
-    return NextResponse.json({ 
-      history: generateDummyHistory(params.userId || 12345) 
-    });
+    return NextResponse.json({ error: 'Failed to fetch wallet history' }, { status: 500 })
   }
 } 

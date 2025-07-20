@@ -46,17 +46,6 @@ export async function POST(request: Request) {
     
     const { userId, address, seedPhrase } = await request.json() as CreateWalletRequest;
     
-    // For now, always return success with dummy data
-    console.log('Returning dummy wallet creation success');
-    return NextResponse.json({
-      success: true,
-      id: '12345',
-      address: address || '0x' + '0'.repeat(24) + userId.toString().padStart(16, '0'),
-      seedPhrase: seedPhrase || 'test test test test test test test test test test test test',
-      message: 'Wallet created successfully'
-    });
-    
-    /* Original implementation commented out
     // Validate required fields
     if (!userId || !address || !seedPhrase) {
       console.error('Missing required fields:', { userId: !!userId, address: !!address, seedPhrase: !!seedPhrase });
@@ -119,21 +108,14 @@ export async function POST(request: Request) {
       seedPhrase: cleanSeedPhrase, // Include seed phrase in response
       message: 'Wallet created successfully'
     })
-    */
   } catch (error) {
-    console.error('Error creating wallet:', error);
-    
-    // Return success with dummy data even on error
-    const body = await request.json().catch(() => ({ userId: 12345 }));
-    const userId = body.userId || 12345;
-    const address = body.address || '0x' + '0'.repeat(24) + userId.toString().padStart(16, '0');
-    
-    return NextResponse.json({
-      success: true,
-      id: '12345',
-      address: address,
-      seedPhrase: 'test test test test test test test test test test test test',
-      message: 'Wallet created successfully (fallback)'
-    });
+    console.error('Error creating wallet:', error)
+    return NextResponse.json(
+      { 
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : String(error)
+      },
+      { status: 500 }
+    )
   }
 } 
