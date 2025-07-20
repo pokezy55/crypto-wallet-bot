@@ -114,6 +114,30 @@ export default function Home() {
       checkUserWallet(user.id)
     }
   }, [user, activeTab])
+  
+  // Fetch user data ketika tab referral aktif
+  useEffect(() => {
+    if (user && activeTab === 'referral') {
+      const fetchUserData = async () => {
+        try {
+          const res = await fetch(`/api/user/${user.id}`)
+          if (res.ok) {
+            const userData = await res.json()
+            // Update user dengan data terbaru
+            setUser(prevUser => ({
+              ...prevUser!,
+              custom_code: userData.custom_code,
+              referred_by: userData.referred_by
+            }))
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error)
+        }
+      }
+      
+      fetchUserData()
+    }
+  }, [user, activeTab])
 
   const checkUserWallet = async (userId: number) => {
     try {

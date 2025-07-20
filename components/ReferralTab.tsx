@@ -50,6 +50,7 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
   const [submitting, setSubmitting] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const [referredBy, setReferredBy] = useState(user.referred_by)
+  const [currentUser, setCurrentUser] = useState<User>(user)
   
   // Custom code state
   const [customCode, setCustomCode] = useState('')
@@ -57,9 +58,40 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
   const [codeError, setCodeError] = useState('')
 
   // Get referral link using only custom code
-  const referralLink = user.custom_code 
-    ? `https://t.me/cointwobot/wallet?start=${user.custom_code}`
+  const referralLink = currentUser.custom_code 
+    ? `https://t.me/cointwobot/wallet?start=${currentUser.custom_code}`
     : ''
+
+  // Fetch latest user data
+  useEffect(() => {
+    const fetchLatestUserData = async () => {
+      try {
+        const res = await fetch(`/api/user/${user.id}`)
+        if (res.ok) {
+          const userData = await res.json()
+          setCurrentUser(userData)
+          
+          // Update parent component if needed
+          if (userData.custom_code && userData.custom_code !== user.custom_code) {
+            if (onUpdateCustomCode) {
+              onUpdateCustomCode(userData.custom_code)
+            }
+          }
+          
+          if (userData.referred_by && userData.referred_by !== user.referred_by) {
+            setReferredBy(userData.referred_by)
+            if (onUpdateReferralStatus) {
+              onUpdateReferralStatus(userData.referred_by)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching latest user data:', error)
+      }
+    }
+    
+    fetchLatestUserData()
+  }, [user.id, user.custom_code, user.referred_by, onUpdateCustomCode, onUpdateReferralStatus])
 
   // Fetch referral data
   useEffect(() => {
@@ -99,8 +131,8 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
   }, [cooldown])
 
   const copyReferralCode = () => {
-    if (!user.custom_code) return
-    navigator.clipboard.writeText(user.custom_code)
+    if (!currentUser.custom_code) return
+    navigator.clipboard.writeText(currentUser.custom_code)
     toast.success('Referral code copied!')
   }
   
@@ -141,6 +173,13 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
       // Update parent component
       if (onUpdateReferralStatus && data.referredBy) {
         onUpdateReferralStatus(data.referredBy)
+      }
+      
+      // Refresh user data
+      const userRes = await fetch(`/api/user/${user.id}`)
+      if (userRes.ok) {
+        const userData = await userRes.json()
+        setCurrentUser(userData)
       }
     } catch (error: any) {
       console.error('Error submitting referral code:', error)
@@ -189,6 +228,13 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
         onUpdateCustomCode(data.customCode)
       }
       
+      // Refresh user data
+      const userRes = await fetch(`/api/user/${user.id}`)
+      if (userRes.ok) {
+        const userData = await userRes.json()
+        setCurrentUser(userData)
+      }
+      
       setCustomCode('')
     } catch (error: any) {
       console.error('Error setting custom code:', error)
@@ -228,12 +274,12 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
           <div className="card mb-6">
             <h3 className="text-lg font-medium mb-4">Your Referral Code</h3>
             
-            {user.custom_code ? (
+            {currentUser.custom_code ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    value={user.custom_code}
+                    value={currentUser.custom_code}
                     readOnly
                     className="input-field flex-1 text-sm"
                   />
