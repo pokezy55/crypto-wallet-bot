@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Copy, Users, DollarSign, Loader2, Edit, Check } from 'lucide-react'
+import { Copy, Users, DollarSign, Loader2, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface User {
@@ -12,6 +12,7 @@ interface User {
   photo_url?: string
   referral_code?: string
   referred_by?: number
+  custom_code?: string
 }
 
 interface ReferralTabProps {
@@ -20,6 +21,7 @@ interface ReferralTabProps {
     address: string
   }
   onUpdateReferralStatus?: (referredBy: number) => void
+  onUpdateCustomCode?: (customCode: string) => void
 }
 
 interface Referral {
@@ -36,7 +38,7 @@ interface ReferralStats {
   referralCode: string
 }
 
-export default function ReferralTab({ user, wallet, onUpdateReferralStatus }: ReferralTabProps) {
+export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUpdateCustomCode }: ReferralTabProps) {
   const [referrals, setReferrals] = useState<Referral[]>([])
   const [stats, setStats] = useState<ReferralStats>({
     totalReferrals: 0,
@@ -48,9 +50,19 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus }: Re
   const [submitting, setSubmitting] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const [referredBy, setReferredBy] = useState(user.referred_by)
+  
+  // Custom code state
+  const [customCode, setCustomCode] = useState('')
+  const [settingCode, setSettingCode] = useState(false)
+  const [codeError, setCodeError] = useState('')
 
   // Get referral code from user or wallet address
-  const referralCode = user.referral_code || stats.referralCode || (wallet ? `REF${wallet.address.substring(2, 8)}` : `REF${user.id}`)
+  const referralCode = user.custom_code || user.referral_code || stats.referralCode || (wallet ? `REF${wallet.address.substring(2, 8)}` : `REF${user.id}`)
+  
+  // Custom referral link
+  const referralLink = user.custom_code 
+    ? `https://t.me/cointwobot/wallet?start=${user.custom_code}`
+    : `https://t.me/cointwobot/wallet?start=${referralCode}`
 
   // Fetch referral data
   useEffect(() => {
@@ -93,6 +105,11 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus }: Re
     navigator.clipboard.writeText(referralCode)
     toast.success('Referral code copied!')
   }
+  
+  const copyReferralLink = () => {
+    navigator.clipboard.writeText(referralLink)
+    toast.success('Referral link copied!')
+  }
 
   const submitFriendCode = async () => {
     if (!friendCode || submitting || cooldown > 0 || !wallet) return
@@ -133,6 +150,55 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus }: Re
       setSubmitting(false)
     }
   }
+  
+  const setCustomReferralCode = async () => {
+    if (!customCode || settingCode || cooldown > 0 || !wallet) return
+    
+    // Validate code format
+    const codeRegex = /^[a-zA-Z0-9_]{4,12}$/;
+    if (!codeRegex.test(customCode)) {
+      setCodeError('Use 4-12 characters (letters, numbers, underscore)')
+      return
+    }
+    
+    setSettingCode(true)
+    setCooldown(10) // 10 second cooldown
+    setCodeError('')
+    
+    try {
+      const res = await fetch('/api/referral/set-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userAddress: wallet.address,
+          code: customCode
+        }),
+      })
+      
+      const data = await res.json()
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to set custom code')
+      }
+      
+      toast.success('Referral code set successfully!')
+      
+      // Update parent component
+      if (onUpdateCustomCode && data.customCode) {
+        onUpdateCustomCode(data.customCode)
+      }
+      
+      setCustomCode('')
+    } catch (error: any) {
+      console.error('Error setting custom code:', error)
+      setCodeError(error.message || 'Failed to set custom code')
+      toast.error(error.message || 'Failed to set custom code')
+    } finally {
+      setSettingCode(false)
+    }
+  }
 
   return (
     <div className="p-6">
@@ -162,22 +228,97 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus }: Re
           {/* Your Referral Code */}
           <div className="card mb-6">
             <h3 className="text-lg font-medium mb-4">Your Referral Code</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={referralCode}
-                  readOnly
-                  className="input-field flex-1 text-sm"
-                />
-                <button
-                  onClick={copyReferralCode}
-                  className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
+            
+            {user.custom_code ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={user.custom_code}
+                    readOnly
+                    className="input-field flex-1 text-sm"
+                  />
+                  <button
+                    onClick={copyReferralCode}
+                    className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={referralLink}
+                    readOnly
+                    className="input-field flex-1 text-sm"
+                  />
+                  <button
+                    onClick={copyReferralLink}
+                    className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={referralCode}
+                    readOnly
+                    className="input-field flex-1 text-sm"
+                  />
+                  <button
+                    onClick={copyReferralCode}
+                    className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2">Set Custom Code</h4>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={customCode}
+                      onChange={(e) => {
+                        setCustomCode(e.target.value);
+                        setCodeError('');
+                      }}
+                      placeholder="Enter custom code"
+                      className="input-field flex-1 text-sm"
+                      disabled={settingCode}
+                      maxLength={12}
+                    />
+                    <button
+                      onClick={setCustomReferralCode}
+                      disabled={!customCode || settingCode || cooldown > 0}
+                      className={`p-2 rounded-lg ${
+                        !customCode || settingCode || cooldown > 0
+                          ? 'bg-gray-600 cursor-not-allowed'
+                          : 'bg-primary-600 hover:bg-primary-700'
+                      }`}
+                    >
+                      {settingCode ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : cooldown > 0 ? (
+                        <span className="text-xs px-1">{cooldown}s</span>
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                  {codeError && (
+                    <p className="text-red-500 text-xs mt-1">{codeError}</p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">
+                    4-12 characters (letters, numbers, underscore). Can only be set once.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Got Invited? */}

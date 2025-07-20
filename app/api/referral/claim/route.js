@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createReferral, getUserById, getWalletByAddress, getUserByReferralCode, updateUserReferredBy } from '@/lib/database';
+import { createReferral, getUserById, getWalletByAddress, getUserByReferralCode, getUserByCustomCode, updateUserReferredBy } from '@/lib/database';
 
 // Rate limiting
 const rateLimits = new Map();
@@ -60,8 +60,14 @@ export async function POST(req) {
       return NextResponse.json({ error: 'You already have a referrer' }, { status: 400 });
     }
     
-    // Find friend by referral code
-    const friend = await getUserByReferralCode(friendCode);
+    // Find friend by referral code - first try custom code
+    let friend = await getUserByCustomCode(friendCode);
+    
+    // If not found, try regular referral code
+    if (!friend) {
+      friend = await getUserByReferralCode(friendCode);
+    }
+    
     if (!friend) {
       return NextResponse.json({ error: 'Invalid referral code' }, { status: 400 });
     }

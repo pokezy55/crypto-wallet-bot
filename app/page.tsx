@@ -24,6 +24,7 @@ interface User {
   username?: string
   photo_url?: string
   referred_by?: number
+  custom_code?: string
 }
 
 interface Wallet {
@@ -170,6 +171,16 @@ export default function Home() {
     }
   }
 
+  // Update user custom code
+  const updateUserCustomCode = (customCode: string) => {
+    if (user) {
+      setUser({
+        ...user,
+        custom_code: customCode
+      });
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -248,7 +259,7 @@ export default function Home() {
       <div className="flex-1 overflow-y-auto pb-20">
         {activeTab === 'wallet' && <WalletTab wallet={wallet} user={user} />}
         {activeTab === 'task' && <TaskTab user={user} />}
-        {activeTab === 'referral' && <ReferralTab user={user} wallet={wallet} onUpdateReferralStatus={updateUserReferralStatus} />}
+        {activeTab === 'referral' && <ReferralTab user={user} wallet={wallet} onUpdateReferralStatus={updateUserReferralStatus} onUpdateCustomCode={updateUserCustomCode} />}
         {activeTab === 'menu' && <MenuTab wallet={wallet} user={user} />}
       </div>
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getUserReferrals, getReferralStats, getWalletByUserId, getWalletByAddress } from '@/lib/database';
+import { getUserReferrals, getReferralStats, getWalletByUserId, getWalletByAddress, getUserById } from '@/lib/database';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +42,13 @@ export async function GET(req) {
     
     // Get user wallet for referral code
     const wallet = await getWalletByUserId(userId);
-    const referralCode = wallet ? `REF${wallet.address.substring(2, 8)}` : `REF${userId}`;
+    
+    // Get user details for custom code
+    const userDetails = await getUserById(userId);
+    
+    // Use custom code if available, otherwise generate from wallet address
+    const referralCode = userDetails?.custom_code || 
+      (wallet ? `REF${wallet.address.substring(2, 8)}` : `REF${userId}`);
     
     return NextResponse.json({
       stats: {
