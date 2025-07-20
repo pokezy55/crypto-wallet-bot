@@ -4,7 +4,9 @@ import {
   getUserById, 
   getReferralStats, 
   getUserReferrals 
-} from '../../../../lib/database'
+} from '@/lib/database'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(req) {
   try {

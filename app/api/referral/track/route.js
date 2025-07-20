@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server'
 import { 
   getUserByCustomCode, 
   createReferral 
-} from '../../../../lib/database'
+} from '@/lib/database'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(req) {
   try {

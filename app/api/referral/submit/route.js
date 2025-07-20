@@ -5,10 +5,12 @@ import {
   getUserById, 
   updateUserReferredBy,
   createReferral
-} from '../../../../lib/database'
+} from '@/lib/database'
 
 // Rate limiting map
 const rateLimits = new Map()
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(req) {
   try {
