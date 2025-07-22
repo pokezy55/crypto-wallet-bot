@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getUserSettings, getWalletByUserId } from '@/lib/database';
 import crypto from 'crypto';
-import { ethers } from 'ethers';
+import { Wallet } from 'ethers';
 
 export async function POST(req) {
   try {
@@ -47,8 +47,27 @@ export async function POST(req) {
     } else if (type === 'private_key') {
       try {
         // Buat wallet dari seed phrase untuk mendapatkan private key
-        const hdNode = ethers.utils.HDNode.fromMnemonic(wallet.seed_phrase);
-        const privateKey = hdNode.privateKey;
+        // Menggunakan Wallet.fromPhrase yang sudah digunakan di codebase
+        const ethersWallet = Wallet.fromPhrase(wallet.seed_phrase);
+        
+        if (!ethersWallet || !ethersWallet.privateKey) {
+          console.error('Failed to generate private key: Wallet or privateKey is undefined');
+          return NextResponse.json({ 
+            error: 'Failed to generate private key from seed phrase', 
+            details: 'Wallet or privateKey is undefined'
+          }, { status: 500 });
+        }
+        
+        const privateKey = ethersWallet.privateKey;
+        
+        // Pastikan privateKey memiliki format yang benar (0x diikuti oleh 64 karakter hex)
+        if (!privateKey || !privateKey.match(/^0x[0-9a-fA-F]{64}$/)) {
+          console.error('Invalid private key format:', privateKey ? privateKey.substring(0, 10) + '...' : 'undefined');
+          return NextResponse.json({ 
+            error: 'Invalid private key format', 
+            details: 'Generated private key has incorrect format'
+          }, { status: 500 });
+        }
         
         return NextResponse.json({ 
           success: true, 
@@ -56,11 +75,30 @@ export async function POST(req) {
         });
       } catch (error) {
         console.error('Error generating private key from seed phrase:', error);
-        return NextResponse.json({ error: 'Failed to generate private key' }, { status: 500 });
+        
+        // Berikan pesan error yang lebih spesifik
+        let errorMessage = 'Failed to generate private key';
+        let errorDetails = error.message || 'Unknown error';
+        
+        if (error.message && error.message.includes('invalid mnemonic')) {
+          errorMessage = 'Invalid seed phrase format';
+          errorDetails = 'The seed phrase stored in the wallet is not valid';
+        } else if (error.code === 'INVALID_ARGUMENT') {
+          errorMessage = 'Invalid argument for private key generation';
+          errorDetails = error.argument || 'Unknown argument';
+        }
+        
+        return NextResponse.json({ 
+          error: errorMessage, 
+          details: errorDetails
+        }, { status: 500 });
       }
     }
   } catch (error) {
     console.error('Error retrieving wallet secrets:', error);
-    return NextResponse.json({ error: 'Failed to retrieve wallet secrets' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to retrieve wallet secrets',
+      details: error.message || 'Unknown error'
+    }, { status: 500 });
   }
 } 

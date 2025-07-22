@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { X, Loader2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface PinModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (pin: string) => Promise<{ success: boolean, error?: string }>
+  onSubmit: (pin: string) => Promise<{ success: boolean, error?: string, details?: string }>
   title?: string
   description?: string
   confirmText?: string
@@ -48,7 +49,7 @@ export default function PinModal({
     e.preventDefault()
     
     if (pin.length !== 4) {
-      setError('PIN must be 4 digits')
+      setError('PIN harus 4 digit')
       return
     }
     
@@ -61,11 +62,23 @@ export default function PinModal({
       if (result.success) {
         onClose()
       } else {
-        setError(result.error || 'Invalid PIN')
+        // Tampilkan error yang lebih spesifik
+        if (result.error === 'Invalid PIN') {
+          setError('PIN tidak valid')
+          toast.error('PIN tidak valid')
+        } else if (result.error?.includes('Failed to generate private key')) {
+          setError('Gagal membuka private key, coba lagi')
+          toast.error('Gagal membuka private key, coba lagi')
+          console.error('Private key error details:', result.details)
+        } else {
+          setError(result.error || 'Terjadi kesalahan')
+          toast.error(result.error || 'Terjadi kesalahan')
+        }
       }
     } catch (error) {
       console.error('Error submitting PIN:', error)
-      setError('An error occurred. Please try again.')
+      setError('Terjadi kesalahan. Silakan coba lagi.')
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
     } finally {
       setLoading(false)
     }
@@ -98,7 +111,7 @@ export default function PinModal({
                 type="password"
                 value={pin}
                 onChange={handlePinChange}
-                placeholder="Enter 4-digit PIN"
+                placeholder="Masukkan PIN 4 digit"
                 className="input-field w-full text-center text-2xl tracking-widest"
                 autoFocus
                 maxLength={4}

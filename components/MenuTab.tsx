@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { User, Shield, Eye, Key, MessageCircle, Copy, LogOut, Settings, Moon, Sun, Bell, BellOff, Zap } from 'lucide-react'
+import { User, Shield, Eye, EyeOff, Key, MessageCircle, Copy, LogOut, Settings, Moon, Sun, Bell, BellOff, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatAddress, isValidAddress } from '@/lib/address'
 import PinModal from './PinModal'
@@ -36,6 +36,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
   // State untuk data
   const [seedPhrase, setSeedPhrase] = useState('')
   const [privateKey, setPrivateKey] = useState('')
+  const [showPrivateKeyText, setShowPrivateKeyText] = useState(false)
   
   // Settings context
   const { 
@@ -49,6 +50,22 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
     getPrivateKey,
     updatePreferences
   } = useSettings()
+
+  // Auto-clear private key dan seed phrase saat komponen unmount
+  useEffect(() => {
+    return () => {
+      setSeedPhrase('')
+      setPrivateKey('')
+      setShowPrivateKeyText(false)
+    }
+  }, [])
+
+  // Auto-clear private key saat modal ditutup
+  useEffect(() => {
+    if (!privateKey) {
+      setShowPrivateKeyText(false)
+    }
+  }, [privateKey])
 
   // Copy wallet address
   const copyAddress = () => {
@@ -82,14 +99,30 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
     
     if (result.success && result.privateKey) {
       setPrivateKey(result.privateKey)
+      setShowPrivateKeyText(false) // Default hidden
       setShowPrivateKeyModal(false)
       setTimeout(() => {
         toast.success('Private key berhasil ditampilkan')
       }, 500)
       return { success: true }
     } else {
-      return { success: false, error: result.error || 'PIN tidak valid' }
+      return { 
+        success: false, 
+        error: result.error || 'PIN tidak valid',
+        details: result.details
+      }
     }
+  }
+
+  // Format private key untuk tampilan yang dimasking
+  const formatMaskedPrivateKey = (key: string) => {
+    if (!key) return '••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••';
+    return key.substring(0, 6) + '••••••••••••••••••••••••••••••••••••••••••••••••••••' + key.substring(key.length - 4);
+  }
+
+  // Toggle tampilan private key
+  const togglePrivateKeyVisibility = () => {
+    setShowPrivateKeyText(!showPrivateKeyText);
   }
 
   // Handle PIN change
@@ -123,6 +156,13 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
     } else {
       window.open('https://t.me/CoinTwoSupport', '_blank')
     }
+  }
+
+  // Clear private key
+  const clearPrivateKey = () => {
+    setPrivateKey('')
+    setShowPrivateKeyText(false)
+    toast.success('Private key dihapus dari tampilan')
   }
 
   return (
@@ -446,13 +486,28 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
             <h3 className="text-lg font-medium mb-4">Private Key</h3>
             <div className="bg-crypto-dark p-4 rounded-lg mb-4">
               <p className="text-sm text-gray-400 mb-2">Private key Anda (jaga kerahasiaannya!):</p>
-              <code className="text-sm break-all">
-                {privateKey}
-              </code>
+              <div className="relative">
+                <code className="text-sm break-all block bg-crypto-dark-light p-3 rounded-md">
+                  {showPrivateKeyText ? privateKey : formatMaskedPrivateKey(privateKey)}
+                </code>
+                <button
+                  onClick={togglePrivateKeyVisibility}
+                  className="absolute top-3 right-3 text-gray-400 hover:text-white"
+                >
+                  {showPrivateKeyText ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-yellow-500 mt-2">
+                Peringatan: Jangan pernah membagikan private key Anda kepada siapapun!
+              </p>
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setPrivateKey('')}
+                onClick={clearPrivateKey}
                 className="flex-1 btn-secondary"
               >
                 Tutup
