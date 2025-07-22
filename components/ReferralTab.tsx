@@ -17,8 +17,9 @@ interface User {
 
 interface Referral {
   username: string
-  display_name?: string
-  telegram_id?: string | number
+  firstName: string
+  lastName: string
+  walletAddress: string
   address: string
   joinedAt: string
   isValid: boolean
@@ -105,7 +106,6 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
           throw new Error('Failed to fetch referral data')
         }
         const data = await res.json()
-        console.log('Referral data received:', data.referrals)
         setReferrals(data.referrals || [])
         setStats(data.stats || {
           totalReferrals: 0,
@@ -246,6 +246,25 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
     } finally {
       setSettingCode(false)
     }
+  }
+
+  // Helper function to format wallet address
+  const formatWalletAddress = (address: string) => {
+    if (!address) return 'Anonymous';
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  }
+
+  // Helper function to get display name for referral
+  const getDisplayName = (referral: Referral) => {
+    if (referral.username) {
+      return `@${referral.username}`;
+    }
+    
+    if (referral.firstName || referral.lastName) {
+      return `${referral.firstName || ''} ${referral.lastName || ''}`.trim();
+    }
+    
+    return formatWalletAddress(referral.walletAddress);
   }
 
   return (
@@ -409,11 +428,7 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
                 {referrals.map((referral, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-crypto-dark rounded-lg">
                     <div>
-                      <p className="font-medium">
-                        {referral.username ? `@${referral.username}` : 
-                         (referral.telegram_id ? `@${String(referral.telegram_id).substring(0, 5)}` : 
-                          `@${String(referral.display_name).substring(0, 5)}`)}
-                      </p>
+                      <p className="font-medium">{getDisplayName(referral)}</p>
                       <p className="text-sm text-gray-400">Joined {new Date(referral.joinedAt).toLocaleDateString()}</p>
                     </div>
                     <div className="text-right">

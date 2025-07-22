@@ -37,14 +37,6 @@ export async function GET(req) {
     // Get referrals list
     const referrals = await getUserReferrals(userId)
     
-    console.log('Raw referrals from database:', referrals.map(ref => ({
-      id: ref.id,
-      referred_id: ref.referred_id,
-      username: ref.username,
-      display_name: ref.display_name,
-      telegram_id: ref.telegram_id
-    })))
-    
     // Calculate total earned (valid referrals * $0.5)
     const validReferrals = referrals.filter(ref => {
       // A referral is valid if they completed both tasks (deposit >= $20 and swap >= $10)
@@ -59,28 +51,22 @@ export async function GET(req) {
     // Only use custom code, no fallback to auto-generated code
     const referralCode = userDetails?.custom_code || ''
     
-    const formattedReferrals = referrals.map(ref => {
-      // Pastikan username Telegram asli digunakan
-      return {
-        username: ref.username || '',
-        display_name: ref.display_name || '',
-        telegram_id: ref.telegram_id,
-        address: ref.address,
-        joinedAt: ref.created_at,
-        isValid: ref.deposit_completed && ref.swap_completed,
-        rewardStatus: ref.reward_status || 'pending'
-      };
-    });
-    
-    console.log('API response referrals:', formattedReferrals.map(ref => ({ username: ref.username, display_name: ref.display_name })));
-    
     return NextResponse.json({
       stats: {
         totalReferrals: stats.total_referrals || 0,
         totalEarned,
         referralCode
       },
-      referrals: formattedReferrals
+      referrals: referrals.map(ref => ({
+        username: ref.username || '',
+        firstName: ref.first_name || '',
+        lastName: ref.last_name || '',
+        walletAddress: ref.address || '',
+        address: ref.address,
+        joinedAt: ref.created_at,
+        isValid: ref.deposit_completed && ref.swap_completed,
+        rewardStatus: ref.reward_status || 'pending'
+      }))
     })
     
   } catch (error) {
