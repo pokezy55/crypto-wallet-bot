@@ -408,7 +408,11 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
                 {referrals.map((referral, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-crypto-dark rounded-lg">
                     <div>
-                      <p className="font-medium">@{referral.username.replace(/^User/, '')}</p>
+                      <p className="font-medium">
+                        {referral.username && !referral.username.startsWith('User') 
+                          ? `@${referral.username}` 
+                          : `@${referral.username.replace(/^User/, '')}`}
+                      </p>
                       <p className="text-sm text-gray-400">Joined {new Date(referral.joinedAt).toLocaleDateString()}</p>
                     </div>
                     <div className="text-right">
