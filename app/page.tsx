@@ -12,6 +12,8 @@ import ReferralTab from '@/components/ReferralTab'
 import MenuTab from '@/components/MenuTab'
 import CreateWalletModal from '@/components/CreateWalletModal'
 import ImportWalletModal from '@/components/ImportWalletModal'
+import LockScreen from '@/components/LockScreen'
+import { useSettings } from '@/lib/SettingsContext'
 
 // Prevent prerendering
 export const dynamic = 'force-dynamic';
@@ -42,13 +44,16 @@ export default function Home() {
   const [showCreateWallet, setShowCreateWallet] = useState(false)
   const [showImportWallet, setShowImportWallet] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  
+  // Settings context untuk Lock on Load
+  const { isLocked, isUnlocked, unlockApp } = useSettings()
 
   // Parse Telegram WebApp data
   useEffect(() => {
     const initTelegramWebApp = () => {
       try {
         if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-    // Initialize Telegram WebApp
+          // Initialize Telegram WebApp
           const webApp = window.Telegram.WebApp;
           webApp.ready();
           webApp.expand();
@@ -64,8 +69,13 @@ export default function Home() {
               photo_url: telegramUser.photo_url
             });
             
-            // Check user wallet
-            checkUserWallet(telegramUser.id);
+            // Simpan userId di localStorage untuk digunakan oleh LockScreen
+            localStorage.setItem('userId', telegramUser.id.toString());
+            
+            // Check user wallet hanya jika tidak terkunci
+            if (!isLocked) {
+              checkUserWallet(telegramUser.id);
+            }
             
             // Check for referral code in start param
             const startParam = webApp.initDataUnsafe?.start_param;
@@ -73,8 +83,8 @@ export default function Home() {
               // Track referral using custom code
               trackReferral(startParam, telegramUser.id);
             }
-      }
-    }
+          }
+        }
         setIsLoading(false);
       } catch (error) {
         console.error('Error initializing Telegram WebApp:', error);
@@ -83,7 +93,7 @@ export default function Home() {
     };
     
     initTelegramWebApp();
-  }, []);
+  }, [isLocked]);
 
   // Track referral
   const trackReferral = async (referralCode: string, newUserId: number) => {
@@ -108,16 +118,16 @@ export default function Home() {
     }
   };
 
-  // Selalu fetch wallet dari backend setiap kali tab wallet aktif
+  // Selalu fetch wallet dari backend setiap kali tab wallet aktif dan tidak terkunci
   useEffect(() => {
-    if (user && activeTab === 'wallet') {
+    if (user && activeTab === 'wallet' && isUnlocked) {
       checkUserWallet(user.id)
     }
-  }, [user, activeTab])
+  }, [user, activeTab, isUnlocked])
   
-  // Fetch user data ketika tab referral aktif
+  // Fetch user data ketika tab referral aktif dan tidak terkunci
   useEffect(() => {
-    if (user && activeTab === 'referral') {
+    if (user && activeTab === 'referral' && isUnlocked) {
       const fetchUserData = async () => {
         try {
           const res = await fetch(`/api/user/${user.id}`)
@@ -137,7 +147,14 @@ export default function Home() {
       
       fetchUserData()
     }
-  }, [user, activeTab])
+  }, [user, activeTab, isUnlocked])
+
+  // Fetch wallet ketika aplikasi dibuka kunci
+  useEffect(() => {
+    if (user && isUnlocked && !wallet) {
+      checkUserWallet(user.id);
+    }
+  }, [user, isUnlocked, wallet]);
 
   const checkUserWallet = async (userId: number) => {
     try {
@@ -205,12 +222,25 @@ export default function Home() {
     }
   }
 
+  // Handler untuk membuka kunci aplikasi
+  const handleUnlock = () => {
+    unlockApp();
+    if (user) {
+      checkUserWallet(user.id);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
     )
+  }
+
+  // Tampilkan LockScreen jika aplikasi terkunci
+  if (isLocked && user) {
+    return <LockScreen onUnlock={handleUnlock} />;
   }
 
   if (!user) {

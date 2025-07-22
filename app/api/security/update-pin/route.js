@@ -40,10 +40,11 @@ export async function POST(req) {
       const newPinHash = crypto.createHash('sha256').update(newPin).digest('hex');
 
       // Simpan PIN baru
-      await createUserSettings(userId, {
+      const updatedSettings = await createUserSettings(userId, {
         pinHash: newPinHash,
         notificationsEnabled: userSettings?.notifications_enabled ?? true,
         theme: userSettings?.theme ?? 'dark',
+        lockOnLoad: userSettings?.lockOnLoad ?? false,
         highPerformanceMode: userSettings?.preferences ? 
           JSON.parse(userSettings.preferences)?.highPerformanceMode || false : 
           false
@@ -52,7 +53,8 @@ export async function POST(req) {
       return NextResponse.json({ 
         success: true, 
         message: 'PIN updated successfully',
-        hasPinSet: true
+        hasPinSet: true,
+        lockOnLoad: updatedSettings?.lockOnLoad || false
       });
     } 
     // Jika hanya validasi PIN
@@ -73,13 +75,15 @@ export async function POST(req) {
       return NextResponse.json({ 
         success: true, 
         message: 'PIN is valid',
-        hasPinSet: true
+        hasPinSet: true,
+        lockOnLoad: userSettings?.lockOnLoad || false
       });
     } else {
       // Jika hanya memeriksa status PIN
       return NextResponse.json({ 
         success: true,
-        hasPinSet: hasPinSet
+        hasPinSet: hasPinSet,
+        lockOnLoad: userSettings?.lockOnLoad || false
       });
     }
   } catch (error) {

@@ -3,7 +3,7 @@ import { createUserSettings, getUserSettings } from '@/lib/database';
 
 export async function POST(req) {
   try {
-    const { userId, notificationsEnabled, theme, highPerformanceMode } = await req.json();
+    const { userId, notificationsEnabled, theme, highPerformanceMode, lockOnLoad } = await req.json();
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
@@ -13,10 +13,11 @@ export async function POST(req) {
     const currentSettings = await getUserSettings(userId);
 
     // Simpan preferensi baru
-    await createUserSettings(userId, {
+    const updatedSettings = await createUserSettings(userId, {
       pinHash: currentSettings?.pin_hash || null,
       notificationsEnabled: notificationsEnabled !== undefined ? notificationsEnabled : currentSettings?.notifications_enabled || true,
       theme: theme || currentSettings?.theme || 'dark',
+      lockOnLoad: lockOnLoad !== undefined ? lockOnLoad : currentSettings?.lockOnLoad || false,
       // Untuk highPerformanceMode, kita akan menyimpannya di kolom yang sama dengan preferensi lain
       // dalam format JSON untuk menghindari perubahan skema database
       preferences: JSON.stringify({
@@ -34,6 +35,7 @@ export async function POST(req) {
       preferences: {
         notificationsEnabled: notificationsEnabled !== undefined ? notificationsEnabled : currentSettings?.notifications_enabled || true,
         theme: theme || currentSettings?.theme || 'dark',
+        lockOnLoad: lockOnLoad !== undefined ? lockOnLoad : currentSettings?.lockOnLoad || false,
         highPerformanceMode: highPerformanceMode !== undefined ? highPerformanceMode : 
           (currentSettings?.preferences ? 
             JSON.parse(currentSettings.preferences)?.highPerformanceMode || false : 
