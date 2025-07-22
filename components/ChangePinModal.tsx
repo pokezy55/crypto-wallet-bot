@@ -21,7 +21,7 @@ export default function ChangePinModal({
   const [confirmPin, setConfirmPin] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [step, setStep] = useState(isFirstTime ? 1 : 0)
+  const [step, setStep] = useState(isFirstTime ? 0 : 0)
   
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function ChangePinModal({
       setConfirmPin('')
       setError('')
       setLoading(false)
-      setStep(isFirstTime ? 1 : 0)
+      setStep(isFirstTime ? 0 : 0)
     }
   }, [isOpen, isFirstTime])
 
@@ -47,10 +47,8 @@ export default function ChangePinModal({
 
   // Handle next step
   const handleNextStep = () => {
-    if (step === 0 && currentPin.length === 4) {
+    if (step === 0 && newPin.length === 4) {
       setStep(1)
-    } else if (step === 1 && newPin.length === 4) {
-      setStep(2)
     }
   }
 
@@ -58,18 +56,13 @@ export default function ChangePinModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (step === 0 && currentPin.length === 4) {
+    if (step === 0 && newPin.length === 4) {
       setStep(1)
       return
     }
     
-    if (step === 1 && newPin.length === 4) {
-      setStep(2)
-      return
-    }
-    
     if (newPin !== confirmPin) {
-      setError('PINs do not match')
+      setError('PIN tidak cocok')
       return
     }
     
@@ -77,7 +70,7 @@ export default function ChangePinModal({
     setError('')
     
     try {
-      const result = await onSubmit(isFirstTime ? '0000' : currentPin, newPin)
+      const result = await onSubmit(isFirstTime ? '' : currentPin, newPin)
       
       if (result.success) {
         onClose()
@@ -86,11 +79,11 @@ export default function ChangePinModal({
           setStep(0)
           setCurrentPin('')
         }
-        setError(result.error || 'Failed to change PIN')
+        setError(result.error || 'Gagal mengubah PIN')
       }
     } catch (error) {
       console.error('Error changing PIN:', error)
-      setError('An error occurred. Please try again.')
+      setError('Terjadi kesalahan. Silakan coba lagi.')
     } finally {
       setLoading(false)
     }
@@ -110,7 +103,7 @@ export default function ChangePinModal({
         </button>
         
         <h3 className="text-xl font-medium mb-4">
-          {isFirstTime ? 'Set PIN' : 'Change PIN'}
+          {isFirstTime ? 'Buat PIN' : 'Ubah PIN'}
         </h3>
         
         <form onSubmit={handleSubmit}>
@@ -118,17 +111,17 @@ export default function ChangePinModal({
             {/* Step 0: Current PIN (skip if first time) */}
             {step === 0 && !isFirstTime && (
               <div>
-                <p className="text-gray-400 mb-4">Enter your current PIN</p>
+                <p className="text-gray-400 mb-4">Masukkan PIN saat ini</p>
                 <div>
                   <label htmlFor="current-pin" className="block text-sm font-medium mb-1">
-                    Current PIN
+                    PIN Saat Ini
                   </label>
                   <input
                     id="current-pin"
                     type="password"
                     value={currentPin}
                     onChange={handlePinChange(setCurrentPin)}
-                    placeholder="Enter current PIN"
+                    placeholder="Masukkan PIN saat ini"
                     className="input-field w-full text-center text-2xl tracking-widest"
                     autoFocus
                     maxLength={4}
@@ -138,47 +131,47 @@ export default function ChangePinModal({
               </div>
             )}
             
-            {/* Step 1: New PIN */}
-            {step === 1 && (
+            {/* Step 0 (first time) or Step 1: New PIN */}
+            {(step === 0 && isFirstTime) || (step === 0 && !isFirstTime && currentPin.length === 4) || step === 1 ? (
               <div>
                 <p className="text-gray-400 mb-4">
                   {isFirstTime 
-                    ? 'Create a 4-digit PIN to secure your wallet' 
-                    : 'Enter your new 4-digit PIN'}
+                    ? 'Buat PIN 4 digit untuk mengamankan wallet Anda' 
+                    : 'Masukkan PIN 4 digit baru'}
                 </p>
                 <div>
                   <label htmlFor="new-pin" className="block text-sm font-medium mb-1">
-                    New PIN
+                    PIN Baru
                   </label>
                   <input
                     id="new-pin"
                     type="password"
                     value={newPin}
                     onChange={handlePinChange(setNewPin)}
-                    placeholder="Enter new PIN"
+                    placeholder="Masukkan PIN baru"
                     className="input-field w-full text-center text-2xl tracking-widest"
-                    autoFocus
+                    autoFocus={isFirstTime || step === 1}
                     maxLength={4}
                     disabled={loading}
                   />
                 </div>
               </div>
-            )}
+            ) : null}
             
-            {/* Step 2: Confirm PIN */}
-            {step === 2 && (
+            {/* Step 1 (first time) or Step 2: Confirm PIN */}
+            {step === 1 && (
               <div>
-                <p className="text-gray-400 mb-4">Confirm your new PIN</p>
+                <p className="text-gray-400 mb-4">Konfirmasi PIN baru Anda</p>
                 <div>
                   <label htmlFor="confirm-pin" className="block text-sm font-medium mb-1">
-                    Confirm PIN
+                    Konfirmasi PIN
                   </label>
                   <input
                     id="confirm-pin"
                     type="password"
                     value={confirmPin}
                     onChange={handlePinChange(setConfirmPin)}
-                    placeholder="Confirm new PIN"
+                    placeholder="Konfirmasi PIN baru"
                     className="input-field w-full text-center text-2xl tracking-widest"
                     autoFocus
                     maxLength={4}
@@ -195,17 +188,19 @@ export default function ChangePinModal({
             <button
               type="submit"
               className="btn-primary w-full"
-              disabled={(step === 0 && currentPin.length !== 4) || 
-                       (step === 1 && newPin.length !== 4) || 
-                       (step === 2 && confirmPin.length !== 4) || 
+              disabled={(step === 0 && !isFirstTime && currentPin.length !== 4) || 
+                       (((step === 0 && isFirstTime) || step === 1) && newPin.length !== 4) || 
+                       (step === 1 && confirmPin.length !== 4) || 
                        loading}
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-              ) : step < 2 ? (
-                'Next'
+              ) : step === 0 && !isFirstTime ? (
+                'Lanjut'
+              ) : step === 0 && isFirstTime ? (
+                'Lanjut'
               ) : (
-                isFirstTime ? 'Set PIN' : 'Change PIN'
+                isFirstTime ? 'Buat PIN' : 'Ubah PIN'
               )}
             </button>
           </div>

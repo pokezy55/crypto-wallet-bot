@@ -10,22 +10,19 @@ export async function POST(req) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
+    // Dapatkan pengaturan pengguna saat ini
+    const userSettings = await getUserSettings(userId);
+    const hasPinSet = !!userSettings?.pin_hash;
+
     // Jika mengubah PIN (bukan hanya validasi)
     if (newPin) {
-      if (!currentPin) {
-        return NextResponse.json({ error: 'Current PIN is required' }, { status: 400 });
-      }
-
       // Validasi format PIN baru
       if (!/^\d{4}$/.test(newPin)) {
         return NextResponse.json({ error: 'PIN must be 4 digits' }, { status: 400 });
       }
 
-      // Dapatkan pengaturan pengguna saat ini
-      const userSettings = await getUserSettings(userId);
-
       // Jika pengguna sudah memiliki PIN, validasi PIN lama
-      if (userSettings?.pin_hash) {
+      if (hasPinSet && currentPin) {
         // Hash PIN saat ini untuk perbandingan
         const currentPinHash = crypto.createHash('sha256').update(currentPin).digest('hex');
         
@@ -33,7 +30,11 @@ export async function POST(req) {
         if (currentPinHash !== userSettings.pin_hash) {
           return NextResponse.json({ error: 'Current PIN is incorrect' }, { status: 401 });
         }
+      } else if (hasPinSet && !currentPin) {
+        // Jika pengguna sudah memiliki PIN tapi tidak memberikan PIN lama
+        return NextResponse.json({ error: 'Current PIN is required' }, { status: 400 });
       }
+      // Jika pengguna belum memiliki PIN, tidak perlu validasi PIN lama
 
       // Hash PIN baru
       const newPinHash = crypto.createHash('sha256').update(newPin).digest('hex');
@@ -43,19 +44,22 @@ export async function POST(req) {
         pinHash: newPinHash,
         notificationsEnabled: userSettings?.notifications_enabled ?? true,
         theme: userSettings?.theme ?? 'dark',
-        language: userSettings?.language ?? 'en'
+        highPerformanceMode: userSettings?.preferences ? 
+          JSON.parse(userSettings.preferences)?.highPerformanceMode || false : 
+          false
       });
 
-      return NextResponse.json({ success: true, message: 'PIN updated successfully' });
+      return NextResponse.json({ 
+        success: true, 
+        message: 'PIN updated successfully',
+        hasPinSet: true
+      });
     } 
     // Jika hanya validasi PIN
     else if (currentPin) {
-      // Dapatkan pengaturan pengguna
-      const userSettings = await getUserSettings(userId);
-
       // Jika pengguna belum memiliki PIN
-      if (!userSettings?.pin_hash) {
-        return NextResponse.json({ error: 'PIN not set' }, { status: 404 });
+      if (!hasPinSet) {
+        return NextResponse.json({ error: 'PIN not set', hasPinSet: false }, { status: 404 });
       }
 
       // Hash PIN untuk perbandingan
@@ -66,9 +70,17 @@ export async function POST(req) {
         return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 });
       }
 
-      return NextResponse.json({ success: true, message: 'PIN is valid' });
+      return NextResponse.json({ 
+        success: true, 
+        message: 'PIN is valid',
+        hasPinSet: true
+      });
     } else {
-      return NextResponse.json({ error: 'PIN is required' }, { status: 400 });
+      // Jika hanya memeriksa status PIN
+      return NextResponse.json({ 
+        success: true,
+        hasPinSet: hasPinSet
+      });
     }
   } catch (error) {
     console.error('Error updating/validating PIN:', error);

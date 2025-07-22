@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { User, Shield, Eye, Key, MessageCircle, Copy, LogOut, Settings, Moon, Sun, Bell, BellOff, Globe, Zap } from 'lucide-react'
+import { User, Shield, Eye, Key, MessageCircle, Copy, LogOut, Settings, Moon, Sun, Bell, BellOff, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatAddress, isValidAddress } from '@/lib/address'
 import PinModal from './PinModal'
@@ -114,13 +114,6 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
     updateSettings({ [key]: value })
     updatePreferences(user.id, { [key]: value })
     toast.success(`Pengaturan ${key} diperbarui`)
-  }
-
-  // Change language
-  const changeLanguage = (language: string) => {
-    updateSettings({ language })
-    updatePreferences(user.id, { language })
-    toast.success(`Bahasa diubah ke ${language === 'id' ? 'Indonesia' : 'English'}`)
   }
 
   // Chat with admin
@@ -331,22 +324,6 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
               <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-primary-600 peer-focus:ring-2 peer-focus:ring-primary-800 transition-colors"></div>
               <div className={`absolute left-[2px] top-[2px] bg-white rounded-full w-5 h-5 transition-transform ${settings.theme === 'dark' ? 'translate-x-5' : ''}`}></div>
             </label>
-          </div>
-          
-          {/* Language */}
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Globe className="w-5 h-5 text-primary-500" />
-              <span>Bahasa</span>
-            </div>
-            <select
-              value={settings.language}
-              onChange={(e) => changeLanguage(e.target.value)}
-              className="bg-crypto-dark border border-gray-700 rounded px-2 py-1 text-sm"
-            >
-              <option value="en">English</option>
-              <option value="id">Indonesia</option>
-            </select>
           </div>
           
           {/* High Performance Mode */}
