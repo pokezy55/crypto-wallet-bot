@@ -410,7 +410,9 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
                   <div key={index} className="flex items-center justify-between p-3 bg-crypto-dark rounded-lg">
                     <div>
                       <p className="font-medium">
-                        {referral.telegram_id ? `@${referral.telegram_id}` : (referral.username ? `@${referral.username}` : `@${referral.display_name}`)}
+                        {referral.username ? `@${referral.username}` : 
+                         (referral.telegram_id ? `@${String(referral.telegram_id).substring(0, 5)}` : 
+                          `@${String(referral.display_name).substring(0, 5)}`)}
                       </p>
                       <p className="text-sm text-gray-400">Joined {new Date(referral.joinedAt).toLocaleDateString()}</p>
                     </div>
