@@ -18,6 +18,7 @@ interface User {
 interface Referral {
   username: string
   display_name?: string
+  telegram_id?: string | number
   address: string
   joinedAt: string
   isValid: boolean
@@ -408,7 +409,9 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
                 {referrals.map((referral, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-crypto-dark rounded-lg">
                     <div>
-                      <p className="font-medium">@{referral.display_name}</p>
+                      <p className="font-medium">
+                        {referral.telegram_id ? `@${referral.telegram_id}` : (referral.username ? `@${referral.username}` : `@${referral.display_name}`)}
+                      </p>
                       <p className="text-sm text-gray-400">Joined {new Date(referral.joinedAt).toLocaleDateString()}</p>
                     </div>
                     <div className="text-right">
