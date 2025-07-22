@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { User, Shield, Eye, Key, MessageCircle, Copy, LogOut } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { User, Shield, Eye, Key, MessageCircle, Copy, LogOut, Settings, Moon, Sun, Bell, BellOff, Globe, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatAddress, isValidAddress } from '@/lib/address'
+import PinModal from './PinModal'
+import ChangePinModal from './ChangePinModal'
+import { useSettings } from '@/lib/SettingsContext'
 
 interface User {
   id: number
@@ -25,45 +28,102 @@ interface MenuTabProps {
 }
 
 export default function MenuTab({ wallet, user }: MenuTabProps) {
-  const [showSeedPhrase, setShowSeedPhrase] = useState(false)
-  const [showPrivateKey, setShowPrivateKey] = useState(false)
-  const [pin, setPin] = useState('')
+  // State untuk modals
+  const [showSeedPhraseModal, setShowSeedPhraseModal] = useState(false)
+  const [showPrivateKeyModal, setShowPrivateKeyModal] = useState(false)
+  const [showChangePinModal, setShowChangePinModal] = useState(false)
+  
+  // State untuk data
+  const [seedPhrase, setSeedPhrase] = useState('')
+  const [privateKey, setPrivateKey] = useState('')
+  
+  // Settings context
+  const { 
+    settings, 
+    updateSettings, 
+    isPinSet, 
+    setPin, 
+    verifyPin, 
+    changePin, 
+    getSeedPhrase, 
+    getPrivateKey,
+    updatePreferences
+  } = useSettings()
 
+  // Copy wallet address
   const copyAddress = () => {
     if (isValidAddress(wallet.address)) {
       navigator.clipboard.writeText(wallet.address)
-      toast.success('Address copied!')
+      toast.success('Alamat wallet disalin!')
     } else {
-      toast.error('Invalid wallet address!')
+      toast.error('Alamat wallet tidak valid!')
     }
   }
 
-  const handleViewSeedPhrase = () => {
-    if (!pin) {
-      toast.error('Please enter your PIN')
-      return
+  // Handle PIN verification for seed phrase
+  const handleViewSeedPhrase = async (pin: string) => {
+    const result = await getSeedPhrase(user.id, pin)
+    
+    if (result.success && result.seedPhrase) {
+      setSeedPhrase(result.seedPhrase)
+      setShowSeedPhraseModal(false)
+      setTimeout(() => {
+        toast.success('Seed phrase berhasil ditampilkan')
+      }, 500)
+      return { success: true }
+    } else {
+      return { success: false, error: result.error || 'PIN tidak valid' }
     }
-    if (pin !== '1234') { // In real app, this would be validated against stored PIN
-      toast.error('Invalid PIN')
-      return
-    }
-    setShowSeedPhrase(true)
-    setPin('')
   }
 
-  const handleViewPrivateKey = () => {
-    if (!pin) {
-      toast.error('Please enter your PIN')
-      return
+  // Handle PIN verification for private key
+  const handleViewPrivateKey = async (pin: string) => {
+    const result = await getPrivateKey(user.id, pin)
+    
+    if (result.success && result.privateKey) {
+      setPrivateKey(result.privateKey)
+      setShowPrivateKeyModal(false)
+      setTimeout(() => {
+        toast.success('Private key berhasil ditampilkan')
+      }, 500)
+      return { success: true }
+    } else {
+      return { success: false, error: result.error || 'PIN tidak valid' }
     }
-    if (pin !== '1234') {
-      toast.error('Invalid PIN')
-      return
-    }
-    setShowPrivateKey(true)
-    setPin('')
   }
 
+  // Handle PIN change
+  const handleChangePin = async (currentPin: string, newPin: string) => {
+    if (isPinSet) {
+      const result = await changePin(user.id, currentPin, newPin)
+      if (result.success) {
+        toast.success('PIN berhasil diubah')
+      }
+      return result
+    } else {
+      const result = await setPin(user.id, newPin)
+      if (result.success) {
+        toast.success('PIN berhasil dibuat')
+      }
+      return result
+    }
+  }
+
+  // Toggle settings
+  const toggleSetting = (key: string, value: boolean) => {
+    updateSettings({ [key]: value })
+    updatePreferences(user.id, { [key]: value })
+    toast.success(`Pengaturan ${key} diperbarui`)
+  }
+
+  // Change language
+  const changeLanguage = (language: string) => {
+    updateSettings({ language })
+    updatePreferences(user.id, { language })
+    toast.success(`Bahasa diubah ke ${language === 'id' ? 'Indonesia' : 'English'}`)
+  }
+
+  // Chat with admin
   const chatAdmin = () => {
     if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
       window.Telegram.WebApp.openTelegramLink('https://t.me/CoinTwoSupport')
@@ -102,7 +162,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
 
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-gray-400">Wallet Address</span>
+            <span className="text-gray-400">Alamat Wallet</span>
             <div className="flex items-center gap-2">
               <code className="text-sm bg-crypto-dark px-2 py-1 rounded">
                 {formatAddress(wallet.address)}
@@ -128,90 +188,204 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
         </div>
       </div>
 
-      {/* Security Actions */}
+      {/* Security Section */}
       <div className="card mb-6">
-        <h3 className="text-lg font-medium mb-4">Security</h3>
-        <div className="space-y-3">
-          <button className="w-full btn-secondary flex items-center justify-start gap-3">
-            <Shield className="w-5 h-5" />
-            <span>Change PIN</span>
-          </button>
-          
-          <div className="space-y-2">
-            <button
-              onClick={() => setShowSeedPhrase(true)}
-              className="w-full btn-secondary flex items-center justify-start gap-3"
-            >
-              <Eye className="w-5 h-5" />
-              <span>View Seed Phrase</span>
-            </button>
+        <div className="flex items-center gap-2 mb-4">
+          <Shield className="w-5 h-5 text-primary-500" />
+          <h3 className="text-lg font-medium">Keamanan</h3>
+        </div>
+        
+        <div className="space-y-4">
+          {/* PIN Code Settings */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span>PIN Code</span>
+              <button
+                onClick={() => setShowChangePinModal(true)}
+                className="text-sm text-primary-500 hover:text-primary-400"
+              >
+                {isPinSet ? 'Ubah PIN' : 'Buat PIN'}
+              </button>
+            </div>
             
-            {showSeedPhrase && (
-              <div className="p-3 bg-crypto-dark rounded-lg">
-                <p className="text-sm text-gray-400 mb-2">Enter your PIN to view seed phrase:</p>
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                    placeholder="PIN"
-                    className="input-field flex-1"
-                    maxLength={4}
-                  />
-                  <button
-                    onClick={handleViewSeedPhrase}
-                    className="btn-primary px-4"
-                  >
-                    View
-                  </button>
-                </div>
-              </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-400">Lock on Load</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={settings.lockOnLoad}
+                  onChange={() => toggleSetting('lockOnLoad', !settings.lockOnLoad)}
+                  disabled={!isPinSet}
+                />
+                <div className={`w-11 h-6 rounded-full peer ${isPinSet ? 'bg-gray-700 peer-checked:bg-primary-600' : 'bg-gray-700 opacity-50'} peer-focus:ring-2 peer-focus:ring-primary-800 transition-colors`}></div>
+                <div className={`absolute left-[2px] top-[2px] bg-white rounded-full w-5 h-5 transition-transform ${settings.lockOnLoad && isPinSet ? 'translate-x-5' : ''}`}></div>
+              </label>
+            </div>
+            
+            {!isPinSet && (
+              <p className="text-xs text-yellow-500">
+                Buat PIN terlebih dahulu untuk mengaktifkan fitur keamanan
+              </p>
             )}
           </div>
           
-          <div className="space-y-2">
+          <hr className="border-gray-700" />
+          
+          {/* Seed Phrase & Private Key */}
+          <div className="space-y-3">
             <button
-              onClick={() => setShowPrivateKey(true)}
+              onClick={() => setShowSeedPhraseModal(true)}
               className="w-full btn-secondary flex items-center justify-start gap-3"
+              disabled={!isPinSet}
             >
-              <Key className="w-5 h-5" />
-              <span>View Private Key</span>
+              <Eye className="w-5 h-5" />
+              <span>Lihat Seed Phrase</span>
             </button>
             
-            {showPrivateKey && (
-              <div className="p-3 bg-crypto-dark rounded-lg">
-                <p className="text-sm text-gray-400 mb-2">Enter your PIN to view private key:</p>
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                    placeholder="PIN"
-                    className="input-field flex-1"
-                    maxLength={4}
-                  />
-                  <button
-                    onClick={handleViewPrivateKey}
-                    className="btn-primary px-4"
-                  >
-                    View
-                  </button>
-                </div>
-              </div>
+            <button
+              onClick={() => setShowPrivateKeyModal(true)}
+              className="w-full btn-secondary flex items-center justify-start gap-3"
+              disabled={!isPinSet}
+            >
+              <Key className="w-5 h-5" />
+              <span>Lihat Private Key</span>
+            </button>
+            
+            {!isPinSet && (
+              <p className="text-xs text-yellow-500">
+                Buat PIN terlebih dahulu untuk melihat seed phrase dan private key
+              </p>
             )}
+          </div>
+          
+          <hr className="border-gray-700" />
+          
+          {/* Forget PIN */}
+          <div>
+            <p className="text-sm text-gray-400 mb-2">Lupa PIN?</p>
+            <p className="text-xs text-gray-500 mb-3">
+              Silakan hubungi admin untuk mengatur ulang PIN Anda
+            </p>
+            <button
+              onClick={chatAdmin}
+              className="btn-secondary text-sm w-full"
+            >
+              Chat Admin
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Support */}
+      {/* Preferences Section */}
       <div className="card mb-6">
-        <h3 className="text-lg font-medium mb-4">Support</h3>
+        <div className="flex items-center gap-2 mb-4">
+          <Settings className="w-5 h-5 text-primary-500" />
+          <h3 className="text-lg font-medium">Preferensi</h3>
+        </div>
+        
+        <div className="space-y-4">
+          {/* Notifications */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              {settings.notificationsEnabled ? (
+                <Bell className="w-5 h-5 text-primary-500" />
+              ) : (
+                <BellOff className="w-5 h-5 text-gray-500" />
+              )}
+              <span>Notifikasi</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={settings.notificationsEnabled}
+                onChange={() => toggleSetting('notificationsEnabled', !settings.notificationsEnabled)}
+              />
+              <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-primary-600 peer-focus:ring-2 peer-focus:ring-primary-800 transition-colors"></div>
+              <div className={`absolute left-[2px] top-[2px] bg-white rounded-full w-5 h-5 transition-transform ${settings.notificationsEnabled ? 'translate-x-5' : ''}`}></div>
+            </label>
+          </div>
+          
+          {/* Theme */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              {settings.theme === 'dark' ? (
+                <Moon className="w-5 h-5 text-primary-500" />
+              ) : (
+                <Sun className="w-5 h-5 text-yellow-500" />
+              )}
+              <span>Dark Mode</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={settings.theme === 'dark'}
+                onChange={() => {
+                  const newTheme = settings.theme === 'dark' ? 'light' : 'dark';
+                  updateSettings({ theme: newTheme });
+                  updatePreferences(user.id, { theme: newTheme });
+                }}
+              />
+              <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-primary-600 peer-focus:ring-2 peer-focus:ring-primary-800 transition-colors"></div>
+              <div className={`absolute left-[2px] top-[2px] bg-white rounded-full w-5 h-5 transition-transform ${settings.theme === 'dark' ? 'translate-x-5' : ''}`}></div>
+            </label>
+          </div>
+          
+          {/* Language */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Globe className="w-5 h-5 text-primary-500" />
+              <span>Bahasa</span>
+            </div>
+            <select
+              value={settings.language}
+              onChange={(e) => changeLanguage(e.target.value)}
+              className="bg-crypto-dark border border-gray-700 rounded px-2 py-1 text-sm"
+            >
+              <option value="en">English</option>
+              <option value="id">Indonesia</option>
+            </select>
+          </div>
+          
+          {/* High Performance Mode */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-primary-500" />
+              <span>Mode Performa Tinggi</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={settings.highPerformanceMode}
+                onChange={() => toggleSetting('highPerformanceMode', !settings.highPerformanceMode)}
+              />
+              <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-primary-600 peer-focus:ring-2 peer-focus:ring-primary-800 transition-colors"></div>
+              <div className={`absolute left-[2px] top-[2px] bg-white rounded-full w-5 h-5 transition-transform ${settings.highPerformanceMode ? 'translate-x-5' : ''}`}></div>
+            </label>
+          </div>
+          
+          <p className="text-xs text-gray-500">
+            Mode performa tinggi akan mengurangi animasi dan membatasi polling untuk meningkatkan kinerja aplikasi
+          </p>
+        </div>
+      </div>
+
+      {/* Support Section */}
+      <div className="card mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <MessageCircle className="w-5 h-5 text-primary-500" />
+          <h3 className="text-lg font-medium">Dukungan</h3>
+        </div>
+        
         <button
           onClick={chatAdmin}
           className="w-full btn-secondary flex items-center justify-start gap-3"
         >
           <MessageCircle className="w-5 h-5" />
-          <span>Chat with Admin</span>
+          <span>Chat dengan Admin</span>
         </button>
       </div>
 
@@ -223,15 +397,43 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
         </button>
       </div>
 
+      {/* PIN Modal for Seed Phrase */}
+      <PinModal
+        isOpen={showSeedPhraseModal}
+        onClose={() => setShowSeedPhraseModal(false)}
+        onSubmit={handleViewSeedPhrase}
+        title="Lihat Seed Phrase"
+        description="Masukkan PIN untuk melihat seed phrase wallet Anda"
+        confirmText="Konfirmasi"
+      />
+
+      {/* PIN Modal for Private Key */}
+      <PinModal
+        isOpen={showPrivateKeyModal}
+        onClose={() => setShowPrivateKeyModal(false)}
+        onSubmit={handleViewPrivateKey}
+        title="Lihat Private Key"
+        description="Masukkan PIN untuk melihat private key wallet Anda"
+        confirmText="Konfirmasi"
+      />
+
+      {/* Change PIN Modal */}
+      <ChangePinModal
+        isOpen={showChangePinModal}
+        onClose={() => setShowChangePinModal(false)}
+        onSubmit={handleChangePin}
+        isFirstTime={!isPinSet}
+      />
+
       {/* Seed Phrase Modal */}
-      {showSeedPhrase && (
+      {seedPhrase && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-6 z-50">
           <div className="card max-w-md w-full">
             <h3 className="text-lg font-medium mb-4">Seed Phrase</h3>
             <div className="bg-crypto-dark p-4 rounded-lg mb-4">
-              <p className="text-sm text-gray-400 mb-2">Write down these 12 words in order:</p>
+              <p className="text-sm text-gray-400 mb-2">Catat 12 kata ini sesuai urutan:</p>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                {['abandon', 'ability', 'able', 'about', 'above', 'absent', 'absorb', 'abstract', 'absurd', 'abuse', 'access', 'accident'].map((word, index) => (
+                {seedPhrase.split(' ').map((word, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <span className="text-gray-500 text-xs">{index + 1}.</span>
                     <span className="font-mono">{word}</span>
@@ -241,19 +443,19 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowSeedPhrase(false)}
+                onClick={() => setSeedPhrase('')}
                 className="flex-1 btn-secondary"
               >
-                Close
+                Tutup
               </button>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText('abandon ability able about above absent absorb abstract absurd abuse access accident')
-                  toast.success('Seed phrase copied!')
+                  navigator.clipboard.writeText(seedPhrase)
+                  toast.success('Seed phrase disalin!')
                 }}
                 className="flex-1 btn-primary"
               >
-                Copy
+                Salin
               </button>
             </div>
           </div>
@@ -261,31 +463,31 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
       )}
 
       {/* Private Key Modal */}
-      {showPrivateKey && (
+      {privateKey && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-6 z-50">
           <div className="card max-w-md w-full">
             <h3 className="text-lg font-medium mb-4">Private Key</h3>
             <div className="bg-crypto-dark p-4 rounded-lg mb-4">
-              <p className="text-sm text-gray-400 mb-2">Your private key (keep it secret!):</p>
+              <p className="text-sm text-gray-400 mb-2">Private key Anda (jaga kerahasiaannya!):</p>
               <code className="text-sm break-all">
-                0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+                {privateKey}
               </code>
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowPrivateKey(false)}
+                onClick={() => setPrivateKey('')}
                 className="flex-1 btn-secondary"
               >
-                Close
+                Tutup
               </button>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText('0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef')
-                  toast.success('Private key copied!')
+                  navigator.clipboard.writeText(privateKey)
+                  toast.success('Private key disalin!')
                 }}
                 className="flex-1 btn-primary"
               >
-                Copy
+                Salin
               </button>
             </div>
           </div>

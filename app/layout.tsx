@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
+import { SettingsProvider } from '@/lib/SettingsContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -21,18 +22,20 @@ export default function RootLayout({
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
       </head>
       <body className={`${inter.className} telegram-webapp`}>
-        {children}
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#1e293b',
-              color: '#ffffff',
-              border: '1px solid #334155',
-            },
-          }}
-        />
+        <SettingsProvider>
+          {children}
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#1e293b',
+                color: '#ffffff',
+                border: '1px solid #334155',
+              },
+            }}
+          />
+        </SettingsProvider>
       </body>
     </html>
   )
