@@ -51,19 +51,24 @@ export async function GET(req) {
     // Only use custom code, no fallback to auto-generated code
     const referralCode = userDetails?.custom_code || ''
     
+    const formattedReferrals = referrals.map(ref => ({
+      username: ref.username || 'Anonymous',
+      display_name: ref.display_name || ref.username || 'Anonymous',
+      address: ref.address,
+      joinedAt: ref.created_at,
+      isValid: ref.deposit_completed && ref.swap_completed,
+      rewardStatus: ref.reward_status || 'pending'
+    }));
+    
+    console.log('API response referrals:', formattedReferrals.map(ref => ({ username: ref.username, display_name: ref.display_name })));
+    
     return NextResponse.json({
       stats: {
         totalReferrals: stats.total_referrals || 0,
         totalEarned,
         referralCode
       },
-      referrals: referrals.map(ref => ({
-        username: ref.username || 'Anonymous',
-        address: ref.address,
-        joinedAt: ref.created_at,
-        isValid: ref.deposit_completed && ref.swap_completed,
-        rewardStatus: ref.reward_status || 'pending'
-      }))
+      referrals: formattedReferrals
     })
     
   } catch (error) {
