@@ -173,6 +173,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [selectedTokenState, setSelectedTokenState] = useState<Token | undefined>(undefined);
+  const [showSwapMaintenance, setShowSwapMaintenance] = useState(false);
 
   const CHAIN_OPTIONS = [
     { key: 'eth', label: 'Ethereum', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
@@ -552,7 +553,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         setShowReceiveModal(true);
         break;
       case 'swap':
-        setShowSwapModal(true);
+        setShowSwapMaintenance(true);
         break;
     }
   };
