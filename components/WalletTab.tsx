@@ -186,6 +186,15 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     { key: 'base', label: 'Base', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
   ];
 
+  // Tambahkan utilitas untuk API URL jika ingin mendukung BASE_URL
+  const getApiUrl = (path: string) => {
+    const base = process.env.NEXT_PUBLIC_BASE_URL || '';
+    if (base && !base.startsWith('/')) {
+      return base.replace(/\/$/, '') + path;
+    }
+    return path;
+  };
+
   // HOOK: Fetch balance
   const { balances: tokenBalances, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(selectedChain, wallet?.address);
   const tokenPrices = useTokenPrices();
@@ -288,7 +297,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   useEffect(() => {
     if (activeTab === 'history') {
       setLoadingHistory(true);
-      fetch(`/api/wallet/${user.id}/history`)
+      fetch(getApiUrl(`/api/wallet/${user.id}/history`))
         .then(res => res.json())
         .then(data => setHistory(data.history || []))
         .catch(() => setHistory([]))
@@ -395,12 +404,12 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   // Tambahkan fungsi refreshWalletAndHistory di dalam WalletTab
   const refreshWalletAndHistory = async () => {
     // Panggil ulang API wallet
-    const walletRes = await fetch(`/api/wallet/${user.id}`);
+    const walletRes = await fetch(getApiUrl(`/api/wallet/${user.id}`));
     if (walletRes.ok) {
       if (onWalletUpdate) onWalletUpdate(await walletRes.json());
     }
     // Panggil ulang API history
-    const historyRes = await fetch(`/api/wallet/${user.id}/history`);
+    const historyRes = await fetch(getApiUrl(`/api/wallet/${user.id}/history`));
     if (historyRes.ok) {
       if (onHistoryUpdate) onHistoryUpdate((await historyRes.json()).history || []);
     }
@@ -435,7 +444,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       setTxError('');
     
       try {
-        const response = await fetch('/api/transaction/send', {
+        const response = await fetch(getApiUrl('/api/transaction/send'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
