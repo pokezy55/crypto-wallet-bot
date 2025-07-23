@@ -161,7 +161,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [isLoadingSend, setIsLoadingSend] = useState(false);
-  const [balances, setBalances] = useState<Record<string, string>>({});
+  const [balances, setBalances] = useState<Record<string, Record<string, string>>>({});
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -204,11 +204,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           fetchPrices(chainTokens)
         ]);
         if (!cancelled) {
-          setBalances(
-            bals && typeof bals === 'object' && !Array.isArray(bals)
-              ? bals as Record<string, string>
-              : Object.create(null)
-          );
+          setBalances(prev => ({ ...prev, [selectedChain]: bals as Record<string, string> }));
           setPrices(
             priceMap && typeof priceMap === 'object' && !Array.isArray(priceMap)
               ? priceMap as Record<string, number>
@@ -217,7 +213,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           setLastUpdate(new Date());
         }
       } catch (e) {
-        setBalances(Object.create(null));
+        setBalances(prev => ({ ...prev, [selectedChain]: Object.create(null) as Record<string, string> }));
         setPrices(Object.create(null));
       }
     }
@@ -229,13 +225,18 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   // Build tokenList with real-time balances & prices
   const tokenList = useMemo(() => {
     const chainTokens = CHAINS[selectedChain]?.tokens || [];
-    return chainTokens.map((token: any) => {
-      const balance = parseFloat(balances[token.symbol] || '0');
+    // Ambil balances per chain
+    const chainBalances: Record<string, string> = (balances && balances[selectedChain]) ? balances[selectedChain] : {};
+    // Hitung nilai USD tiap token
+    const tokensWithValue = chainTokens.map((token: any) => {
+      const balance = parseFloat(chainBalances[token.symbol] || '0');
       const priceUSD = prices[token.symbol] || 0;
+      const usdValue = balance * priceUSD;
       return {
         ...token,
         balance,
         priceUSD,
+        usdValue,
         priceChange24h: 0, // Optional: fetch 24h change if needed
         chains: [selectedChain.toUpperCase()],
         isNative: !token.address,
@@ -244,6 +245,13 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         name: token.name || token.symbol
       };
     });
+    // Hitung total value
+    const totalValue = tokensWithValue.reduce((sum, t) => sum + t.usdValue, 0);
+    // Tambahkan persentase
+    return tokensWithValue.map(t => ({
+      ...t,
+      percent: totalValue > 0 ? (t.usdValue / totalValue) * 100 : 0
+    }));
   }, [balances, prices, selectedChain]);
 
   // Setelah tokenList didefinisikan:
