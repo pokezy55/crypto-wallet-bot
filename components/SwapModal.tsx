@@ -42,6 +42,7 @@ export default function SwapModal({ isOpen, onClose, tokens, chain, wallet }: Sw
   });
   const [status, setStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
+  const [maintenance, setMaintenance] = useState(false);
 
   // Get token objects
   const fromToken = tokens.find(t => t.symbol === form.fromToken);
@@ -62,11 +63,13 @@ export default function SwapModal({ isOpen, onClose, tokens, chain, wallet }: Sw
 
   // Handle swap
   const handleSwap = async () => {
+    setMaintenance(true);
+    return;
+    // --- kode swap asli di bawah ini tidak akan dijalankan selama maintenance ---
+    /*
     if (!isFormValid || !wallet.seedPhrase) return;
-
     setStatus('pending');
     setError('');
-
     try {
       const response = await fetch('/api/transaction/swap', {
         method: 'POST',
@@ -80,9 +83,7 @@ export default function SwapModal({ isOpen, onClose, tokens, chain, wallet }: Sw
           seedPhrase: wallet.seedPhrase
         })
       });
-
       const result = await response.json();
-      
       if (response.ok && result.success) {
         setStatus('success');
       } else {
@@ -93,6 +94,7 @@ export default function SwapModal({ isOpen, onClose, tokens, chain, wallet }: Sw
       setStatus('error');
       setError(error instanceof Error ? error.message : 'Failed to execute swap');
     }
+    */
   };
 
   // Handle close
@@ -139,6 +141,18 @@ export default function SwapModal({ isOpen, onClose, tokens, chain, wallet }: Sw
           >
             Try Again
           </button>
+        </div>
+      </BaseModal>
+    );
+  }
+
+  if (maintenance) {
+    return (
+      <BaseModal isOpen={isOpen} onClose={() => { setMaintenance(false); handleClose(); }} title="Swap Maintenance">
+        <div className="text-center">
+          <p className="text-yellow-400 mb-4 font-semibold">Swap Feature are Currently Maintenance, Please comeback Later.</p>
+          <p className="text-gray-300 mb-4">Please use <a href="https://app.uniswap.org/" target="_blank" rel="noopener noreferrer" className="underline text-blue-400">Uniswap</a> directly for now.</p>
+          <button onClick={() => { setMaintenance(false); handleClose(); }} className="btn-primary w-full">Close</button>
         </div>
       </BaseModal>
     );
