@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Wallet, Clipboard, Users, Settings, Plus, Download } from 'lucide-react'
+import { Wallet, Clipboard, Users, Settings } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // Components
@@ -275,7 +275,7 @@ export default function Home() {
             onClick={handleCreateWallet}
               className="w-full btn-primary flex items-center justify-center gap-2 py-3"
           >
-            <Plus className="w-5 h-5" />
+            <Wallet className="w-5 h-5" />
             Create New Wallet
           </button>
           
@@ -283,7 +283,7 @@ export default function Home() {
             onClick={handleImportWallet}
               className="w-full btn-secondary flex items-center justify-center gap-2 py-3"
           >
-            <Download className="w-5 h-5" />
+            <Clipboard className="w-5 h-5" />
             Import Wallet
           </button>
           </div>
