@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, Component, useRef } from 'react';
-import { Send, Download, ArrowLeftRight, Copy, QrCode, Plus, Settings, RefreshCw, ExternalLink, Globe } from 'lucide-react';
+import { Send, Download, ArrowLeftRight, Copy, QrCode, Plus, Settings, RefreshCw, ExternalLink, Globe, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import QRCode from 'qrcode.react';
 import { formatAddress, isValidAddress } from '@/lib/address';
@@ -752,10 +752,10 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             <span className="text-xs mt-1">Receive</span>
           </button>
           <button 
-            onClick={() => handleTokenAction(tokenList[0], 'swap')}
-            className="flex flex-col items-center hover:text-primary-500 transition-colors"
+            onClick={() => toast.error('Swap is currently under maintenance!', { duration: 3000 })}
+            className="flex flex-col items-center text-red-500 hover:text-red-400 transition-colors"
           >
-            <ArrowLeftRight className="w-6 h-6" />
+            <AlertCircle className="w-6 h-6" />
             <span className="text-xs mt-1">Swap</span>
           </button>
         </div>
