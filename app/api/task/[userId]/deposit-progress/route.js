@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getWalletByUserId, getRewardQuota } from '@/lib/database';
+import { getWalletByUserId, getRewardQuota, getExistingDepositClaim } from '@/lib/database';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +20,16 @@ export async function GET(req, { params }) {
     ];
     const totalDepositUSD = nativeAndStableBalances.reduce((a, b) => a + b, 0);
 
+    // Cek status claim di tabel claims
     let status = 'unclaimed';
-    if (totalDepositUSD >= 20) status = 'eligible';
+    const claims = await getExistingDepositClaim(userId);
+    if (claims.some(c => c.status === 'claimed')) {
+      status = 'claimed';
+    } else if (claims.some(c => c.status === 'processing')) {
+      status = 'processing';
+    } else if (totalDepositUSD >= 20) {
+      status = 'eligible';
+    }
 
     // Ambil quota dari database
     const quota = await getRewardQuota('deposit');

@@ -160,13 +160,6 @@ export default function TaskTab({ user }: TaskTabProps) {
               <Gift className="w-4 h-4 text-green-400" />
             </div>
           </div>
-          <div className="ml-4">
-            {swapProgress?.status === 'claimed' ? (
-              <CheckCircle className="w-8 h-8 text-green-500" />
-            ) : (
-              <XCircle className="w-8 h-8 text-red-500" />
-            )}
-          </div>
         </div>
         <div className="space-y-3">
           <div className="flex justify-between items-center text-sm">
@@ -259,13 +252,6 @@ export default function TaskTab({ user }: TaskTabProps) {
               <span className="text-green-400 font-medium">$3 USDT</span>
               <Gift className="w-4 h-4 text-green-400" />
             </div>
-          </div>
-          <div className="ml-4">
-            {depositProgress?.status === 'claimed' ? (
-              <CheckCircle className="w-8 h-8 text-green-500" />
-            ) : (
-              <XCircle className="w-8 h-8 text-red-500" />
-            )}
           </div>
         </div>
         <div className="space-y-3">
