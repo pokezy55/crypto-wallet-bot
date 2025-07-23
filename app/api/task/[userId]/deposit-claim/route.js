@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getWalletByUserId, decrementRewardQuota } from '@/lib/database';
+import { getWalletByUserId, decrementRewardQuota, getWalletTransactions } from '@/lib/database';
 import pool from '@/lib/database';
 import { sendMessage } from '@/lib/telegram';
 
