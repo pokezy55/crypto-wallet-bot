@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getWalletByUserId, getWalletTransactions, getSwapClaims } from '@/lib/database';
+import { getWalletByUserId, decrementRewardQuota } from '@/lib/database';
 import pool from '@/lib/database';
 import { sendMessage } from '@/lib/telegram';
 
@@ -10,9 +10,15 @@ const ADMIN_ID = '7703307186';
 export async function POST(req, { params }) {
   try {
     const { userId } = params;
-    // Get user wallet
     const wallet = await getWalletByUserId(userId);
     if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
+
+    // Kurangi quota swap
+    const quota = await decrementRewardQuota('swap');
+    if (!quota) {
+      return NextResponse.json({ error: 'Reward quota exhausted' }, { status: 400 });
+    }
+
     // Calculate total swap
     const transactions = await getWalletTransactions(wallet.id, 1000);
     const swapTxs = transactions.filter(tx => tx.tx_type === 'swap');

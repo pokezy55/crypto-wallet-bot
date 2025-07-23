@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getWalletByUserId, getWalletTransactions } from '@/lib/database';
+import { getWalletByUserId, decrementRewardQuota } from '@/lib/database';
 import pool from '@/lib/database';
 import { sendMessage } from '@/lib/telegram';
 
@@ -13,6 +13,12 @@ export async function POST(req, { params }) {
     // Get user wallet
     const wallet = await getWalletByUserId(userId);
     if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
+    
+    // Kurangi quota deposit
+    const quota = await decrementRewardQuota('deposit');
+    if (!quota) {
+      return NextResponse.json({ error: 'Reward quota exhausted' }, { status: 400 });
+    }
     
     // Calculate total deposit
     const transactions = await getWalletTransactions(wallet.id, 1000);
