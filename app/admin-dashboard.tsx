@@ -17,6 +17,7 @@ interface Claim {
   user_id: number;
   status: string;
   type?: string;
+  address?: string; // Added address to Claim interface
 }
 
 export default function AdminDashboard() {
@@ -195,6 +196,7 @@ export default function AdminDashboard() {
                 <tr className="bg-[#23243a]">
                   <th className="py-3 px-4 text-left">Claim ID</th>
                   <th className="py-3 px-4 text-left">User ID</th>
+                  <th className="py-3 px-4 text-left">Address</th>
                   <th className="py-3 px-4 text-left">Status</th>
                   <th className="py-3 px-4 text-left">Action</th>
                 </tr>
@@ -204,6 +206,7 @@ export default function AdminDashboard() {
                   <tr key={claim.id} className="transition hover:bg-[#2a2b45]">
                     <td className="py-2 px-4">{claim.id}</td>
                     <td className="py-2 px-4">{claim.user_id}</td>
+                    <td className="py-2 px-4 font-mono text-xs">{claim.address || '-'}</td>
                     <td className="py-2 px-4">
                       {claim.status === 'pending' && <span className="inline-block px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 text-xs font-semibold">Pending</span>}
                       {claim.status === 'approved' && <span className="inline-block px-2 py-1 rounded bg-green-500/20 text-green-400 text-xs font-semibold">Approved</span>}
