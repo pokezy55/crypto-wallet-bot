@@ -266,17 +266,15 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     }, 0);
   }, [tokenList]);
 
-  // Auto refresh balances
-  useEffect(() => {
-    // Initial fetch
-    refetch();
-
-    // Set up polling every 60 seconds
-    const interval = setInterval(refetch, 60000);
-
-    // Cleanup interval on unmount
-    return () => clearInterval(interval);
-  }, [refetch]);
+  // --- Hapus polling auto refresh balances lama (refetch) ---
+  // useEffect(() => {
+  //   // Initial fetch
+  //   refetch();
+  //   // Set up polling every 60 seconds
+  //   const interval = setInterval(refetch, 60000);
+  //   // Cleanup interval on unmount
+  //   return () => clearInterval(interval);
+  // }, [refetch]);
 
   // --- Send Form Validasi ---
   const selectedToken = tokenList.find(t => t.symbol === sendForm.token) || tokenList[0];
