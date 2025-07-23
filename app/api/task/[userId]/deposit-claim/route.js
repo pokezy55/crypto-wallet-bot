@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getWalletByUserId, decrementRewardQuota, getWalletTransactions } from '@/lib/database';
-import pool from '@/lib/database';
+// import pool from '@/lib/database'; // Dihapus karena tidak digunakan
 import { sendMessage } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
