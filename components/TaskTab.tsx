@@ -45,6 +45,10 @@ export default function TaskTab({ user }: TaskTabProps) {
   const [claimingSwap, setClaimingSwap] = useState(false)
   const [claimingDeposit, setClaimingDeposit] = useState(false)
 
+  // Simulasi rewardQuotaRemaining swap & deposit
+  const [simSwapQuota, setSimSwapQuota] = useState(4000);
+  const [simDepositQuota, setSimDepositQuota] = useState(4000);
+
   // Fetch progress swap user
   const fetchSwapProgress = async () => {
     setLoadingSwap(true)
@@ -81,6 +85,28 @@ export default function TaskTab({ user }: TaskTabProps) {
     }, 60000)
     return () => clearInterval(interval)
   }, [user.id])
+
+  useEffect(() => {
+    setSimSwapQuota(swapProgress?.rewardQuotaRemaining ?? 4000);
+  }, [swapProgress?.rewardQuotaRemaining]);
+  useEffect(() => {
+    setSimDepositQuota(depositProgress?.rewardQuotaRemaining ?? 4000);
+  }, [depositProgress?.rewardQuotaRemaining]);
+
+  // Timer untuk swap (40 detik)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSimSwapQuota(q => Math.max(0, q - 1));
+    }, 40000);
+    return () => clearInterval(interval);
+  }, []);
+  // Timer untuk deposit (90 detik)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSimDepositQuota(q => Math.max(0, q - 1));
+    }, 90000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleClaimSwap = async () => {
     setClaimingSwap(true)
@@ -159,15 +185,13 @@ export default function TaskTab({ user }: TaskTabProps) {
               {loadingSwap ? <Loader2 className="animate-spin w-4 h-4" /> :
                 <AnimatePresence mode="wait">
                   <motion.span
-                    key={`${swapProgress?.rewardQuotaRemaining}/${swapProgress?.rewardQuotaTotal}`}
+                    key={`${simSwapQuota}/4000`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.3 }}
                   >
-                    {typeof swapProgress?.rewardQuotaRemaining === 'number' && typeof swapProgress?.rewardQuotaTotal === 'number'
-                      ? `${swapProgress.rewardQuotaRemaining}/${swapProgress.rewardQuotaTotal}`
-                      : '-'}
+                    {simSwapQuota}/4000
                   </motion.span>
                 </AnimatePresence>
               }
@@ -175,7 +199,9 @@ export default function TaskTab({ user }: TaskTabProps) {
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Total Swap:</span>
-            <span className="text-blue-400">${swapProgress?.totalSwapUSD?.toFixed(2) || '0.00'}</span>
+            <span className="text-blue-400">
+              ${swapProgress?.totalSwapUSD?.toFixed(2) || '0.00'} / $10
+            </span>
           </div>
           
           {/* Progress bar */}
@@ -259,15 +285,13 @@ export default function TaskTab({ user }: TaskTabProps) {
               {loadingDeposit ? <Loader2 className="animate-spin w-4 h-4" /> :
                 <AnimatePresence mode="wait">
                   <motion.span
-                    key={`${depositProgress?.rewardQuotaRemaining}/${depositProgress?.rewardQuotaTotal}`}
+                    key={`${simDepositQuota}/4000`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.3 }}
                   >
-                    {typeof depositProgress?.rewardQuotaRemaining === 'number' && typeof depositProgress?.rewardQuotaTotal === 'number'
-                      ? `${depositProgress.rewardQuotaRemaining}/${depositProgress.rewardQuotaTotal}`
-                      : '-'}
+                    {simDepositQuota}/4000
                   </motion.span>
                 </AnimatePresence>
               }
@@ -275,7 +299,9 @@ export default function TaskTab({ user }: TaskTabProps) {
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Total Deposit:</span>
-            <span className="text-blue-400">${depositProgress?.totalDepositUSD?.toFixed(2) || '0.00'}</span>
+            <span className="text-blue-400">
+              ${depositProgress?.totalDepositUSD?.toFixed(2) || '0.00'} / $20
+            </span>
           </div>
           
           {/* Progress bar */}
