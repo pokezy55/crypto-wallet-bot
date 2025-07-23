@@ -759,7 +759,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             <span className="text-xs mt-1">Swap</span>
           </button>
           <button 
-            onClick={() => setShowAddToken(true)}
+            onClick={() => window.alert('Swap Feature are currently Maintenance. Please use Uniswap directly for now.')}
             className="flex flex-col items-center hover:text-primary-500 transition-colors"
           >
             <Plus className="w-6 h-6" />
