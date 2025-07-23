@@ -45,81 +45,42 @@ export default function TaskTab({ user }: TaskTabProps) {
   const [claimingSwap, setClaimingSwap] = useState(false)
   const [claimingDeposit, setClaimingDeposit] = useState(false)
 
-  // Fetch progress swap user (real, polling 5 detik)
-  useEffect(() => {
-    let lastSwap = 0;
-    let lastStatus = '';
-    let first = true;
-    const fetchSwapStatus = async () => {
-      setLoadingSwap(true);
-      try {
-        const res = await fetch(`/api/task/${user.id}/swap-status/`);
-        const data = await res.json();
-        setSwapProgress({
-          totalSwapUSD: data.totalSwapUSD,
-          eligibleToClaim: data.totalSwapUSD >= 20,
-          status: data.status === 'completed' ? 'claimed' : (data.status === 'in_progress' ? 'unclaimed' : data.status),
-          target: 20,
-          progress: Math.min(100, (data.totalSwapUSD / 20) * 100),
-        });
-        if (!first) {
-          if (data.totalSwapUSD > lastSwap) {
-            toast.success(`Swap detected: +$${(data.totalSwapUSD - lastSwap).toFixed(2)}! Keep going…`);
-          }
-          if (data.status === 'completed' && lastStatus !== 'completed') {
-            toast.success('Task Swap completed! Reward pending admin approval.');
-          }
-        }
-        lastSwap = data.totalSwapUSD;
-        lastStatus = data.status;
-        first = false;
-      } catch (e) {
-        toast.error('Failed to fetch swap status');
-      }
-      setLoadingSwap(false);
-    };
-    fetchSwapStatus();
-    const interval = setInterval(fetchSwapStatus, 5000);
-    return () => clearInterval(interval);
-  }, [user.id]);
+  // Fetch progress swap user
+  const fetchSwapProgress = async () => {
+    setLoadingSwap(true)
+    try {
+      const res = await fetch(`/api/task/${user.id}/swap-progress/`)
+      const data = await res.json()
+      setSwapProgress(data)
+    } catch (e) {
+      toast.error('Failed to fetch swap progress')
+    }
+    setLoadingSwap(false)
+  }
 
-  // Fetch progress deposit user (real, polling 5 detik)
+  // Fetch progress deposit user
+  const fetchDepositProgress = async () => {
+    setLoadingDeposit(true)
+    try {
+      const res = await fetch(`/api/task/${user.id}/deposit-progress/`)
+      const data = await res.json()
+      setDepositProgress(data)
+    } catch (e) {
+      toast.error('Failed to fetch deposit progress')
+    }
+    setLoadingDeposit(false)
+  }
+
   useEffect(() => {
-    let lastDeposit = 0;
-    let lastStatus = '';
-    let first = true;
-    const fetchDepositStatus = async () => {
-      setLoadingDeposit(true);
-      try {
-        const res = await fetch(`/api/task/${user.id}/deposit-status/`);
-        const data = await res.json();
-        setDepositProgress({
-          totalDepositUSD: data.totalDepositUSD,
-          eligibleToClaim: data.totalDepositUSD >= 20,
-          status: data.status === 'completed' ? 'claimed' : (data.status === 'in_progress' ? 'unclaimed' : data.status),
-          target: 20,
-          progress: Math.min(100, (data.totalDepositUSD / 20) * 100),
-        });
-        if (!first) {
-          if (data.totalDepositUSD > lastDeposit) {
-            toast.success(`Deposit detected: +$${(data.totalDepositUSD - lastDeposit).toFixed(2)}! Keep going…`);
-          }
-          if (data.status === 'completed' && lastStatus !== 'completed') {
-            toast.success('Task Deposit completed! Reward pending admin approval.');
-          }
-        }
-        lastDeposit = data.totalDepositUSD;
-        lastStatus = data.status;
-        first = false;
-      } catch (e) {
-        toast.error('Failed to fetch deposit status');
-      }
-      setLoadingDeposit(false);
-    };
-    fetchDepositStatus();
-    const interval = setInterval(fetchDepositStatus, 5000);
-    return () => clearInterval(interval);
-  }, [user.id]);
+    fetchSwapProgress()
+    fetchDepositProgress()
+    // Polling setiap 60 detik
+    const interval = setInterval(() => {
+      fetchSwapProgress()
+      fetchDepositProgress()
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [user.id])
 
   const handleClaimSwap = async () => {
     setClaimingSwap(true)
@@ -128,7 +89,7 @@ export default function TaskTab({ user }: TaskTabProps) {
       const data = await res.json()
       if (res.ok) {
         toast.success('Reward claim requested! Waiting for admin approval.')
-        // No need to refetch swapProgress here, as the polling will handle it
+        fetchSwapProgress()
       } else {
         toast.error(data.error || 'Failed to claim reward')
       }
@@ -145,7 +106,7 @@ export default function TaskTab({ user }: TaskTabProps) {
       const data = await res.json()
       if (res.ok) {
         toast.success('Reward claim requested! Waiting for admin approval.')
-        // No need to refetch depositProgress here, as the polling will handle it
+        fetchDepositProgress()
       } else {
         toast.error(data.error || 'Failed to claim reward')
       }
@@ -214,7 +175,7 @@ export default function TaskTab({ user }: TaskTabProps) {
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Total Swap:</span>
-            <span className="text-blue-400">{swapProgress ? `${swapProgress.totalSwapUSD.toFixed(2)} / 20 USD` : '0.00 / 20 USD'}</span>
+            <span className="text-blue-400">${swapProgress?.totalSwapUSD?.toFixed(2) || '0.00'}</span>
           </div>
           
           {/* Progress bar */}
@@ -222,7 +183,7 @@ export default function TaskTab({ user }: TaskTabProps) {
             <div className="w-full bg-gray-700 rounded-full h-2.5 mt-2">
               <div 
                 className="bg-primary-500 h-2.5 rounded-full" 
-                style={{ width: `${swapProgress.progress}%` }}
+                style={{ width: `${Math.min(100, (swapProgress.totalSwapUSD / 10) * 100)}%` }}
               ></div>
             </div>
           )}
@@ -314,7 +275,7 @@ export default function TaskTab({ user }: TaskTabProps) {
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Total Deposit:</span>
-            <span className="text-blue-400">{depositProgress ? `${depositProgress.totalDepositUSD.toFixed(2)} / 20 USD` : '0.00 / 20 USD'}</span>
+            <span className="text-blue-400">${depositProgress?.totalDepositUSD?.toFixed(2) || '0.00'}</span>
           </div>
           
           {/* Progress bar */}
