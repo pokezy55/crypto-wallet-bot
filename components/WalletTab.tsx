@@ -159,7 +159,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [isLoadingSend, setIsLoadingSend] = useState(false);
   const [balances, setBalances] = useState<Record<string, string>>({});
-  const [chain, setChain] = useState('eth');
+  const [chain, setChain] = useState('ethereum');
   const [showConfirm, setShowConfirm] = useState(false);
   const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [txError, setTxError] = useState('');
@@ -168,7 +168,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [showAddToken, setShowAddToken] = useState(false);
   const [newToken, setNewToken] = useState({ network: 'ETH', contract: '' });
   const [showChainMenu, setShowChainMenu] = useState(false);
-  const [selectedChain, setSelectedChain] = useState<string>('eth');
+  const [selectedChain, setSelectedChain] = useState<string>('ethereum');
   const [showSendModal, setShowSendModal] = useState(false);
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
@@ -176,7 +176,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [showSwapMaintenance, setShowSwapMaintenance] = useState(false);
 
   const CHAIN_OPTIONS = [
-    { key: 'eth', label: 'Ethereum', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
+    { key: 'ethereum', label: 'Ethereum', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
     { key: 'bsc', label: 'BSC', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg' },
     { key: 'polygon', label: 'Polygon', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg' },
     { key: 'base', label: 'Base', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
