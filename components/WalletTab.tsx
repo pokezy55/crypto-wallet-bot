@@ -204,13 +204,21 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           fetchPrices(chainTokens)
         ]);
         if (!cancelled) {
-          setBalances(bals || (Object.create(null) as Record<string, string>));
-          setPrices(priceMap || (Object.create(null) as Record<string, number>));
+          setBalances(
+            bals && typeof bals === 'object' && !Array.isArray(bals)
+              ? bals as Record<string, string>
+              : Object.create(null)
+          );
+          setPrices(
+            priceMap && typeof priceMap === 'object' && !Array.isArray(priceMap)
+              ? priceMap as Record<string, number>
+              : Object.create(null)
+          );
           setLastUpdate(new Date());
         }
       } catch (e) {
-        setBalances(Object.create(null) as Record<string, string>);
-        setPrices(Object.create(null) as Record<string, number>);
+        setBalances(Object.create(null));
+        setPrices(Object.create(null));
       }
     }
     fetchAll();
