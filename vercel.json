@@ -1,6 +1,9 @@
 {
   "functions": {
-    "api/**/*.js": {
+    "app/api/**/*.js": {
+      "excludeFiles": "workers/**"
+    },
+    "app/api/**/*.ts": {
       "excludeFiles": "workers/**"
     }
   }
