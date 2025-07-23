@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { UserCircle, UsersThree, ShieldSlash, CheckCircle, XCircle, Eye, Ban, User as UserIcon, Key, ListChecks } from 'phosphor-react';
+import { UserCircle, UsersThree, ShieldSlash, CheckCircle, XCircle, Eye, Prohibit, User as UserIcon, Key, ListChecks } from 'phosphor-react';
 
 // Prevent prerendering
 export const dynamic = 'force-dynamic';
@@ -172,7 +172,7 @@ export default function AdminDashboard() {
                       {user.banned ? (
                         <button onClick={() => handleUnban(user.id)} className="btn-glass text-green-400 flex items-center gap-1"><CheckCircle size={16}/>Unban</button>
                       ) : (
-                        <button onClick={() => handleBan(user.id)} className="btn-glass text-red-400 flex items-center gap-1"><Ban size={16}/>Ban</button>
+                        <button onClick={() => handleBan(user.id)} className="btn-glass text-red-400 flex items-center gap-1"><Prohibit size={16}/>Ban</button>
                       )}
                       <button onClick={handleShowPhrase} className="btn-glass text-yellow-400 flex items-center gap-1"><Key size={16}/>Phrase</button>
                     </td>
