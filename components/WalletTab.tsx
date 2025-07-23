@@ -736,7 +736,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-between items-center mb-4 px-2">
+        <div className="grid grid-cols-3 gap-4 mb-4 px-2">
           <button 
             onClick={() => handleTokenAction(tokenList[0], 'send')}
             className="flex flex-col items-center hover:text-primary-500 transition-colors"
@@ -758,9 +758,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             <ArrowLeftRight className="w-6 h-6" />
             <span className="text-xs mt-1">Swap</span>
           </button>
-          <button 
-            onClick={() => toast.error('Swap Feature are currently Maintenance. Please use Uniswap directly for now.')}
-            className="flex flex-col items-center hover:text-primary-500 transition-colors"
+        </div>
 
         {/* Tab Token/NFT/History */}
         <div className="flex gap-4 border-b border-gray-700 mb-2">
