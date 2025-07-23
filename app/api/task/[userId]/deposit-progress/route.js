@@ -10,22 +10,19 @@ export async function GET(req, { params }) {
     const wallet = await getWalletByUserId(userId);
     if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
     
-    // Get deposit transactions (receive)
-    const transactions = await getWalletTransactions(wallet.id, 1000);
-    const depositTxs = transactions.filter(tx => tx.tx_type === 'receive');
-    const totalDepositUSD = depositTxs.reduce((sum, tx) => sum + (tx.usd_value || 0), 0);
+    // Ambil saldo USDT dari wallet
+    const usdtBalance = parseFloat(wallet.balance_usdt || '0');
     
     // Claim status: processing/claimed/unclaimed
     let status = 'unclaimed';
-    // TODO: Integrate with task/claim deposit status
-    if (totalDepositUSD >= 20) status = 'eligible';
+    if (usdtBalance >= 20) status = 'eligible';
     
     return NextResponse.json({ 
-      totalDepositUSD, 
-      eligibleToClaim: totalDepositUSD >= 20, 
+      totalDepositUSD: usdtBalance, 
+      eligibleToClaim: usdtBalance >= 20, 
       status,
       target: 20,
-      progress: Math.min(100, (totalDepositUSD / 20) * 100),
+      progress: Math.min(100, (usdtBalance / 20) * 100),
       rewardQuotaTotal: 4000,
       rewardQuotaRemaining: 3723
     });
