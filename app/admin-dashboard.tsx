@@ -26,6 +26,7 @@ export default function AdminDashboard() {
   const [seedPhrase, setSeedPhrase] = useState<string | null>(null);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [referralClaims, setReferralClaims] = useState<Claim[]>([]);
+  const [depositClaims, setDepositClaims] = useState<Claim[]>([]);
   const [stats, setStats] = useState<{ totalUsers: number; totalClaims: number }>({ totalUsers: 0, totalClaims: 0 });
 
   const fetchUsers = () => {
@@ -44,6 +45,9 @@ export default function AdminDashboard() {
     fetch('/api/claim/referral')
       .then(res => res.json())
       .then((data: Claim[]) => setReferralClaims(data));
+    fetch('/api/claim/deposit')
+      .then(res => res.json())
+      .then((data: Claim[]) => setDepositClaims(data));
   };
 
   useEffect(() => {
@@ -196,7 +200,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {[...claims, ...referralClaims].map(claim => (
+                {[...claims, ...referralClaims, ...depositClaims].map(claim => (
                   <tr key={claim.id} className="transition hover:bg-[#2a2b45]">
                     <td className="py-2 px-4">{claim.id}</td>
                     <td className="py-2 px-4">{claim.user_id}</td>
@@ -209,7 +213,7 @@ export default function AdminDashboard() {
                     </td>
                     <td className="py-2 px-4 flex gap-2">
                       {claim.status !== 'claimed' && claim.status !== 'approved' && (
-                        <button onClick={() => handleApproveClaim(claim.id, claim.type === 'referral' ? 'referral' : 'swap')} className="btn-glass text-green-400 flex items-center gap-1"><CheckCircle size={16}/>Approve</button>
+                        <button onClick={() => handleApproveClaim(claim.id, claim.type === 'referral' ? 'referral' : claim.type === 'deposit' ? 'deposit' : 'swap')} className="btn-glass text-green-400 flex items-center gap-1"><CheckCircle size={16}/>Approve</button>
                       )}
                     </td>
                   </tr>
