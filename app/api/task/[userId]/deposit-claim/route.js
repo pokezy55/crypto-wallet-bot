@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getWalletByUserId, decrementRewardQuota, getWalletTransactions } from '@/lib/database';
+import { getWalletByUserId, decrementRewardQuota, getWalletTransactions, getExistingDepositClaim, createDepositClaim } from '@/lib/database';
 // import pool from '@/lib/database'; // Dihapus karena tidak digunakan
 import { sendMessage } from '@/lib/telegram';
 
@@ -36,22 +36,13 @@ export async function POST(req, { params }) {
     }
 
     // Check if there's already a claim processing/complete
-    const { rows: existingClaims } = await pool.query(
-      `SELECT * FROM claims WHERE user_id = $1 AND type = $2 AND status != $3`,
-      [userId, 'deposit', 'rejected']
-    );
-
+    const existingClaims = await getExistingDepositClaim(userId);
     if (existingClaims.length > 0) {
       return NextResponse.json({ error: 'Already claimed or processing' }, { status: 400 });
     }
 
     // Insert new claim to claims table
-    const { rows } = await pool.query(
-      `INSERT INTO claims (user_id, status, type, amount, address, details) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [userId, 'processing', 'deposit', totalDepositUSD, wallet.address, null]
-    );
-
-    const claim = rows[0];
+    const claim = await createDepositClaim(userId, wallet, totalDepositUSD);
 
     // Prepare admin notification data
     const userName = `User ${userId}`;
