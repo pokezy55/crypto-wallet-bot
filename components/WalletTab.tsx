@@ -204,8 +204,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           fetchPrices(chainTokens)
         ]);
         if (!cancelled) {
-          setBalances(bals || {});
-          setPrices(priceMap || {});
+          setBalances(bals || (Object.create(null) as Record<string, string>));
+          setPrices(priceMap || (Object.create(null) as Record<string, number>));
           setLastUpdate(new Date());
         }
       } catch (e) {
