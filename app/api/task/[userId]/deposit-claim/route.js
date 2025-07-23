@@ -70,7 +70,7 @@ export async function POST(req, { params }) {
 
     return NextResponse.json({ success: true, claim });
   } catch (error) {
-    console.error('Error claiming deposit reward:', error);
+    console.error('Error in deposit-claim:', error);
     return NextResponse.json({ error: 'Failed to claim deposit reward' }, { status: 500 });
   }
 } 
