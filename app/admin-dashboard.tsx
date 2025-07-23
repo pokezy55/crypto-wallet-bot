@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { UserCircle, UsersThree, ShieldSlash, CheckCircle, XCircle, Eye, Ban, User as UserIcon, Key, ListChecks } from 'phosphor-react';
 
 // Prevent prerendering
 export const dynamic = 'force-dynamic';
@@ -52,9 +54,20 @@ export default function AdminDashboard() {
       .then(setStats);
   }, []);
 
+  // Tambahkan hitung banned users
+  useEffect(() => {
+    setStats(s => ({ ...s, bannedUsers: users.filter(u => u.banned).length }));
+  }, [users]);
+
   const handleBan = async (userId: number) => {
     await fetch(`/api/user/${userId}`, { method: 'PATCH' });
     fetchUsers();
+    toast.success('User banned!');
+  };
+  const handleUnban = async (userId: number) => {
+    await fetch(`/api/user/${userId}/unban`, { method: 'PATCH' });
+    fetchUsers();
+    toast.success('User unbanned!');
   };
 
   const handleView = (user: User) => setSelectedUser(user);
@@ -95,133 +108,141 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
-      <div className="grid grid-cols-2 gap-8 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-2">Statistik</h2>
-          <div>Total Users: <b>{stats.totalUsers}</b></div>
-          <div>Total Claims: <b>{stats.totalClaims}</b></div>
+    <div className="min-h-screen bg-gradient-to-br from-[#23243a] to-[#181926] text-white p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2 tracking-tight">Admin Dashboard</h1>
+          <p className="text-gray-400 text-sm md:text-base">Monitor users, manage claims, and keep your system secure. All in one place.</p>
+        </header>
+        {/* Statistik */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="glass-card flex items-center gap-4 p-6">
+            <UsersThree size={40} className="text-primary-400" />
+            <div>
+              <div className="text-2xl font-bold">{stats.totalUsers}</div>
+              <div className="text-gray-400 text-sm">Total Users</div>
+            </div>
+          </div>
+          <div className="glass-card flex items-center gap-4 p-6">
+            <ListChecks size={40} className="text-green-400" />
+            <div>
+              <div className="text-2xl font-bold">{stats.totalClaims}</div>
+              <div className="text-gray-400 text-sm">Total Claims</div>
+            </div>
+          </div>
+          <div className="glass-card flex items-center gap-4 p-6">
+            <ShieldSlash size={40} className="text-red-400" />
+            <div>
+              <div className="text-2xl font-bold">{users.filter(u => u.banned).length}</div>
+              <div className="text-gray-400 text-sm">Banned Users</div>
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-2">Quick Actions</h2>
-          <div className="text-gray-500">Approve claim, ban user, view phrase, dsb.</div>
-        </div>
-      </div>
-      <div className="mb-8 bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">User List</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full border">
-            <thead>
-              <tr className="bg-gray-100">
-                <th>ID</th>
-                <th>Username</th>
-                <th>Address</th>
-                <th>Banned</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map(user => (
-                <tr key={user.id} className={user.banned ? 'bg-red-100' : ''}>
-                  <td>{user.id}</td>
-                  <td>{user.username}</td>
-                  <td>{user.address}</td>
-                  <td>{user.banned ? 'Yes' : 'No'}</td>
-                  <td>
-                    <button onClick={() => handleView(user)} className="mr-2 text-blue-600">View</button>
-                    <button onClick={() => handleBan(user.id)} className="mr-2 text-red-600" disabled={user.banned}>Ban</button>
-                    <button onClick={handleShowPhrase} className="text-green-600">View Phrase</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div className="mb-8 grid grid-cols-2 gap-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Claim Swap List</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full border">
+        {/* User Management Table */}
+        <section className="mb-10">
+          <h2 className="text-xl font-semibold mb-4">User Management</h2>
+          <div className="overflow-x-auto rounded-lg glass-card">
+            <table className="w-full min-w-[600px] text-sm">
               <thead>
-                <tr className="bg-gray-100">
-                  <th>Claim ID</th>
-                  <th>User ID</th>
-                  <th>Status</th>
-                  <th>Action</th>
+                <tr className="bg-[#23243a]">
+                  <th className="py-3 px-4 text-left">ID</th>
+                  <th className="py-3 px-4 text-left">Username</th>
+                  <th className="py-3 px-4 text-left">Address</th>
+                  <th className="py-3 px-4 text-left">Status</th>
+                  <th className="py-3 px-4 text-left">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(user => (
+                  <tr key={user.id} className="transition hover:bg-[#2a2b45]">
+                    <td className="py-2 px-4">{user.id}</td>
+                    <td className="py-2 px-4 flex items-center gap-2">
+                      <UserIcon size={18} /> {user.username || '-'}
+                    </td>
+                    <td className="py-2 px-4 font-mono text-xs">{user.address}</td>
+                    <td className="py-2 px-4">
+                      {user.banned ? (
+                        <span className="inline-block px-2 py-1 rounded bg-red-500/20 text-red-400 text-xs font-semibold">Banned</span>
+                      ) : (
+                        <span className="inline-block px-2 py-1 rounded bg-green-500/20 text-green-400 text-xs font-semibold">Active</span>
+                      )}
+                    </td>
+                    <td className="py-2 px-4 flex gap-2">
+                      <button onClick={() => handleView(user)} className="btn-glass text-blue-400 flex items-center gap-1"><Eye size={16}/>View</button>
+                      {user.banned ? (
+                        <button onClick={() => handleUnban(user.id)} className="btn-glass text-green-400 flex items-center gap-1"><CheckCircle size={16}/>Unban</button>
+                      ) : (
+                        <button onClick={() => handleBan(user.id)} className="btn-glass text-red-400 flex items-center gap-1"><Ban size={16}/>Ban</button>
+                      )}
+                      <button onClick={handleShowPhrase} className="btn-glass text-yellow-400 flex items-center gap-1"><Key size={16}/>Phrase</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        {/* Claim Management Table */}
+        <section className="mb-10">
+          <h2 className="text-xl font-semibold mb-4">Claim Management</h2>
+          <div className="overflow-x-auto rounded-lg glass-card">
+            <table className="w-full min-w-[600px] text-sm">
+              <thead>
+                <tr className="bg-[#23243a]">
+                  <th className="py-3 px-4 text-left">Claim ID</th>
+                  <th className="py-3 px-4 text-left">User ID</th>
+                  <th className="py-3 px-4 text-left">Status</th>
+                  <th className="py-3 px-4 text-left">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {claims.map(claim => (
-                  <tr key={claim.id}>
-                    <td>{claim.id}</td>
-                    <td>{claim.user_id}</td>
-                    <td>{claim.status}</td>
-                    <td>
-                      {claim.status !== 'completed' && (
-                        <button onClick={() => handleApproveClaim(claim.id, 'swap')} className="text-green-600">Approve</button>
+                  <tr key={claim.id} className="transition hover:bg-[#2a2b45]">
+                    <td className="py-2 px-4">{claim.id}</td>
+                    <td className="py-2 px-4">{claim.user_id}</td>
+                    <td className="py-2 px-4">
+                      {claim.status === 'pending' && <span className="inline-block px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 text-xs font-semibold">Pending</span>}
+                      {claim.status === 'approved' && <span className="inline-block px-2 py-1 rounded bg-green-500/20 text-green-400 text-xs font-semibold">Approved</span>}
+                      {claim.status === 'rejected' && <span className="inline-block px-2 py-1 rounded bg-red-500/20 text-red-400 text-xs font-semibold">Rejected</span>}
+                      {claim.status === 'processing' && <span className="inline-block px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 text-xs font-semibold">Processing</span>}
+                      {claim.status === 'claimed' && <span className="inline-block px-2 py-1 rounded bg-green-500/20 text-green-400 text-xs font-semibold">Claimed</span>}
+                    </td>
+                    <td className="py-2 px-4 flex gap-2">
+                      {claim.status !== 'claimed' && claim.status !== 'approved' && (
+                        <button onClick={() => handleApproveClaim(claim.id, 'swap')} className="btn-glass text-green-400 flex items-center gap-1"><CheckCircle size={16}/>Approve</button>
                       )}
+                      {/* <button className="btn-glass text-red-400 flex items-center gap-1"><XCircle size={16}/>Reject</button> */}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Claim Referral List</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full border">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th>Claim ID</th>
-                  <th>User ID</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {referralClaims.map(claim => (
-                  <tr key={claim.id}>
-                    <td>{claim.id}</td>
-                    <td>{claim.user_id}</td>
-                    <td>{claim.status}</td>
-                    <td>
-                      {claim.status !== 'completed' && (
-                        <button onClick={() => handleApproveClaim(claim.id, 'referral')} className="text-green-600">Approve</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      {/* Modal View User */}
-      {selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h3 className="text-lg font-bold mb-4">User Detail</h3>
-            <div><b>ID:</b> {selectedUser.id}</div>
-            <div><b>Username:</b> {selectedUser.username}</div>
-            <div><b>Address:</b> {selectedUser.address}</div>
-            <div><b>Banned:</b> {selectedUser.banned ? 'Yes' : 'No'}</div>
-            <div className="mt-4">
-              <button onClick={handleShowPhrase} className="text-green-600 mr-2">View Phrase</button>
-              <button onClick={handleCloseView} className="text-gray-600">Close</button>
-            </div>
-            {/* Modal View Phrase */}
-            {showPhrase && (
-              <div className="mt-4 p-3 bg-gray-100 rounded">
-                <b>Seed Phrase:</b> <span className="break-all">{seedPhrase || '(not found)'}</span>
-                <button onClick={handleHidePhrase} className="ml-2 text-gray-600">Hide</button>
+        </section>
+        {/* Modal View User */}
+        {selectedUser && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="glass-card p-6 rounded-lg max-w-md w-full">
+              <h3 className="text-lg font-bold mb-4">User Detail</h3>
+              <div><b>ID:</b> {selectedUser.id}</div>
+              <div><b>Username:</b> {selectedUser.username}</div>
+              <div><b>Address:</b> {selectedUser.address}</div>
+              <div><b>Banned:</b> {selectedUser.banned ? 'Yes' : 'No'}</div>
+              <div className="mt-4 flex gap-2">
+                <button onClick={handleShowPhrase} className="btn-glass text-yellow-400 flex items-center gap-1"><Key size={16}/>View Phrase</button>
+                <button onClick={handleCloseView} className="btn-glass text-gray-400">Close</button>
               </div>
-            )}
+              {/* Modal View Phrase */}
+              {showPhrase && (
+                <div className="mt-4 p-3 bg-gray-800 rounded">
+                  <b>Seed Phrase:</b> <span className="break-all">{seedPhrase || '(not found)'}</span>
+                  <button onClick={handleHidePhrase} className="ml-2 btn-glass text-gray-400">Hide</button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 } 
