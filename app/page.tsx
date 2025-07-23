@@ -53,7 +53,7 @@ export default function Home() {
     const initTelegramWebApp = () => {
       try {
         if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-          // Initialize Telegram WebApp
+    // Initialize Telegram WebApp
           const webApp = window.Telegram.WebApp;
           webApp.ready();
           webApp.expand();
@@ -74,7 +74,7 @@ export default function Home() {
             
             // Check user wallet hanya jika tidak terkunci
             if (!isLocked) {
-              checkUserWallet(telegramUser.id);
+            checkUserWallet(telegramUser.id);
             }
             
             // Check for referral code in start param
@@ -83,8 +83,8 @@ export default function Home() {
               // Track referral using custom code
               trackReferral(startParam, telegramUser.id);
             }
-          }
-        }
+      }
+    }
         setIsLoading(false);
       } catch (error) {
         console.error('Error initializing Telegram WebApp:', error);

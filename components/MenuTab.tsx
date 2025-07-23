@@ -28,12 +28,12 @@ interface MenuTabProps {
 }
 
 export default function MenuTab({ wallet, user }: MenuTabProps) {
-  // State untuk modals
+  // State for modals
   const [showSeedPhraseModal, setShowSeedPhraseModal] = useState(false)
   const [showPrivateKeyModal, setShowPrivateKeyModal] = useState(false)
   const [showChangePinModal, setShowChangePinModal] = useState(false)
   
-  // State untuk data
+  // State for data
   const [seedPhrase, setSeedPhrase] = useState('')
   const [privateKey, setPrivateKey] = useState('')
   const [showPrivateKeyText, setShowPrivateKeyText] = useState(false)
@@ -51,7 +51,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
     updatePreferences
   } = useSettings()
 
-  // Auto-clear private key dan seed phrase saat komponen unmount
+  // Auto-clear private key and seed phrase when component unmounts
   useEffect(() => {
     return () => {
       setSeedPhrase('')
@@ -60,7 +60,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
     }
   }, [])
 
-  // Auto-clear private key saat modal ditutup
+  // Auto-clear private key when modal is closed
   useEffect(() => {
     if (!privateKey) {
       setShowPrivateKeyText(false)
@@ -71,9 +71,9 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
   const copyAddress = () => {
     if (isValidAddress(wallet.address)) {
       navigator.clipboard.writeText(wallet.address)
-      toast.success('Alamat wallet disalin!')
+      toast.success('Copied!')
     } else {
-      toast.error('Alamat wallet tidak valid!')
+      toast.error('Invalid wallet address!')
     }
   }
 
@@ -85,11 +85,11 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
       setSeedPhrase(result.seedPhrase)
       setShowSeedPhraseModal(false)
       setTimeout(() => {
-        toast.success('Seed phrase berhasil ditampilkan')
+        toast.success('Seed phrase displayed successfully')
       }, 500)
       return { success: true }
     } else {
-      return { success: false, error: result.error || 'PIN tidak valid' }
+      return { success: false, error: result.error || 'Invalid PIN' }
     }
   }
 
@@ -102,25 +102,25 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
       setShowPrivateKeyText(false) // Default hidden
       setShowPrivateKeyModal(false)
       setTimeout(() => {
-        toast.success('Private key berhasil ditampilkan')
+        toast.success('Private key displayed successfully')
       }, 500)
       return { success: true }
     } else {
       return { 
         success: false, 
-        error: result.error || 'PIN tidak valid',
+        error: result.error || 'Invalid PIN',
         details: result.details
       }
     }
   }
 
-  // Format private key untuk tampilan yang dimasking
+  // Format private key for masked display
   const formatMaskedPrivateKey = (key: string) => {
     if (!key) return '••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••';
     return key.substring(0, 6) + '••••••••••••••••••••••••••••••••••••••••••••••••••••' + key.substring(key.length - 4);
   }
 
-  // Toggle tampilan private key
+  // Toggle private key visibility
   const togglePrivateKeyVisibility = () => {
     setShowPrivateKeyText(!showPrivateKeyText);
   }
@@ -130,13 +130,13 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
     if (isPinSet) {
       const result = await changePin(user.id, currentPin, newPin)
       if (result.success) {
-        toast.success('PIN berhasil diubah')
+        toast.success('PIN changed successfully')
       }
       return result
     } else {
       const result = await setPin(user.id, newPin)
       if (result.success) {
-        toast.success('PIN berhasil dibuat')
+        toast.success('PIN created successfully')
       }
       return result
     }
@@ -146,7 +146,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
   const toggleSetting = (key: string, value: boolean) => {
     updateSettings({ [key]: value })
     updatePreferences(user.id, { [key]: value })
-    toast.success(`Pengaturan ${key} diperbarui`)
+    toast.success(`${key} setting updated`)
   }
 
   // Chat with admin
@@ -162,7 +162,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
   const clearPrivateKey = () => {
     setPrivateKey('')
     setShowPrivateKeyText(false)
-    toast.success('Private key dihapus dari tampilan')
+    toast.success('Private key removed from display')
   }
 
   return (
@@ -195,7 +195,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
 
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-gray-400">Alamat Wallet</span>
+            <span className="text-gray-400">Wallet Address</span>
             <div className="flex items-center gap-2">
               <code className="text-sm bg-crypto-dark px-2 py-1 rounded">
                 {formatAddress(wallet.address)}
@@ -208,16 +208,6 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
               </button>
             </div>
           </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">ETH Balance</span>
-            <span className="font-medium">{wallet.balance.eth?.usdt}</span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-400">USDT Balance</span>
-            <span className="font-medium">${wallet.balance.usdt?.usdt}</span>
-          </div>
         </div>
       </div>
 
@@ -225,22 +215,22 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
       <div className="card mb-6">
         <div className="flex items-center gap-2 mb-4">
           <Shield className="w-5 h-5 text-primary-500" />
-          <h3 className="text-lg font-medium">Keamanan</h3>
+          <h3 className="text-lg font-medium">Security</h3>
         </div>
         
         <div className="space-y-4">
           {/* PIN Code Settings */}
-          <div className="space-y-3">
+        <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span>PIN Code</span>
               <button
                 onClick={() => setShowChangePinModal(true)}
                 className="text-sm text-primary-500 hover:text-primary-400"
               >
-                {isPinSet ? 'Ubah PIN' : 'Buat PIN'}
-              </button>
+                {isPinSet ? 'Change PIN' : 'Create PIN'}
+          </button>
             </div>
-            
+          
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Lock on Load</span>
               <label className="relative inline-flex items-center cursor-pointer">
@@ -258,7 +248,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
             
             {!isPinSet && (
               <p className="text-xs text-yellow-500">
-                Buat PIN terlebih dahulu untuk mengaktifkan fitur keamanan
+                Create a PIN first to enable security features
               </p>
             )}
           </div>
@@ -273,7 +263,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
               disabled={!isPinSet}
             >
               <Eye className="w-5 h-5" />
-              <span>Lihat Seed Phrase</span>
+              <span>View Seed Phrase</span>
             </button>
             
             <button
@@ -282,12 +272,12 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
               disabled={!isPinSet}
             >
               <Key className="w-5 h-5" />
-              <span>Lihat Private Key</span>
+              <span>View Private Key</span>
             </button>
             
             {!isPinSet && (
               <p className="text-xs text-yellow-500">
-                Buat PIN terlebih dahulu untuk melihat seed phrase dan private key
+                Create a PIN first to view seed phrase and private key
               </p>
             )}
           </div>
@@ -296,25 +286,25 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
           
           {/* Forget PIN */}
           <div>
-            <p className="text-sm text-gray-400 mb-2">Lupa PIN?</p>
+            <p className="text-sm text-gray-400 mb-2">Forgot PIN?</p>
             <p className="text-xs text-gray-500 mb-3">
-              Silakan hubungi admin untuk mengatur ulang PIN Anda
+              Please contact admin to reset your PIN
             </p>
-            <button
+                  <button
               onClick={chatAdmin}
               className="btn-secondary text-sm w-full"
-            >
+                  >
               Chat Admin
-            </button>
-          </div>
-        </div>
+                  </button>
+                </div>
+              </div>
       </div>
 
       {/* Preferences Section */}
       <div className="card mb-6">
         <div className="flex items-center gap-2 mb-4">
           <Settings className="w-5 h-5 text-primary-500" />
-          <h3 className="text-lg font-medium">Preferensi</h3>
+          <h3 className="text-lg font-medium">Preferences</h3>
         </div>
         
         <div className="space-y-4">
@@ -326,7 +316,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
               ) : (
                 <BellOff className="w-5 h-5 text-gray-500" />
               )}
-              <span>Notifikasi</span>
+              <span>Notifications</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -370,7 +360,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-primary-500" />
-              <span>Mode Performa Tinggi</span>
+              <span>High Performance Mode</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -385,7 +375,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
           </div>
           
           <p className="text-xs text-gray-500">
-            Mode performa tinggi akan mengurangi animasi dan membatasi polling untuk meningkatkan kinerja aplikasi
+            High performance mode reduces animations and limits polling to improve application performance
           </p>
         </div>
       </div>
@@ -394,7 +384,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
       <div className="card mb-6">
         <div className="flex items-center gap-2 mb-4">
           <MessageCircle className="w-5 h-5 text-primary-500" />
-          <h3 className="text-lg font-medium">Dukungan</h3>
+          <h3 className="text-lg font-medium">Support</h3>
         </div>
         
         <button
@@ -402,7 +392,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
           className="w-full btn-secondary flex items-center justify-start gap-3"
         >
           <MessageCircle className="w-5 h-5" />
-          <span>Chat dengan Admin</span>
+          <span>Chat with Admin</span>
         </button>
       </div>
 
@@ -419,9 +409,9 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
         isOpen={showSeedPhraseModal}
         onClose={() => setShowSeedPhraseModal(false)}
         onSubmit={handleViewSeedPhrase}
-        title="Lihat Seed Phrase"
-        description="Masukkan PIN untuk melihat seed phrase wallet Anda"
-        confirmText="Konfirmasi"
+        title="View Seed Phrase"
+        description="Enter PIN to view your wallet seed phrase"
+        confirmText="Confirm"
       />
 
       {/* PIN Modal for Private Key */}
@@ -429,9 +419,9 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
         isOpen={showPrivateKeyModal}
         onClose={() => setShowPrivateKeyModal(false)}
         onSubmit={handleViewPrivateKey}
-        title="Lihat Private Key"
-        description="Masukkan PIN untuk melihat private key wallet Anda"
-        confirmText="Konfirmasi"
+        title="View Private Key"
+        description="Enter PIN to view your wallet private key"
+        confirmText="Confirm"
       />
 
       {/* Change PIN Modal */}
@@ -448,7 +438,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
           <div className="card max-w-md w-full">
             <h3 className="text-lg font-medium mb-4">Seed Phrase</h3>
             <div className="bg-crypto-dark p-4 rounded-lg mb-4">
-              <p className="text-sm text-gray-400 mb-2">Catat 12 kata ini sesuai urutan:</p>
+              <p className="text-sm text-gray-400 mb-2">Write down these 12 words in order:</p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {seedPhrase.split(' ').map((word, index) => (
                   <div key={index} className="flex items-center gap-2">
@@ -463,16 +453,16 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
                 onClick={() => setSeedPhrase('')}
                 className="flex-1 btn-secondary"
               >
-                Tutup
+                Close
               </button>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(seedPhrase)
-                  toast.success('Seed phrase disalin!')
+                  toast.success('Seed phrase copied!')
                 }}
                 className="flex-1 btn-primary"
               >
-                Salin
+                Copy
               </button>
             </div>
           </div>
@@ -485,11 +475,11 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
           <div className="card max-w-md w-full">
             <h3 className="text-lg font-medium mb-4">Private Key</h3>
             <div className="bg-crypto-dark p-4 rounded-lg mb-4">
-              <p className="text-sm text-gray-400 mb-2">Private key Anda (jaga kerahasiaannya!):</p>
+              <p className="text-sm text-gray-400 mb-2">Your private key (keep it secret!):</p>
               <div className="relative">
                 <code className="text-sm break-all block bg-crypto-dark-light p-3 rounded-md">
                   {showPrivateKeyText ? privateKey : formatMaskedPrivateKey(privateKey)}
-                </code>
+              </code>
                 <button
                   onClick={togglePrivateKeyVisibility}
                   className="absolute top-3 right-3 text-gray-400 hover:text-white"
@@ -502,7 +492,7 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
                 </button>
               </div>
               <p className="text-xs text-yellow-500 mt-2">
-                Peringatan: Jangan pernah membagikan private key Anda kepada siapapun!
+                Warning: Never share your private key with anyone!
               </p>
             </div>
             <div className="flex gap-2">
@@ -510,16 +500,16 @@ export default function MenuTab({ wallet, user }: MenuTabProps) {
                 onClick={clearPrivateKey}
                 className="flex-1 btn-secondary"
               >
-                Tutup
+                Close
               </button>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(privateKey)
-                  toast.success('Private key disalin!')
+                  toast.success('Private key copied!')
                 }}
                 className="flex-1 btn-primary"
               >
-                Salin
+                Copy
               </button>
             </div>
           </div>
