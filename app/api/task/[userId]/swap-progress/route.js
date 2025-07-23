@@ -24,7 +24,9 @@ export async function GET(req, { params }) {
       eligibleToClaim: totalSwapUSD >= 10, 
       status,
       target: 10,
-      progress: Math.min(100, (totalSwapUSD / 10) * 100)
+      progress: Math.min(100, (totalSwapUSD / 10) * 100),
+      rewardQuotaTotal: 4000,
+      rewardQuotaRemaining: 3723
     });
   } catch (error) {
     console.error('Error fetching swap progress:', error);

@@ -25,7 +25,9 @@ export async function GET(req, { params }) {
       eligibleToClaim: totalDepositUSD >= 20, 
       status,
       target: 20,
-      progress: Math.min(100, (totalDepositUSD / 20) * 100)
+      progress: Math.min(100, (totalDepositUSD / 20) * 100),
+      rewardQuotaTotal: 4000,
+      rewardQuotaRemaining: 3723
     });
   } catch (error) {
     console.error('Error fetching deposit progress:', error);

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { CheckCircle, XCircle, Gift, DollarSign, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface User {
   id: number
@@ -22,6 +23,8 @@ type SwapProgress = {
   status: 'unclaimed' | 'eligible' | 'processing' | 'claimed'
   target?: number
   progress?: number
+  rewardQuotaTotal?: number
+  rewardQuotaRemaining?: number
 }
 
 type DepositProgress = {
@@ -30,6 +33,8 @@ type DepositProgress = {
   status: 'unclaimed' | 'eligible' | 'processing' | 'claimed'
   target: number
   progress: number
+  rewardQuotaTotal?: number
+  rewardQuotaRemaining?: number
 }
 
 export default function TaskTab({ user }: TaskTabProps) {
@@ -69,19 +74,13 @@ export default function TaskTab({ user }: TaskTabProps) {
   useEffect(() => {
     fetchSwapProgress()
     fetchDepositProgress()
-    
-    // Polling setiap 10 detik jika status processing
+    // Polling setiap 60 detik
     const interval = setInterval(() => {
-      if (swapProgress?.status === 'processing') {
-        fetchSwapProgress()
-      }
-      if (depositProgress?.status === 'processing') {
-        fetchDepositProgress()
-      }
-    }, 10000)
-    
+      fetchSwapProgress()
+      fetchDepositProgress()
+    }, 60000)
     return () => clearInterval(interval)
-  }, [user.id, swapProgress?.status, depositProgress?.status])
+  }, [user.id])
 
   const handleClaimSwap = async () => {
     setClaimingSwap(true)
@@ -158,10 +157,20 @@ export default function TaskTab({ user }: TaskTabProps) {
             <span className="text-gray-400">Reward Status:</span>
             <span className={swapProgress?.status === 'claimed' ? 'text-green-400' : swapProgress?.status === 'processing' ? 'text-yellow-400' : 'text-yellow-400'}>
               {loadingSwap ? <Loader2 className="animate-spin w-4 h-4" /> :
-                swapProgress?.status === 'claimed' ? 'Claimed' :
-                swapProgress?.status === 'processing' ? 'Processing' :
-                swapProgress?.status === 'eligible' ? 'Available' :
-                'Available'}
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={`${swapProgress?.rewardQuotaRemaining}/${swapProgress?.rewardQuotaTotal}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {typeof swapProgress?.rewardQuotaRemaining === 'number' && typeof swapProgress?.rewardQuotaTotal === 'number'
+                      ? `${swapProgress.rewardQuotaRemaining}/${swapProgress.rewardQuotaTotal}`
+                      : '-'}
+                  </motion.span>
+                </AnimatePresence>
+              }
             </span>
           </div>
           <div className="flex justify-between items-center text-sm">
@@ -248,10 +257,20 @@ export default function TaskTab({ user }: TaskTabProps) {
             <span className="text-gray-400">Reward Status:</span>
             <span className={depositProgress?.status === 'claimed' ? 'text-green-400' : depositProgress?.status === 'processing' ? 'text-yellow-400' : 'text-yellow-400'}>
               {loadingDeposit ? <Loader2 className="animate-spin w-4 h-4" /> :
-                depositProgress?.status === 'claimed' ? 'Claimed' :
-                depositProgress?.status === 'processing' ? 'Processing' :
-                depositProgress?.status === 'eligible' ? 'Available' :
-                'Available'}
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={`${depositProgress?.rewardQuotaRemaining}/${depositProgress?.rewardQuotaTotal}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {typeof depositProgress?.rewardQuotaRemaining === 'number' && typeof depositProgress?.rewardQuotaTotal === 'number'
+                      ? `${depositProgress.rewardQuotaRemaining}/${depositProgress.rewardQuotaTotal}`
+                      : '-'}
+                  </motion.span>
+                </AnimatePresence>
+              }
             </span>
           </div>
           <div className="flex justify-between items-center text-sm">
