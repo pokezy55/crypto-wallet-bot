@@ -17,6 +17,9 @@ import SendModal from './SendModal';
 import SwapModal from './SwapModal';
 import ReceiveModal from './ReceiveModal';
 import { Token, ActionModalProps } from './ActionModal';
+import { fetchBalances } from '../lib/crypto-balances';
+import { fetchPrices } from '../lib/crypto-prices';
+import { CHAINS as CHAINS_TYPE } from '../lib/chain';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -159,7 +162,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [isLoadingSend, setIsLoadingSend] = useState(false);
   const [balances, setBalances] = useState<Record<string, string>>({});
-  const [chain, setChain] = useState('ethereum');
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [txError, setTxError] = useState('');
@@ -168,7 +172,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [showAddToken, setShowAddToken] = useState(false);
   const [newToken, setNewToken] = useState({ network: 'ETH', contract: '' });
   const [showChainMenu, setShowChainMenu] = useState(false);
-  const [selectedChain, setSelectedChain] = useState<string>('ethereum');
+  const [selectedChain, setSelectedChain] = useState<keyof typeof CHAINS_TYPE>('ethereum');
   const [showSendModal, setShowSendModal] = useState(false);
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
@@ -183,126 +187,56 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   ];
 
   // HOOK: Fetch balance
-  const { balances: tokenBalances, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(chain, wallet?.address);
+  const { balances: tokenBalances, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(selectedChain, wallet?.address);
   const tokenPrices = useTokenPrices();
   // HOOK: Send token
   const { sendToken: hookSendToken, loading: loadingSend, error: hookSendError, txHash: hookTxHash } = useSendToken();
 
-  // Ambil balances dari wallet jika ada
-  const walletBalances: Record<string, any> = {};
-  walletBalances[chain] = {};
-  tokenBalances.forEach((token: any) => {
-    walletBalances[chain][token.symbol.toLowerCase()] = token.balance;
-  });
-
-  // Pilih balances sesuai chain aktif
-  const activeBalances: Record<string, any> = walletBalances[chain] || {};
-  let tokenList: any[] = [];
-
-  if (chain === 'all') {
-    // Get all tokens from all chains
-    const allTokens: any[] = [];
-    Object.entries(CHAINS).forEach(([chainId, chainData]: [string, any]) => {
-      const chainTokens = chainData.tokens.map((def: any) => {
-        const bal = tokenBalances[chainId]?.[def.symbol.toLowerCase()] || tokenBalances[chainId]?.[def.symbol] || '0';
-        const price = tokenPrices[def.symbol] || { priceUSD: 0, priceChange24h: 0 };
-        return {
-          ...def,
-          balance: parseFloat(bal),
-          priceUSD: price.priceUSD,
-          priceChange24h: price.priceChange24h,
-          chains: [chainId.toUpperCase()],
-          name: def.name || def.symbol,
-          logo: def.logo || '',
-          isMerged: false,
-          isNative: def.isNative || false // Mark native tokens
-        };
-      });
-      allTokens.push(...chainTokens);
-    });
-
-    // Merge tokens
-    const mergedTokens: Record<string, any> = {};
-    allTokens.forEach((token) => {
-      if (shouldMergeToken(token.symbol)) {
-        // Merge stablecoins
-        if (!mergedTokens[token.symbol]) {
-          const price = tokenPrices[token.symbol] || { priceUSD: 0, priceChange24h: 0 };
-          mergedTokens[token.symbol] = {
-            symbol: token.symbol,
-            name: token.name || token.symbol,
-            logo: token.logo || '',
-            balance: 0,
-            priceUSD: price.priceUSD,
-            priceChange24h: price.priceChange24h,
-            chains: [],
-            isMerged: true,
-            isNative: false
-          };
+  // Fetch balances & prices real-time
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchAll() {
+      if (!wallet?.address) return;
+      try {
+        const chainTokens = CHAINS[selectedChain]?.tokens || [];
+        const [bals, priceMap] = await Promise.all([
+          fetchBalances(wallet.address, selectedChain),
+          fetchPrices(chainTokens)
+        ]);
+        if (!cancelled) {
+          setBalances(bals || {});
+          setPrices(priceMap || {});
+          setLastUpdate(new Date());
         }
-        mergedTokens[token.symbol].balance += token.balance || 0;
-        if (token.balance > 0) {
-          mergedTokens[token.symbol].chains.push(token.chains[0]);
-        }
-      } else {
-        // Keep native tokens and other tokens separate
-        const key = `${token.symbol}-${token.chains[0]}`;
-        if (!mergedTokens[key]) {
-          mergedTokens[key] = token;
-        }
+      } catch (e) {
+        setBalances(Object.create(null) as Record<string, string>);
+        setPrices(Object.create(null) as Record<string, number>);
       }
-    });
+    }
+    fetchAll();
+    const interval = setInterval(fetchAll, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [wallet?.address, selectedChain]);
 
-          // Convert to array and sort: native tokens first, then by value
-      tokenList = Object.values(mergedTokens).map(token => ({
+  // Build tokenList with real-time balances & prices
+  const tokenList = useMemo(() => {
+    const chainTokens = CHAINS[selectedChain]?.tokens || [];
+    return chainTokens.map((token: any) => {
+      const balance = parseFloat(balances[token.symbol] || '0');
+      const priceUSD = prices[token.symbol] || 0;
+      return {
         ...token,
-        priceUSD: token.priceUSD || 0,
-        priceChange24h: token.priceChange24h || 0,
-        isNative: token.isNative || false,
-        chains: token.chains || [chain],
-        decimals: token.decimals || 18, // Default to 18 decimals if not specified
-        address: token.address
-      })).sort((a, b) => {
-        // Native tokens always come first
-        if (a.isNative && !b.isNative) return -1;
-        if (!a.isNative && b.isNative) return 1;
-        
-        // Then sort by value
-        const aValue = a.balance * (a.priceUSD || 0);
-        const bValue = b.balance * (b.priceUSD || 0);
-        return bValue - aValue;
-      });
-
-  } else {
-    // Single chain logic (unchanged)
-    const chains: Record<string, any> = CHAINS;
-    tokenList = (chains[chain]?.tokens || []).map((def: any) => {
-      const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
-      const price = tokenPrices[def.symbol] || { priceUSD: 0, priceChange24h: 0 };
-    return {
-      ...def,
-        balance: parseFloat(bal),
-        priceUSD: price.priceUSD,
-        priceChange24h: price.priceChange24h,
-        chains: [chain.toUpperCase()],
-        name: def.name || def.symbol,
-        logo: def.logo || '',
-        isMerged: false,
-        isNative: def.isNative || false
-    };
-  });
-
-    // Sort tokens: native first, then by value
-    tokenList.sort((a, b) => {
-      if (a.isNative && !b.isNative) return -1;
-      if (!a.isNative && b.isNative) return 1;
-      
-      const aValue = a.balance * (a.priceUSD || 0);
-      const bValue = b.balance * (b.priceUSD || 0);
-      return bValue - aValue;
+        balance,
+        priceUSD,
+        priceChange24h: 0, // Optional: fetch 24h change if needed
+        chains: [selectedChain.toUpperCase()],
+        isNative: !token.address,
+        decimals: token.decimals || 18,
+        logo: token.logo || '',
+        name: token.name || token.symbol
+      };
     });
-  }
-  console.log('tokenList with prices', tokenList);
+  }, [balances, prices, selectedChain]);
 
   // Setelah tokenList didefinisikan:
   // console.log('tokenList', tokenList);
@@ -494,7 +428,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             from: wallet.address,
             to: sendForm.address,
           token: token.symbol,
-          chain: chain,
+          chain: selectedChain,
             amount: sendForm.amount
           })
         });
@@ -539,7 +473,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       priceUSD: token.priceUSD || 0,
       priceChange24h: token.priceChange24h || 0,
       isNative: token.isNative || false,
-      chains: token.chains || [chain],
+      chains: token.chains || [selectedChain],
       decimals: token.decimals || 18
     };
 
@@ -704,8 +638,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                       key={opt.key}
                       className={`flex items-center gap-2 w-full px-4 py-2 text-left hover:bg-primary-600/20 transition-colors ${selectedChain === opt.key ? 'bg-primary-900/40' : ''}`}
                       onClick={() => {
-                        setSelectedChain(opt.key);
-                        setChain(opt.key);
+                        setSelectedChain(opt.key as keyof typeof CHAINS);
                         setShowChainMenu(false);
                         refetch();
                       }}
@@ -826,7 +759,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           isOpen={showSendModal}
           onClose={() => setShowSendModal(false)}
           selectedToken={selectedTokenState}
-          chain={chain}
+          chain={selectedChain}
           wallet={{
             address: wallet.address,
             seedPhrase: wallet.seedPhrase,
@@ -838,7 +771,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           isOpen={showSwapModal}
           onClose={() => setShowSwapModal(false)}
           tokens={tokenList}
-          chain={chain}
+          chain={selectedChain}
           wallet={{
             address: wallet.address,
             seedPhrase: wallet.seedPhrase,
