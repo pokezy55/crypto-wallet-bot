@@ -35,11 +35,9 @@ export default function TokenRow({ token, onSend, onReceive, onSwap }: TokenRowP
           </div>
           <div className="text-xs text-gray-400 flex items-center gap-2">
             <span>${token.priceUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</span>
-            {token.priceChange24h !== 0 && (
-              <span className={changeColor}>
-                {token.priceChange24h > 0 ? '+' : ''}{token.priceChange24h.toFixed(2)}%
-              </span>
-            )}
+            <span className={changeColor}>
+              {token.priceChange24h > 0 ? '+' : ''}{token.priceChange24h.toFixed(2)}%
+            </span>
           </div>
         </div>
       </div>
