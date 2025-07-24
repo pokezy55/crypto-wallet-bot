@@ -204,6 +204,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   // Fetch balances & prices real-time
   useEffect(() => {
     let cancelled = false;
+    let retryCount = 0;
     async function fetchAll() {
       if (!wallet?.address) return;
       try {
@@ -215,36 +216,38 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         const priceMap: Record<string, any> = priceMapRaw || {};
         if (!cancelled) {
           setBalances(prev => ({ ...prev, [selectedChain]: bals as Record<string, string> }));
-          // Patch: Build price object with priceUSD and priceChange24h for each token
+          // Build price object with priceUSD and priceChange24h for each token (case-insensitive)
           const priceObj = Object.create(null);
           for (const token of chainTokens) {
-            // Case-insensitive symbol match
             const symbol = token.symbol.toUpperCase();
             let priceUSD = 0, priceChange24h = 0;
-            if (priceMap && priceMap[token.symbol] != null) {
-              // If fetchPrices returns {symbol: price}
-              priceUSD = priceMap[token.symbol] || 0;
-            } else if (priceMap && priceMap[symbol] != null) {
-              priceUSD = priceMap[symbol] || 0;
-            }
-            // Try to get 24h change if available (if fetchPrices returns object)
-            if (priceMap && priceMap[token.symbol]?.priceChange24h != null) {
-              priceChange24h = priceMap[token.symbol].priceChange24h;
-            } else if (priceMap && priceMap[symbol]?.priceChange24h != null) {
-              priceChange24h = priceMap[symbol].priceChange24h;
+            // Try all case variants
+            const priceData = priceMap[token.symbol] || priceMap[symbol] || priceMap[token.symbol.toLowerCase()];
+            if (priceData && typeof priceData === 'object') {
+              priceUSD = priceData.priceUSD || 0;
+              priceChange24h = priceData.priceChange24h || 0;
+            } else if (typeof priceData === 'number') {
+              priceUSD = priceData;
             }
             priceObj[token.symbol] = { priceUSD, priceChange24h };
           }
           setPrices(priceObj);
           setLastUpdate(new Date());
+          // Debug log
+          console.log('WalletTab debug:', { selectedChain, bals, priceObj });
         }
       } catch (e) {
-        setBalances(prev => ({ ...prev, [selectedChain]: Object.create(null) as Record<string, string> }));
-        setPrices(Object.create(null));
+        if (retryCount < 2) {
+          retryCount++;
+          setTimeout(fetchAll, 1000);
+        } else {
+          setBalances(prev => ({ ...prev, [selectedChain]: Object.create(null) as Record<string, string> }));
+          setPrices(Object.create(null));
+        }
       }
     }
     fetchAll();
-    const interval = setInterval(fetchAll, 30000);
+    const interval = setInterval(fetchAll, 60000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [wallet?.address, selectedChain]);
 
@@ -252,9 +255,9 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const tokenList = useMemo(() => {
     const chainTokens: any[] = getTokenList(selectedChain);
     const chainBalances: Record<string, string> = (balances && balances[selectedChain]) ? balances[selectedChain] : {};
-    const tokensWithValue = chainTokens.map((token: any) => {
+    return chainTokens.map((token: any) => {
       const balance = parseFloat(chainBalances[token.symbol] || '0');
-      const priceData = prices[token.symbol] || { priceUSD: 0, priceChange24h: 0 };
+      const priceData = prices[token.symbol] || prices[token.symbol.toUpperCase()] || prices[token.symbol.toLowerCase()] || { priceUSD: 0, priceChange24h: 0 };
       const priceUSD = priceData.priceUSD;
       const priceChange24h = priceData.priceChange24h;
       const usdValue = balance * priceUSD;
@@ -271,11 +274,6 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         name: token.name || token.symbol
       };
     });
-    const totalValue = tokensWithValue.reduce((sum: number, t: any) => sum + t.usdValue, 0);
-    return tokensWithValue.map(t => ({
-      ...t,
-      percent: totalValue > 0 ? (t.usdValue / totalValue) * 100 : 0
-    }));
   }, [balances, prices, selectedChain]);
 
   // Setelah tokenList didefinisikan:
