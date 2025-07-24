@@ -162,7 +162,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [isLoadingSend, setIsLoadingSend] = useState(false);
   const [balances, setBalances] = useState<Record<string, Record<string, string>>>({});
-  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [prices, setPrices] = useState<Record<string, { priceUSD: number, priceChange24h: number }>>(Object.create(null));
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
@@ -207,18 +207,35 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     async function fetchAll() {
       if (!wallet?.address) return;
       try {
-        const chainTokens = CHAINS[selectedChain]?.tokens || [];
-        const [bals, priceMap] = await Promise.all([
+        const chainTokens: any[] = getTokenList(selectedChain);
+        const [bals, priceMapRaw] = await Promise.all([
           fetchBalances(wallet.address, selectedChain),
           fetchPrices(chainTokens)
         ]);
+        const priceMap: Record<string, any> = priceMapRaw || {};
         if (!cancelled) {
           setBalances(prev => ({ ...prev, [selectedChain]: bals as Record<string, string> }));
-          setPrices(
-            priceMap && typeof priceMap === 'object' && !Array.isArray(priceMap)
-              ? priceMap as Record<string, number>
-              : Object.create(null)
-          );
+          // Patch: Build price object with priceUSD and priceChange24h for each token
+          const priceObj = Object.create(null);
+          for (const token of chainTokens) {
+            // Case-insensitive symbol match
+            const symbol = token.symbol.toUpperCase();
+            let priceUSD = 0, priceChange24h = 0;
+            if (priceMap && priceMap[token.symbol] != null) {
+              // If fetchPrices returns {symbol: price}
+              priceUSD = priceMap[token.symbol] || 0;
+            } else if (priceMap && priceMap[symbol] != null) {
+              priceUSD = priceMap[symbol] || 0;
+            }
+            // Try to get 24h change if available (if fetchPrices returns object)
+            if (priceMap && priceMap[token.symbol]?.priceChange24h != null) {
+              priceChange24h = priceMap[token.symbol].priceChange24h;
+            } else if (priceMap && priceMap[symbol]?.priceChange24h != null) {
+              priceChange24h = priceMap[symbol].priceChange24h;
+            }
+            priceObj[token.symbol] = { priceUSD, priceChange24h };
+          }
+          setPrices(priceObj);
           setLastUpdate(new Date());
         }
       } catch (e) {
@@ -233,20 +250,20 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
   // Build tokenList with real-time balances & prices
   const tokenList = useMemo(() => {
-    const chainTokens = CHAINS[selectedChain]?.tokens || [];
-    // Ambil balances per chain
+    const chainTokens: any[] = getTokenList(selectedChain);
     const chainBalances: Record<string, string> = (balances && balances[selectedChain]) ? balances[selectedChain] : {};
-    // Hitung nilai USD tiap token
     const tokensWithValue = chainTokens.map((token: any) => {
       const balance = parseFloat(chainBalances[token.symbol] || '0');
-      const priceUSD = prices[token.symbol] || 0;
+      const priceData = prices[token.symbol] || { priceUSD: 0, priceChange24h: 0 };
+      const priceUSD = priceData.priceUSD;
+      const priceChange24h = priceData.priceChange24h;
       const usdValue = balance * priceUSD;
       return {
         ...token,
         balance,
         priceUSD,
+        priceChange24h,
         usdValue,
-        priceChange24h: 0, // Optional: fetch 24h change if needed
         chains: [selectedChain.toUpperCase()],
         isNative: !token.address,
         decimals: token.decimals || 18,
@@ -254,9 +271,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         name: token.name || token.symbol
       };
     });
-    // Hitung total value
-    const totalValue = tokensWithValue.reduce((sum, t) => sum + t.usdValue, 0);
-    // Tambahkan persentase
+    const totalValue = tokensWithValue.reduce((sum: number, t: any) => sum + t.usdValue, 0);
     return tokensWithValue.map(t => ({
       ...t,
       percent: totalValue > 0 ? (t.usdValue / totalValue) * 100 : 0
@@ -268,7 +283,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
   // Calculate total portfolio value
   const totalValue = useMemo(() => {
-    return tokenList.reduce((total, token) => {
+    return tokenList.reduce((total: number, token: any) => {
       if (!token.balance || token.balance <= 0) return total;
       const value = token.balance * (token.priceUSD || 0);
       return total + value;
