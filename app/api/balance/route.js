@@ -41,7 +41,8 @@ export async function POST(request) {
           bal = formatEther(bal);
       } else {
           if (!token.address) {
-            throw new Error(`Token ${token.symbol} has no contract address`);
+            // Native token: skip or handle gracefully, do not throw error
+            continue;
           }
         try {
           const checksumAddress = getAddress(token.address);
