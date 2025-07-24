@@ -216,20 +216,19 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         const priceMap: Record<string, any> = priceMapRaw || {};
         if (!cancelled) {
           setBalances(prev => ({ ...prev, [selectedChain]: bals as Record<string, string> }));
-          // Build price object with priceUSD and priceChange24h for each token (case-insensitive)
+          // Build price object with priceUSD and priceChange24h for each token (store keys as lowercased symbol)
           const priceObj = Object.create(null);
           for (const token of chainTokens) {
-            const symbol = token.symbol.toUpperCase();
+            const symbolLower = token.symbol.toLowerCase();
             let priceUSD = 0, priceChange24h = 0;
-            // Try all case variants
-            const priceData = priceMap[token.symbol] || priceMap[symbol] || priceMap[token.symbol.toLowerCase()];
+            const priceData = priceMap[token.symbol] || priceMap[symbolLower] || priceMap[token.symbol.toUpperCase()];
             if (priceData && typeof priceData === 'object') {
               priceUSD = priceData.priceUSD || 0;
               priceChange24h = priceData.priceChange24h || 0;
             } else if (typeof priceData === 'number') {
               priceUSD = priceData;
             }
-            priceObj[token.symbol] = { priceUSD, priceChange24h };
+            priceObj[symbolLower] = { priceUSD, priceChange24h };
           }
           setPrices(priceObj);
           setLastUpdate(new Date());
