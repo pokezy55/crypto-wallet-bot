@@ -43,9 +43,15 @@ export async function POST(request) {
           if (!token.address) {
             throw new Error(`Token ${token.symbol} has no contract address`);
           }
-        const contract = new Contract(token.address, ERC20_ABI, provider);
+        try {
+          const checksumAddress = getAddress(token.address);
+          const contract = new Contract(checksumAddress, ERC20_ABI, provider);
           bal = await contract.balanceOf(normalizedAddress);
           bal = formatUnits(bal, token.decimals || 18);
+        } catch (err) {
+          console.warn('Invalid token address:', token.address, err);
+          // handle error or skip
+        }
       }
         balances.push({ symbol: token.symbol, balance: bal });
       } catch (e) {
