@@ -230,6 +230,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             }
             priceObj[symbolLower] = { priceUSD, priceChange24h };
           }
+          // Debug log: print priceMapRaw and priceObj
+          console.log('WalletTab price debug:', { priceMapRaw, priceObj });
           setPrices(priceObj);
           setLastUpdate(new Date());
           // Debug log
