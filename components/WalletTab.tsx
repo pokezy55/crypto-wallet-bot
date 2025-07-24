@@ -257,7 +257,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     const chainBalances: Record<string, string> = (balances && balances[selectedChain]) ? balances[selectedChain] : {};
     return chainTokens.map((token: any) => {
       const balance = parseFloat(chainBalances[token.symbol] || '0');
-      const priceData = prices[token.symbol] || prices[token.symbol.toUpperCase()] || prices[token.symbol.toLowerCase()] || { priceUSD: 0, priceChange24h: 0 };
+      // Always use lowercased symbol for price mapping
+      const priceData = prices[token.symbol.toLowerCase()] || { priceUSD: 0, priceChange24h: 0 };
       const priceUSD = priceData.priceUSD;
       const priceChange24h = priceData.priceChange24h;
       const usdValue = balance * priceUSD;
