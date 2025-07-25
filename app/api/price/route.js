@@ -6,7 +6,16 @@ const TOKEN_ID_MAP = {
   USDC: 'usd-coin',
   BNB: 'binancecoin',
   MATIC: 'matic-network',
-  BASE: 'ethereum', // Use ETH price for Base ETH
+  BASE: 'ethereum', // Base ETH mengikuti harga Ethereum
+  WETH: 'ethereum', // WETH sama dengan ETH
+  DAI: 'dai',
+  WBTC: 'wrapped-bitcoin',
+  LINK: 'chainlink',
+  AAVE: 'aave',
+  PEPE: 'pepe',
+  DOGE: 'dogecoin',
+  UNI: 'uniswap',
+  ZORA: 'zora' // jika belum ada di coingecko, fallback bisa ke null
 };
 
 export async function GET() {
