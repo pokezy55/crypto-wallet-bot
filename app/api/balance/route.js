@@ -76,10 +76,17 @@ export async function POST(request) {
         }
         try {
           const contract = new Contract(checksumAddress, ERC20_ABI, provider);
-          const rawBal = await contract.balanceOf(normalizedAddress);
-          bal = formatUnits(rawBal, token.decimals || 18);
+          try {
+            const rawBal = await contract.balanceOf(normalizedAddress);
+            bal = formatUnits(rawBal, token.decimals || 18);
+          } catch (err) {
+            // Harden: always return 0 for any contract call error (BAD_DATA, missing revert, etc.)
+            console.warn(`Error fetching ${token.symbol} balance:`, checksumAddress, err.message);
+            bal = '0';
+          }
         } catch (err) {
-          console.warn(`Error fetching ${token.symbol} balance:`, checksumAddress, err.message);
+          // This should only catch contract instantiation errors
+          console.warn(`Error instantiating contract for ${token.symbol}:`, checksumAddress, err.message);
           bal = '0';
         }
       }
