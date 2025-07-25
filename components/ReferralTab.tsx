@@ -62,7 +62,7 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
 
   // Get referral link using only custom code
   const referralLink = currentUser.custom_code 
-    ? `https://t.me/cointwobot/wallet?start=${currentUser.custom_code}`
+    ? `https://t.me/cointwobot/wallets?start=${currentUser.custom_code}`
     : ''
 
   // Fetch latest user data
@@ -135,7 +135,7 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
 
   const copyReferralCode = () => {
     if (!currentUser.custom_code) return
-    const text = `🚀 Join me on this brand new Telegram Wallet Bot!\nUse my referral code: ${currentUser.custom_code}\n\nLet’s earn crypto rewards together!\n👉 https://t.me/cointwobot/wallet`;
+    const text = `🚀 Join me on this brand new Telegram Wallet Bot!\nUse my referral code: ${currentUser.custom_code}\n\nLet’s earn crypto rewards together!\n👉 https://t.me/cointwobot/wallets`;
     navigator.clipboard.writeText(text)
     toast.success('Referral code copied!')
   }
