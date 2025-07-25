@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getWalletByUserId, getWalletTransactions, getRewardQuota, getTotalSwapUSDByWalletId } from '@/lib/database';
+import { getWalletByUserId, getWalletTransactions, getRewardQuota, getTotalSwapUSDByWalletId, getExistingSwapClaim } from '@/lib/database';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,9 +11,15 @@ export async function GET(req, { params }) {
     if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
     // Ambil total swap USD dari database
     const totalSwapUSD = await getTotalSwapUSDByWalletId(wallet.id);
-    // Claim status: processing/claimed/unclaimed
+    // Cek status claim swap
     let status = 'unclaimed';
     if (totalSwapUSD >= 10) status = 'eligible';
+    const existingClaims = await getExistingSwapClaim(userId);
+    if (existingClaims.length > 0) {
+      const claim = existingClaims[0];
+      if (claim.status === 'processing') status = 'processing';
+      if (claim.status === 'claimed') status = 'completed';
+    }
     // Ambil quota dari database
     const quota = await getRewardQuota('swap');
     return NextResponse.json({ 
