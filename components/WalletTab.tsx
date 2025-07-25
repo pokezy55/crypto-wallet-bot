@@ -132,6 +132,11 @@ interface SwapModalProps extends ActionModalProps {}
 interface ReceiveModalProps extends ActionModalProps {}
 interface SendModalProps extends ActionModalProps {}
 
+// Tambahkan fungsi untuk format max amount
+function formatMaxAmount(amount: string) {
+  return parseFloat(amount).toFixed(8).replace(/\.0+$/, '');
+}
+
 export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdate }: WalletTabProps) {
   // Early return if no wallet
   if (!wallet?.address) {
@@ -386,6 +391,18 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       return;
     }
     
+    const amountNum = parseFloat(sendForm.amount);
+    if (!selectedToken || isNaN(amountNum) || amountNum <= 0) {
+      toast.error('Invalid amount');
+      setIsLoadingSend(false);
+      return;
+    }
+    if (amountNum > (selectedToken.isNative ? selectedToken.balance - 0.0002 : selectedToken.balance)) {
+      toast.error('Insufficient balance');
+      setIsLoadingSend(false);
+      return;
+    }
+
     try {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -570,7 +587,33 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           <h2 className="text-xl font-semibold">Send</h2>
         </div>
           {/* Send form content */}
-        </div>
+        <div className="flex gap-2 items-center">
+  <input
+    type="number"
+    value={sendForm.amount}
+    onChange={e => setSendForm({ ...sendForm, amount: e.target.value })}
+    placeholder="0.0"
+    className="input-field flex-1"
+    min="0"
+    step="any"
+    max={selectedToken?.balance || 0}
+  />
+  <button
+    type="button"
+    className="px-2 py-1 bg-gray-700 text-xs rounded hover:bg-primary-700 text-white"
+    onClick={() => {
+      let max = selectedToken?.balance || 0;
+      // Jika native token, kurangi estimasi gas
+      if (selectedToken?.isNative) {
+        max = Math.max(0, max - 0.0002);
+      }
+      setSendForm({ ...sendForm, amount: formatMaxAmount(max) });
+    }}
+  >
+    Max
+  </button>
+</div>
+      </div>
       </ErrorBoundary>
     );
   }
