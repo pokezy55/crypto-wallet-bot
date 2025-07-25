@@ -379,7 +379,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
   const handleSend = async () => {
     setIsLoadingSend(true);
-    
+
     if (!sendForm.address || !sendForm.amount) {
       toast.error('Please fill in all fields');
       setIsLoadingSend(false);
@@ -390,14 +390,19 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       setIsLoadingSend(false);
       return;
     }
-    
+
+    // Ambil saldo terbaru dari tokenList (bukan cache lama)
+    const freshToken = tokenList.find(t => t.symbol === sendForm.token) || selectedToken;
     const amountNum = parseFloat(sendForm.amount);
-    if (!selectedToken || isNaN(amountNum) || amountNum <= 0) {
+    console.log('Selected token:', freshToken);
+    console.log('Wallet balance:', freshToken?.balance);
+    console.log('Send amount:', amountNum);
+    if (!freshToken || isNaN(amountNum) || amountNum <= 0) {
       toast.error('Invalid amount');
       setIsLoadingSend(false);
       return;
     }
-    if (amountNum > (selectedToken.isNative ? selectedToken.balance - 0.0002 : selectedToken.balance)) {
+    if (amountNum > (freshToken.isNative ? freshToken.balance - 0.0002 : freshToken.balance)) {
       toast.error('Insufficient balance');
       setIsLoadingSend(false);
       return;
@@ -406,29 +411,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     try {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Here you would implement the actual send logic via API
-      // const response = await fetch('/api/transaction/create', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     walletId: wallet.id,
-      //     txType: 'send',
-      //     toAddress: sendForm.address,
-      //     tokenSymbol: sendForm.token,
-      //     amount: sendForm.amount
-      //   })
-      // });
-      
-      // if (response.ok) {
-      //   toast.success('Transaction sent!')
-      //   setActiveSection('main')
-      // } else {
-      //   toast.error('Failed to send transaction')
-      // }
-      
       toast.success('Transaction sent successfully!')
-        setActiveSection('main')
+      setActiveSection('main')
       setSendForm({ address: '', amount: '', token: 'ETH' })
     } catch (error) {
       toast.error('Network error')
