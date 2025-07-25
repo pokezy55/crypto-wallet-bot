@@ -201,41 +201,48 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   // HOOK: Send token
   const { sendToken: hookSendToken, loading: loadingSend, error: hookSendError, txHash: hookTxHash } = useSendToken();
 
-  // Fetch balances & prices real-time
+  // --- PATCH: Fetch balances and prices from backend APIs ---
   useEffect(() => {
     let cancelled = false;
     let retryCount = 0;
     async function fetchAll() {
       if (!wallet?.address) return;
+      setIsLoadingBalance(true);
       try {
-        const chainTokens: any[] = getTokenList(selectedChain);
-        const [bals, priceMapRaw] = await Promise.all([
-          fetchBalances(wallet.address, selectedChain),
-          fetchPrices(chainTokens)
-        ]);
-        const priceMap: Record<string, any> = priceMapRaw || {};
+        // 1. Fetch balances
+        const balRes = await fetch('/api/balance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: wallet.address, chain: selectedChain })
+        });
+        const balData = await balRes.json();
+        // 2. Fetch prices
+        const priceRes = await fetch('/api/price', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chain: selectedChain })
+        });
+        const priceData = await priceRes.json();
         if (!cancelled) {
-          setBalances(prev => ({ ...prev, [selectedChain]: bals as Record<string, string> }));
-          // Build price object with priceUSD and priceChange24h for each token (store keys as lowercased symbol)
-          const priceObj = Object.create(null);
-          for (const token of chainTokens) {
-            const symbolLower = token.symbol.toLowerCase();
-            let priceUSD = 0, priceChange24h = 0;
-            const priceData = priceMap[token.symbol] || priceMap[symbolLower] || priceMap[token.symbol.toUpperCase()];
-            if (priceData && typeof priceData === 'object') {
-              priceUSD = priceData.priceUSD || 0;
-              priceChange24h = priceData.priceChange24h || 0;
-            } else if (typeof priceData === 'number') {
-              priceUSD = priceData;
+          // Map balances: { symbol -> balance }
+          const bals: Record<string, string> = {};
+          if (balData.balances && Array.isArray(balData.balances)) {
+            for (const b of balData.balances) {
+              bals[b.symbol] = b.balance;
             }
-            priceObj[symbolLower] = { priceUSD, priceChange24h };
           }
-          // Debug log: print priceMapRaw and priceObj
-          console.log('WalletTab price debug:', { priceMapRaw, priceObj });
+          setBalances(prev => ({ ...prev, [selectedChain]: bals }));
+          // Map prices: { symbol -> { priceUSD, priceChange24h } }
+          const priceObj: Record<string, { priceUSD: number, priceChange24h: number }> = {};
+          for (const key in priceData) {
+            // key: SYMBOL_chain (ex: USDT_bsc)
+            const [symbol, chain] = key.split('_');
+            if (chain && chain.toLowerCase() === selectedChain) {
+              priceObj[symbol.toLowerCase()] = priceData[key];
+            }
+          }
           setPrices(priceObj);
           setLastUpdate(new Date());
-          // Debug log
-          console.log('WalletTab debug:', { selectedChain, bals, priceObj });
         }
       } catch (e) {
         if (retryCount < 2) {
@@ -245,6 +252,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           setBalances(prev => ({ ...prev, [selectedChain]: Object.create(null) as Record<string, string> }));
           setPrices(Object.create(null));
         }
+      } finally {
+        setIsLoadingBalance(false);
       }
     }
     fetchAll();
@@ -668,7 +677,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           <span className="font-mono text-xs text-gray-400">{wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}</span>
           <div className="flex items-center gap-2">
             <button 
-              onClick={refetch}
+              onClick={refreshWallet}
               disabled={loadingBalance}
               className="p-1 bg-gray-700 rounded hover:bg-primary-700 disabled:opacity-50"
             >
@@ -699,7 +708,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                       onClick={() => {
                         setSelectedChain(opt.key as keyof typeof CHAINS);
                         setShowChainMenu(false);
-                        refetch();
+                        refreshWallet(); // Refresh balances and prices when chain changes
                       }}
                     >
                       <img src={opt.icon} alt={opt.label} className="w-5 h-5 rounded-full" />
@@ -771,15 +780,21 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         {/* Token List */}
         {activeTab === 'token' && (
           <div className="space-y-2">
-            {tokenList.map((token: any, index: number) => (
-              <TokenRow
-                key={`${token.symbol}-${index}`}
-                token={token}
-                onSend={() => handleTokenAction(token, 'send')}
-                onReceive={() => handleTokenAction(token, 'receive')}
-                onSwap={() => handleTokenAction(token, 'swap')}
-              />
-            ))}
+            {loadingBalance ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
+              </div>
+            ) : (
+              tokenList.map((token: any, index: number) => (
+                <TokenRow
+                  key={`${token.symbol}-${index}`}
+                  token={token}
+                  onSend={() => handleTokenAction(token, 'send')}
+                  onReceive={() => handleTokenAction(token, 'receive')}
+                  onSwap={() => handleTokenAction(token, 'swap')}
+                />
+              ))
+            )}
           </div>
         )}
 

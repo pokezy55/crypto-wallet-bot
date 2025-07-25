@@ -5,12 +5,20 @@ const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)'
 ];
 
+// --- PATCH: In-memory cache for balances (per wallet+chain+token, 60s) ---
+const balanceCache = {};
+const CACHE_TTL = 60 * 1000; // 60 seconds
+
+function getCacheKey(address, chain, symbol) {
+  return `${address.toLowerCase()}_${chain}_${symbol.toUpperCase()}`;
+}
+
 export async function POST(request) {
   try {
-  const { address, chain } = await request.json();
-  if (!address || !chain) {
-    return Response.json({ error: 'Missing address or chain' }, { status: 400 });
-  }
+    const { address, chain } = await request.json();
+    if (!address || !chain) {
+      return Response.json({ error: 'Missing address or chain' }, { status: 400 });
+    }
 
     // Validate & normalize address
     let normalizedAddress;
@@ -19,51 +27,61 @@ export async function POST(request) {
     } catch (e) {
       console.warn('Address validation error:', e.message);
       return Response.json({ error: 'Invalid address format' }, { status: 400 });
-  }
+    }
 
-  let provider, tokens;
-  try {
-    provider = getProvider(chain);
-    tokens = getTokenList(chain);
-  } catch (e) {
-    console.warn('Chain/provider error:', e.message);
-    return Response.json({ error: e.message }, { status: 400 });
-  }
+    let provider, tokens;
+    try {
+      provider = getProvider(chain);
+      tokens = getTokenList(chain);
+    } catch (e) {
+      console.warn('Chain/provider error:', e.message);
+      return Response.json({ error: e.message }, { status: 400 });
+    }
 
     const balances = [];
     const errors = [];
 
     for (const token of tokens) {
+      const cacheKey = getCacheKey(normalizedAddress, chain, token.symbol);
+      const now = Date.now();
+      // Use cache if not expired
+      if (balanceCache[cacheKey] && (now - balanceCache[cacheKey].ts < CACHE_TTL)) {
+        balances.push({ symbol: token.symbol, balance: balanceCache[cacheKey].balance });
+        continue;
+      }
       try {
-        let bal;
-      if (token.isNative) {
+        let bal = '0';
+        if (token.isNative) {
           bal = await provider.getBalance(normalizedAddress);
           bal = formatEther(bal);
-      } else {
+        } else {
           if (!token.address) {
             // Native token: skip or handle gracefully, do not throw error
             continue;
           }
-        try {
-          const checksumAddress = getAddress(token.address);
-          const contract = new Contract(checksumAddress, ERC20_ABI, provider);
-          bal = await contract.balanceOf(normalizedAddress);
-          bal = formatUnits(bal, token.decimals || 18);
-        } catch (err) {
-          console.warn('Invalid token address:', token.address, err);
-          // handle error or skip
+          try {
+            // Always normalize address
+            const checksumAddress = getAddress(token.address);
+            const contract = new Contract(checksumAddress, ERC20_ABI, provider);
+            bal = await contract.balanceOf(normalizedAddress);
+            bal = formatUnits(bal, token.decimals || 18);
+          } catch (err) {
+            console.warn('Invalid token address:', token.address, err);
+            // handle error or skip
+          }
         }
-      }
         balances.push({ symbol: token.symbol, balance: bal });
+        // Save to cache
+        balanceCache[cacheKey] = { balance: bal, ts: now };
       } catch (e) {
         console.warn(`Error fetching balance for ${token.symbol}:`, e.message);
         errors.push({ symbol: token.symbol, error: e.message });
-        // Add token with 0 balance instead of failing
         balances.push({ symbol: token.symbol, balance: '0' });
+        // Save error to cache as 0
+        balanceCache[cacheKey] = { balance: '0', ts: now };
       }
     }
 
-    // If we have some successful balances, return them even if some failed
     if (balances.length > 0) {
       return Response.json({ 
         balances,
@@ -71,7 +89,6 @@ export async function POST(request) {
       });
     }
 
-    // If all tokens failed, return error
     return Response.json({ 
       error: 'Failed to fetch any token balances',
       details: errors
