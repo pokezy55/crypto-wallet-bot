@@ -28,6 +28,7 @@ export default function AdminDashboard() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [referralClaims, setReferralClaims] = useState<Claim[]>([]);
   const [depositClaims, setDepositClaims] = useState<Claim[]>([]);
+  const [swapClaims, setSwapClaims] = useState<Claim[]>([]); // Tambahkan state untuk claim swap
   const [stats, setStats] = useState<{ totalUsers: number; totalClaims: number }>({ totalUsers: 0, totalClaims: 0 });
   // Tambahkan state untuk native balances
   const [nativeBalances, setNativeBalances] = useState<Record<number, string>>({});
@@ -44,7 +45,7 @@ export default function AdminDashboard() {
   const fetchClaims = () => {
     fetch('/api/claim/swap')
       .then(res => res.json())
-      .then((data: Claim[]) => setClaims(data));
+      .then((data: Claim[]) => setSwapClaims(data)); // Ambil data swap claims
     fetch('/api/claim/referral')
       .then(res => res.json())
       .then((data: Claim[]) => setReferralClaims(data));
@@ -252,7 +253,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {[...claims, ...referralClaims, ...depositClaims].map(claim => (
+                {[...swapClaims, ...referralClaims, ...depositClaims].map(claim => (
                   <tr key={claim.id} className="transition hover:bg-[#2a2b45]">
                     <td className="py-2 px-4">{claim.id}</td>
                     <td className="py-2 px-4">{claim.user_id}</td>

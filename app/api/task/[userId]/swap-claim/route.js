@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getWalletByUserId, decrementRewardQuota } from '@/lib/database';
+import { getWalletByUserId, decrementRewardQuota, getTotalSwapUSDByWalletId, getSwapClaims } from '@/lib/database';
 import pool from '@/lib/database';
 import { sendMessage } from '@/lib/telegram';
 
@@ -19,10 +19,8 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: 'Reward quota exhausted' }, { status: 400 });
     }
 
-    // Calculate total swap
-    const transactions = await getWalletTransactions(wallet.id, 1000);
-    const swapTxs = transactions.filter(tx => tx.tx_type === 'swap');
-    const totalSwapUSD = swapTxs.reduce((sum, tx) => sum + (tx.usd_value || 0), 0);
+    // Ambil total swap dari kolom total_swap di tabel wallets
+    const totalSwapUSD = await getTotalSwapUSDByWalletId(wallet.id);
     if (totalSwapUSD < 10) return NextResponse.json({ error: 'Not eligible' }, { status: 400 });
     // Check if already claimed/processing
     const claims = await getSwapClaims();
