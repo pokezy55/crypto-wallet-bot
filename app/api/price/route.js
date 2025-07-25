@@ -16,7 +16,7 @@ const TOKEN_ID_MAP = {
   PEPE: 'pepe',
   DOGE: 'dogecoin',
   UNI: 'uniswap',
-  AERO: 'aerodrome-finance'         // fallback ke ETH jika tidak ada
+  ZRO: 'layerzero'         // fallback ke ETH jika tidak ada
 };
 
 export async function GET() {
