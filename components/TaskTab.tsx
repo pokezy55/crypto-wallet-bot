@@ -164,7 +164,15 @@ export default function TaskTab({ user }: TaskTabProps) {
         <div className="space-y-3">
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Task Status:</span>
-            <span className={swapProgress?.status === 'claimed' || swapProgress?.status === 'eligible' || swapProgress?.status === 'processing' ? 'text-green-400' : 'text-red-400'}>
+            <span className={
+              swapProgress?.status === 'claimed'
+                ? 'text-green-400'
+                : swapProgress?.status === 'processing'
+                ? 'text-yellow-400'
+                : swapProgress?.status === 'eligible'
+                ? 'text-green-400'
+                : 'text-red-400'
+            }>
               {loadingSwap ? <Loader2 className="animate-spin w-4 h-4" /> :
                 swapProgress?.status === 'claimed' ? 'Completed' :
                 swapProgress?.status === 'processing' ? 'Processing' :
@@ -207,37 +215,35 @@ export default function TaskTab({ user }: TaskTabProps) {
             </div>
           )}
           {swapProgress?.status === 'claimed' && (
-            <div className="flex items-center justify-center mt-2">
-              <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
-              <span className="text-green-400 font-medium">Reward claimed successfully!</span>
+            <div className="flex flex-col items-center justify-center mt-6 mb-2">
+              <CheckCircle className="w-10 h-10 text-green-400 mb-2" />
+              <span className="text-green-400 font-medium text-base">Reward claimed successfully!</span>
             </div>
           )}
         </div>
-        <div className="mt-4 pt-4 border-t border-crypto-border">
-          {loadingSwap ? (
-            <button className="w-full btn-primary" disabled>
-              <Loader2 className="animate-spin w-4 h-4 mr-2 inline" /> Loading...
-            </button>
-          ) : swapProgress?.status === 'eligible' ? (
-            <button
-              onClick={handleClaimSwap}
-              className="w-full btn-primary flex items-center justify-center gap-2"
-              disabled={claimingSwap}
-            >
-              {claimingSwap ? <Loader2 className="animate-spin w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
-              CLAIM
-            </button>
-          ) : swapProgress?.status === 'processing' ? (
-            <div className="text-center py-2 text-yellow-400">
-              <Loader2 className="animate-spin w-6 h-6 mx-auto mb-2" />
-              <span className="text-sm">Waiting for admin approval...</span>
-            </div>
-          ) : swapProgress?.status === 'claimed' ? null : (
-            <button className="w-full btn-disabled" disabled>
-              CLAIM
-            </button>
-          )}
-        </div>
+        {swapProgress?.status !== 'claimed' && (
+          <div className="mt-4 pt-4 border-t border-crypto-border">
+            {loadingSwap ? (
+              <button className="w-full btn-primary" disabled>
+                <Loader2 className="animate-spin w-4 h-4 mr-2 inline" /> Loading...
+              </button>
+            ) : swapProgress?.status === 'eligible' ? (
+              <button
+                onClick={handleClaimSwap}
+                className="w-full btn-primary flex items-center justify-center gap-2"
+                disabled={claimingSwap}
+              >
+                {claimingSwap ? <Loader2 className="animate-spin w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
+                CLAIM
+              </button>
+            ) : swapProgress?.status === 'processing' ? (
+              <div className="text-center py-2 text-yellow-400">
+                <Loader2 className="animate-spin w-6 h-6 mx-auto mb-2" />
+                <span className="text-sm">Waiting for admin approval...</span>
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* Deposit Task Card */}
