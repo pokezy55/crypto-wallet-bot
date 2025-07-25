@@ -252,12 +252,20 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     return () => { cancelled = true; clearInterval(interval); };
   }, [wallet?.address, selectedChain]);
 
-  // Build tokenList with real-time balances & prices
+  // --- PATCH: Always use lowercased symbol for price mapping and handle balances robustly ---
   const tokenList = useMemo(() => {
-    const chainTokens: any[] = getTokenList(selectedChain);
-    const chainBalances: Record<string, string> = (balances && balances[selectedChain]) ? balances[selectedChain] : {};
+    const chainTokens = getTokenList(selectedChain);
+    const chainBalances = (balances && balances[selectedChain]) ? balances[selectedChain] : {};
     return chainTokens.map((token: any) => {
-      const balance = parseFloat(chainBalances[token.symbol] || '0');
+      // Try both original and upper/lowercase for balance key
+      let balance = 0;
+      if (chainBalances[token.symbol] !== undefined) {
+        balance = parseFloat(chainBalances[token.symbol] || '0');
+      } else if (chainBalances[token.symbol.toUpperCase()] !== undefined) {
+        balance = parseFloat(chainBalances[token.symbol.toUpperCase()] || '0');
+      } else if (chainBalances[token.symbol.toLowerCase()] !== undefined) {
+        balance = parseFloat(chainBalances[token.symbol.toLowerCase()] || '0');
+      }
       // Always use lowercased symbol for price mapping
       const priceData = prices[token.symbol.toLowerCase()] || { priceUSD: 0, priceChange24h: 0 };
       const priceUSD = priceData.priceUSD;
@@ -278,17 +286,30 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
     });
   }, [balances, prices, selectedChain]);
 
+  // --- PATCH: Calculate total portfolio value across all chains ---
+  const totalValue = useMemo(() => {
+    let total = 0;
+    for (const chainKey of Object.keys(balances)) {
+      const chainTokens = getTokenList(chainKey);
+      const chainBalances = balances[chainKey] || {};
+      for (const token of chainTokens as any[]) {
+        let balance = 0;
+        if (chainBalances[token.symbol] !== undefined) {
+          balance = parseFloat(chainBalances[token.symbol] || '0');
+        } else if (chainBalances[token.symbol.toUpperCase()] !== undefined) {
+          balance = parseFloat(chainBalances[token.symbol.toUpperCase()] || '0');
+        } else if (chainBalances[token.symbol.toLowerCase()] !== undefined) {
+          balance = parseFloat(chainBalances[token.symbol.toLowerCase()] || '0');
+        }
+        const priceData = prices[token.symbol.toLowerCase()] || { priceUSD: 0 };
+        total += balance * priceData.priceUSD;
+      }
+    }
+    return total;
+  }, [balances, prices]);
+
   // Setelah tokenList didefinisikan:
   // console.log('tokenList', tokenList);
-
-  // Calculate total portfolio value
-  const totalValue = useMemo(() => {
-    return tokenList.reduce((total: number, token: any) => {
-      if (!token.balance || token.balance <= 0) return total;
-      const value = token.balance * (token.priceUSD || 0);
-      return total + value;
-    }, 0);
-  }, [tokenList]);
 
   // --- Hapus polling auto refresh balances lama (refetch) ---
   // useEffect(() => {
