@@ -133,7 +133,8 @@ interface ReceiveModalProps extends ActionModalProps {}
 interface SendModalProps extends ActionModalProps {}
 
 // Tambahkan fungsi untuk format max amount
-function formatMaxAmount(amount: string) {
+function formatAmount(amount: string | number) {
+  if (amount === undefined || amount === null || amount === '') return '';
   const n = typeof amount === 'number' ? amount : parseFloat(amount);
   if (isNaN(n) || n <= 0) return '';
   return n.toFixed(8).replace(/\.0+$/, '');
@@ -602,7 +603,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       if (selectedToken?.isNative) {
         max = Math.max(0, max - 0.0002);
       }
-      const formatted = formatMaxAmount(max);
+      const formatted = formatAmount(max);
       if (formatted) setSendForm({ ...sendForm, amount: formatted });
     }}
   >
