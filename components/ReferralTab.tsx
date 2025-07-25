@@ -135,7 +135,8 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
 
   const copyReferralCode = () => {
     if (!currentUser.custom_code) return
-    navigator.clipboard.writeText(currentUser.custom_code)
+    const text = `🚀 Join me on this brand new Telegram Wallet Bot!\nUse my referral code: ${currentUser.custom_code}\n\nLet’s earn crypto rewards together!\n👉 https://t.me/cointwobot/wallet`;
+    navigator.clipboard.writeText(text)
     toast.success('Referral code copied!')
   }
   
@@ -295,7 +296,6 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
           {/* Your Referral Code */}
           <div className="card mb-6">
             <h3 className="text-lg font-medium mb-4">Your Referral Code</h3>
-            
             {currentUser.custom_code ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -307,20 +307,6 @@ export default function ReferralTab({ user, wallet, onUpdateReferralStatus, onUp
                   />
                   <button
                     onClick={copyReferralCode}
-                    className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={referralLink}
-                    readOnly
-                    className="input-field flex-1 text-sm"
-                  />
-                  <button
-                    onClick={copyReferralLink}
                     className="p-2 bg-primary-600 rounded-lg hover:bg-primary-700"
                   >
                     <Copy className="w-4 h-4" />
