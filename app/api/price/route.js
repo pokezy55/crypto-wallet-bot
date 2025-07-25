@@ -55,11 +55,13 @@ export async function POST(request) {
     }
     // 2. ERC20 prices (by address)
     if (erc20Tokens.length > 0 && chainId) {
+      // Always use lowercase for CoinGecko
       const addrList = erc20Tokens.map(t => t.address.toLowerCase()).join(',');
       try {
         const url = `https://api.coingecko.com/api/v3/simple/token_price/${chainId}?contract_addresses=${addrList}&vs_currencies=usd&include_24hr_change=true`;
         const res = await fetch(url);
         const data = await res.json();
+        // Map result using lowercase address
         for (const token of erc20Tokens) {
           const cacheKey = getCacheKey(token.symbol, chain);
           if (priceCache[cacheKey] && (now - priceCache[cacheKey].ts < CACHE_TTL)) {
