@@ -1,4 +1,4 @@
-const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum,tether,usd-coin,binancecoin,matic-network,dai,wrapped-bitcoin,chainlink,aave,pepe,dogecoin,uniswap,axelar,aerodrome-finance,degen-base,toshi,brett&vs_currencies=usd&include_24hr_change=true';
+const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum,tether,usd-coin,binancecoin,matic-network,dai,wrapped-bitcoin,chainlink,aave,pepe,dogecoin,uniswap,axelar,aerodrome-finance,layerzero,toshi,brett&vs_currencies=usd&include_24hr_change=true';
 
 const TOKEN_ID_MAP = {
   ETH: 'ethereum',
