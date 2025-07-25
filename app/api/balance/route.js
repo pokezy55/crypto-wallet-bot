@@ -1,5 +1,6 @@
 import { getProvider, getTokenList } from '../../../lib/chain';
 import { formatEther, formatUnits, isAddress, Contract, getAddress } from 'ethers';
+import { safeGetAddress } from '../../../lib/crypto-alchemy';
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)'
@@ -56,15 +57,8 @@ export async function POST(request) {
           bal = await provider.getBalance(normalizedAddress);
           bal = formatEther(bal);
         } else {
-          // ERC20: always normalize address
-          let checksumAddress;
-          try {
-            checksumAddress = getAddress(token.address);
-          } catch (err) {
-            console.warn('Invalid token address (checksum error):', token.symbol, token.address, err.message);
-            errors.push({ symbol: token.symbol, error: 'Invalid address checksum' });
-            continue;
-          }
+          // ERC20: always use safeGetAddress
+          const checksumAddress = safeGetAddress(token.address);
           try {
             const contract = new Contract(checksumAddress, ERC20_ABI, provider);
             bal = await contract.balanceOf(normalizedAddress);
