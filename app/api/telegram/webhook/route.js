@@ -108,7 +108,7 @@ export async function POST(req) {
         inline_keyboard: [
           [
             { text: 'My Wallet', url: 'https://t.me/cointwobot/wallet' }
-          ]
+          ],
           [
             { text: 'Channel', url: 'https://t.me/cointwo_en' }
           ]
