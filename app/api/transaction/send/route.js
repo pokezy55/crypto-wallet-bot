@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getProvider, getChainConfig } from '@/lib/chain';
 import { JsonRpcProvider, Contract, parseUnits } from 'ethers';
-const { ethers } = require('ethers');
 
 const ERC20_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)',
@@ -73,17 +72,8 @@ export async function POST(request) {
           );
         }
 
-        let checksumAddress;
-        try {
-          checksumAddress = ethers.getAddress(token.address);
-        } catch (err) {
-          console.warn('Invalid token address:', token.address, err);
-          return NextResponse.json(
-            { error: 'Invalid token address' },
-            { status: 400 }
-          );
-        }
-        const tokenContract = new Contract(checksumAddress, ERC20_ABI, provider);
+        // Get token contract
+        const tokenContract = new Contract(token.address, ERC20_ABI, provider);
 
         // Parse amount to wei
         const amountInWei = parseUnits(amount, token.decimals);
@@ -98,7 +88,7 @@ export async function POST(request) {
         }
 
         // Send transaction
-        tx = await tokenContract.transfer(checksumAddress, amountInWei);
+        tx = await tokenContract.transfer(to, amountInWei);
       } catch (error) {
         console.error('ERC20 token transfer error:', error);
         return NextResponse.json(

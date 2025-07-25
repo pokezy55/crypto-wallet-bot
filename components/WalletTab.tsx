@@ -17,9 +17,6 @@ import SendModal from './SendModal';
 import SwapModal from './SwapModal';
 import ReceiveModal from './ReceiveModal';
 import { Token, ActionModalProps } from './ActionModal';
-import { fetchBalances } from '../lib/crypto-balances';
-import { fetchPrices } from '../lib/crypto-prices';
-import { CHAINS as CHAINS_TYPE } from '../lib/chain';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -161,9 +158,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [isLoadingSend, setIsLoadingSend] = useState(false);
-  const [balances, setBalances] = useState<Record<string, Record<string, string>>>({});
-  const [prices, setPrices] = useState<Record<string, { priceUSD: number, priceChange24h: number }>>(Object.create(null));
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [balances, setBalances] = useState<Record<string, string>>({});
+  const [chain, setChain] = useState('eth');
   const [showConfirm, setShowConfirm] = useState(false);
   const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [txError, setTxError] = useState('');
@@ -172,7 +168,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [showAddToken, setShowAddToken] = useState(false);
   const [newToken, setNewToken] = useState({ network: 'ETH', contract: '' });
   const [showChainMenu, setShowChainMenu] = useState(false);
-  const [selectedChain, setSelectedChain] = useState<keyof typeof CHAINS_TYPE>('ethereum');
+  const [selectedChain, setSelectedChain] = useState<string>('eth');
   const [showSendModal, setShowSendModal] = useState(false);
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
@@ -180,164 +176,160 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   const [showSwapMaintenance, setShowSwapMaintenance] = useState(false);
 
   const CHAIN_OPTIONS = [
-    { key: 'ethereum', label: 'Ethereum', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
+    { key: 'eth', label: 'Ethereum', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
     { key: 'bsc', label: 'BSC', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg' },
     { key: 'polygon', label: 'Polygon', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg' },
     { key: 'base', label: 'Base', icon: 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg' },
   ];
 
-  // Tambahkan utilitas untuk API URL jika ingin mendukung BASE_URL
-  const getApiUrl = (path: string) => {
-    const base = process.env.NEXT_PUBLIC_BASE_URL || '';
-    if (base && !base.startsWith('/')) {
-      return base.replace(/\/$/, '') + path;
-    }
-    return path;
-  };
-
   // HOOK: Fetch balance
-  const { balances: tokenBalances, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(selectedChain, wallet?.address);
+  const { balances: tokenBalances, loading: loadingBalance, error: hookBalanceError, refetch } = useBalance(chain, wallet?.address);
   const tokenPrices = useTokenPrices();
   // HOOK: Send token
   const { sendToken: hookSendToken, loading: loadingSend, error: hookSendError, txHash: hookTxHash } = useSendToken();
 
-  // --- PATCH: Fetch balances and prices from backend APIs ---
-  useEffect(() => {
-    let cancelled = false;
-    let retryCount = 0;
-    async function fetchAll() {
-      if (!wallet?.address) return;
-      setIsLoadingBalance(true);
-      try {
-        // 1. Fetch balances
-        const balRes = await fetch('/api/balance', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address: wallet.address, chain: selectedChain })
-        });
-        const balData = await balRes.json();
-        // 2. Fetch prices
-        const priceRes = await fetch('/api/price', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chain: selectedChain })
-        });
-        const priceData = await priceRes.json();
-        if (!cancelled) {
-          // Map balances: { symbol -> balance }
-          const bals: Record<string, string> = {};
-          if (balData.balances) {
-            if (Array.isArray(balData.balances)) {
-              for (const b of balData.balances) {
-                bals[b.symbol] = b.balance;
-              }
-            } else if (typeof balData.balances === 'object') {
-              for (const [symbol, balance] of Object.entries(balData.balances)) {
-                bals[symbol] = balance as string;
-              }
-            }
-          }
-          setBalances(prev => ({ ...prev, [selectedChain]: bals }));
-          // Map prices: { symbol -> { priceUSD, priceChange24h } }
-          const priceObj: Record<string, { priceUSD: number, priceChange24h: number }> = {};
-          for (const key in priceData) {
-            // key: SYMBOL_chain (ex: USDT_bsc)
-            const [symbol, chain] = key.split('_');
-            if (chain && chain.toLowerCase() === selectedChain) {
-              priceObj[symbol.toLowerCase()] = priceData[key];
-            }
-          }
-          setPrices(priceObj);
-          setLastUpdate(new Date());
-        }
-      } catch (e) {
-        if (retryCount < 2) {
-          retryCount++;
-          setTimeout(fetchAll, 1000);
-        } else {
-          setBalances(prev => ({ ...prev, [selectedChain]: Object.create(null) as Record<string, string> }));
-          setPrices(Object.create(null));
-        }
-      } finally {
-        setIsLoadingBalance(false);
-      }
-    }
-    fetchAll();
-    const interval = setInterval(fetchAll, 60000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, [wallet?.address, selectedChain]);
+  // Ambil balances dari wallet jika ada
+  const walletBalances: Record<string, any> = {};
+  walletBalances[chain] = {};
+  tokenBalances.forEach((token: any) => {
+    walletBalances[chain][token.symbol.toLowerCase()] = token.balance;
+  });
 
-  // --- PATCH: Always use lowercased symbol for price mapping and handle balances robustly ---
-  const tokenList = useMemo(() => {
-    const chainTokens = getTokenList(selectedChain);
-    const chainBalances = (balances && balances[selectedChain]) ? balances[selectedChain] : {};
-    return chainTokens.map((token: any) => {
-      // Try both original and upper/lowercase for balance key
-      let balance = 0;
-      if (chainBalances[token.symbol] !== undefined) {
-        balance = parseFloat(chainBalances[token.symbol] || '0');
-      } else if (chainBalances[token.symbol.toUpperCase()] !== undefined) {
-        balance = parseFloat(chainBalances[token.symbol.toUpperCase()] || '0');
-      } else if (chainBalances[token.symbol.toLowerCase()] !== undefined) {
-        balance = parseFloat(chainBalances[token.symbol.toLowerCase()] || '0');
-      }
-      // Always use lowercased symbol for price mapping
-      const priceData = prices[token.symbol.toLowerCase()] || { priceUSD: 0, priceChange24h: 0 };
-      const priceUSD = priceData.priceUSD;
-      const priceChange24h = priceData.priceChange24h;
-      const usdValue = balance * priceUSD;
-      return {
-        ...token,
-        balance,
-        priceUSD,
-        priceChange24h,
-        usdValue,
-        chains: [selectedChain.toUpperCase()],
-        isNative: !token.address,
-        decimals: token.decimals || 18,
-        logo: token.logo || '',
-        name: token.name || token.symbol
-      };
+  // Pilih balances sesuai chain aktif
+  const activeBalances: Record<string, any> = walletBalances[chain] || {};
+  let tokenList: any[] = [];
+
+  if (chain === 'all') {
+    // Get all tokens from all chains
+    const allTokens: any[] = [];
+    Object.entries(CHAINS).forEach(([chainId, chainData]: [string, any]) => {
+      const chainTokens = chainData.tokens.map((def: any) => {
+        const bal = tokenBalances[chainId]?.[def.symbol.toLowerCase()] || tokenBalances[chainId]?.[def.symbol] || '0';
+        const price = tokenPrices[def.symbol] || { priceUSD: 0, priceChange24h: 0 };
+        return {
+          ...def,
+          balance: parseFloat(bal),
+          priceUSD: price.priceUSD,
+          priceChange24h: price.priceChange24h,
+          chains: [chainId.toUpperCase()],
+          name: def.name || def.symbol,
+          logo: def.logo || '',
+          isMerged: false,
+          isNative: def.isNative || false // Mark native tokens
+        };
+      });
+      allTokens.push(...chainTokens);
     });
-  }, [balances, prices, selectedChain]);
 
-  // --- PATCH: Calculate total portfolio value across all chains ---
-  const totalValue = useMemo(() => {
-    let total = 0;
-    for (const chainKey of Object.keys(balances)) {
-      const chainTokens = getTokenList(chainKey);
-      const chainBalances = balances[chainKey] || {};
-      for (const token of chainTokens as any[]) {
-        let balance = 0;
-        if (chainBalances[token.symbol] !== undefined) {
-          balance = parseFloat(chainBalances[token.symbol] || '0');
-        } else if (chainBalances[token.symbol.toUpperCase()] !== undefined) {
-          balance = parseFloat(chainBalances[token.symbol.toUpperCase()] || '0');
-        } else if (chainBalances[token.symbol.toLowerCase()] !== undefined) {
-          balance = parseFloat(chainBalances[token.symbol.toLowerCase()] || '0');
+    // Merge tokens
+    const mergedTokens: Record<string, any> = {};
+    allTokens.forEach((token) => {
+      if (shouldMergeToken(token.symbol)) {
+        // Merge stablecoins
+        if (!mergedTokens[token.symbol]) {
+          const price = tokenPrices[token.symbol] || { priceUSD: 0, priceChange24h: 0 };
+          mergedTokens[token.symbol] = {
+            symbol: token.symbol,
+            name: token.name || token.symbol,
+            logo: token.logo || '',
+            balance: 0,
+            priceUSD: price.priceUSD,
+            priceChange24h: price.priceChange24h,
+            chains: [],
+            isMerged: true,
+            isNative: false
+          };
         }
-        const priceData = prices[token.symbol.toLowerCase()] || { priceUSD: 0 };
-        total += balance * priceData.priceUSD;
+        mergedTokens[token.symbol].balance += token.balance || 0;
+        if (token.balance > 0) {
+          mergedTokens[token.symbol].chains.push(token.chains[0]);
+        }
+      } else {
+        // Keep native tokens and other tokens separate
+        const key = `${token.symbol}-${token.chains[0]}`;
+        if (!mergedTokens[key]) {
+          mergedTokens[key] = token;
+        }
       }
-    }
-    return total;
-  }, [balances, prices]);
+    });
+
+          // Convert to array and sort: native tokens first, then by value
+      tokenList = Object.values(mergedTokens).map(token => ({
+        ...token,
+        priceUSD: token.priceUSD || 0,
+        priceChange24h: token.priceChange24h || 0,
+        isNative: token.isNative || false,
+        chains: token.chains || [chain],
+        decimals: token.decimals || 18, // Default to 18 decimals if not specified
+        address: token.address
+      })).sort((a, b) => {
+        // Native tokens always come first
+        if (a.isNative && !b.isNative) return -1;
+        if (!a.isNative && b.isNative) return 1;
+        
+        // Then sort by value
+        const aValue = a.balance * (a.priceUSD || 0);
+        const bValue = b.balance * (b.priceUSD || 0);
+        return bValue - aValue;
+      });
+
+  } else {
+    // Single chain logic (unchanged)
+    const chains: Record<string, any> = CHAINS;
+    tokenList = (chains[chain]?.tokens || []).map((def: any) => {
+      const bal = activeBalances[def.symbol.toLowerCase()] || activeBalances[def.symbol] || '0';
+      const price = tokenPrices[def.symbol] || { priceUSD: 0, priceChange24h: 0 };
+    return {
+      ...def,
+        balance: parseFloat(bal),
+        priceUSD: price.priceUSD,
+        priceChange24h: price.priceChange24h,
+        chains: [chain.toUpperCase()],
+        name: def.name || def.symbol,
+        logo: def.logo || '',
+        isMerged: false,
+        isNative: def.isNative || false
+    };
+  });
+
+    // Sort tokens: native first, then by value
+    tokenList.sort((a, b) => {
+      if (a.isNative && !b.isNative) return -1;
+      if (!a.isNative && b.isNative) return 1;
+      
+      const aValue = a.balance * (a.priceUSD || 0);
+      const bValue = b.balance * (b.priceUSD || 0);
+      return bValue - aValue;
+    });
+  }
+  console.log('tokenList with prices', tokenList);
 
   // Setelah tokenList didefinisikan:
   // console.log('tokenList', tokenList);
 
-  // --- Hapus polling auto refresh balances lama (refetch) ---
-  // useEffect(() => {
-  //   // Initial fetch
-  //   refetch();
-  //   // Set up polling every 60 seconds
-  //   const interval = setInterval(refetch, 60000);
-  //   // Cleanup interval on unmount
-  //   return () => clearInterval(interval);
-  // }, [refetch]);
+  // Calculate total portfolio value
+  const totalValue = useMemo(() => {
+    return tokenList.reduce((total, token) => {
+      if (!token.balance || token.balance <= 0) return total;
+      const value = token.balance * (token.priceUSD || 0);
+      return total + value;
+    }, 0);
+  }, [tokenList]);
+
+  // Auto refresh balances
+  useEffect(() => {
+    // Initial fetch
+    refetch();
+
+    // Set up polling every 60 seconds
+    const interval = setInterval(refetch, 60000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   // --- Send Form Validasi ---
-  const selectedToken = tokenList.find((t: any) => t.symbol === sendForm.token) || tokenList[0];
+  const selectedToken = tokenList.find(t => t.symbol === sendForm.token) || tokenList[0];
   const isAddressValid = isValidAddress(sendForm.address);
   const isFormValid = isAddressValid && sendForm.amount && parseFloat(sendForm.amount) > 0 && selectedToken;
 
@@ -348,7 +340,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   useEffect(() => {
     if (activeTab === 'history') {
       setLoadingHistory(true);
-      fetch(getApiUrl(`/api/wallet/${user.id}/history`))
+      fetch(`/api/wallet/${user.id}/history`)
         .then(res => res.json())
         .then(data => setHistory(data.history || []))
         .catch(() => setHistory([]))
@@ -455,12 +447,12 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   // Tambahkan fungsi refreshWalletAndHistory di dalam WalletTab
   const refreshWalletAndHistory = async () => {
     // Panggil ulang API wallet
-    const walletRes = await fetch(getApiUrl(`/api/wallet/${user.id}`));
+    const walletRes = await fetch(`/api/wallet/${user.id}`);
     if (walletRes.ok) {
       if (onWalletUpdate) onWalletUpdate(await walletRes.json());
     }
     // Panggil ulang API history
-    const historyRes = await fetch(getApiUrl(`/api/wallet/${user.id}/history`));
+    const historyRes = await fetch(`/api/wallet/${user.id}/history`);
     if (historyRes.ok) {
       if (onHistoryUpdate) onHistoryUpdate((await historyRes.json()).history || []);
     }
@@ -488,21 +480,21 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   };
 
     const handleSendConfirm = async () => {
-    const selectedToken = tokenList.find((t: any) => t.symbol === sendForm.token);
-    if (!selectedToken) return;
+    const token = tokenList.find(t => t.symbol === sendForm.token);
+    if (!token) return;
 
       setTxStatus('pending');
       setTxError('');
     
       try {
-        const response = await fetch(getApiUrl('/api/transaction/send'), {
+        const response = await fetch('/api/transaction/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             from: wallet.address,
             to: sendForm.address,
-            token: selectedToken.symbol,
-            chain: selectedChain,
+          token: token.symbol,
+          chain: chain,
             amount: sendForm.amount
           })
         });
@@ -547,7 +539,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       priceUSD: token.priceUSD || 0,
       priceChange24h: token.priceChange24h || 0,
       isNative: token.isNative || false,
-      chains: token.chains || [selectedChain],
+      chains: token.chains || [chain],
       decimals: token.decimals || 18
     };
 
@@ -683,7 +675,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           <span className="font-mono text-xs text-gray-400">{wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}</span>
           <div className="flex items-center gap-2">
             <button 
-              onClick={refreshWallet}
+              onClick={refetch}
               disabled={loadingBalance}
               className="p-1 bg-gray-700 rounded hover:bg-primary-700 disabled:opacity-50"
             >
@@ -712,9 +704,10 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                       key={opt.key}
                       className={`flex items-center gap-2 w-full px-4 py-2 text-left hover:bg-primary-600/20 transition-colors ${selectedChain === opt.key ? 'bg-primary-900/40' : ''}`}
                       onClick={() => {
-                        setSelectedChain(opt.key as keyof typeof CHAINS);
+                        setSelectedChain(opt.key);
+                        setChain(opt.key);
                         setShowChainMenu(false);
-                        refreshWallet(); // Refresh balances and prices when chain changes
+                        refetch();
                       }}
                     >
                       <img src={opt.icon} alt={opt.label} className="w-5 h-5 rounded-full" />
@@ -737,7 +730,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             <span className="text-gray-500">|</span>
             <span className="flex items-center gap-1">
               <Eth className="w-3 h-3" />
-              {tokenList.find((t: any) => t.symbol === 'ETH')?.balance.toFixed(4) || '0.0000'}
+              {tokenList.find(t => t.symbol === 'ETH')?.balance.toFixed(4) || '0.0000'}
             </span>
           </div>
         </div>
@@ -786,21 +779,15 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         {/* Token List */}
         {activeTab === 'token' && (
           <div className="space-y-2">
-            {loadingBalance ? (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
-              </div>
-            ) : (
-              tokenList.map((token: any, index: number) => (
-                <TokenRow
-                  key={`${token.symbol}-${index}`}
-                  token={token}
-                  onSend={() => handleTokenAction(token, 'send')}
-                  onReceive={() => handleTokenAction(token, 'receive')}
-                  onSwap={() => handleTokenAction(token, 'swap')}
-                />
-              ))
-            )}
+            {tokenList.map((token, index) => (
+              <TokenRow
+                key={`${token.symbol}-${index}`}
+                token={token}
+                onSend={() => handleTokenAction(token, 'send')}
+                onReceive={() => handleTokenAction(token, 'receive')}
+                onSwap={() => handleTokenAction(token, 'swap')}
+              />
+            ))}
           </div>
         )}
 
@@ -812,7 +799,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
               </div>
             ) : history.length > 0 ? (
-              history.map((tx: any, index: number) => (
+              history.map((tx, index) => (
                 <div key={index} className="p-3 bg-crypto-card rounded-lg">
                   <div className="flex items-center justify-between">
                   <div>
@@ -839,7 +826,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           isOpen={showSendModal}
           onClose={() => setShowSendModal(false)}
           selectedToken={selectedTokenState}
-          chain={selectedChain}
+          chain={chain}
           wallet={{
             address: wallet.address,
             seedPhrase: wallet.seedPhrase,
@@ -851,7 +838,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           isOpen={showSwapModal}
           onClose={() => setShowSwapModal(false)}
           tokens={tokenList}
-          chain={selectedChain}
+          chain={chain}
           wallet={{
             address: wallet.address,
             seedPhrase: wallet.seedPhrase,

@@ -80,8 +80,8 @@ export default function TaskTab({ user }: TaskTabProps) {
     fetchDepositProgress()
     // Polling setiap 60 detik
     const interval = setInterval(() => {
-        fetchSwapProgress()
-        fetchDepositProgress()
+      fetchSwapProgress()
+      fetchDepositProgress()
     }, 60000)
     return () => clearInterval(interval)
   }, [user.id])

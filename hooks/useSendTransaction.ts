@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Contract, parseUnits, ethers } from 'ethers';
+import { Contract, parseUnits } from 'ethers';
 import { getProvider, getSigner } from '@/lib/chain';
 import toast from 'react-hot-toast';
 
@@ -106,18 +106,10 @@ export function useSendTransaction() {
           throw new Error(`Invalid contract address for ${token.symbol}`);
         }
 
-        let checksumAddress: string;
-        try {
-          checksumAddress = ethers.getAddress(token.address);
-        } catch (err) {
-          console.warn('Invalid token address:', token.address, err);
-          return { error: 'Invalid token address' } as TransactionResult;
-        }
-
         try {
           // Create contract with provider first
           const provider = getProvider(chain);
-          const tokenContract = new Contract(checksumAddress, ERC20_ABI, provider);
+          const tokenContract = new Contract(token.address, ERC20_ABI, provider);
           
           // Parse amount to wei using token decimals
           const amountInWei = parseUnits(amount, token.decimals);
@@ -131,16 +123,17 @@ export function useSendTransaction() {
           // Send transaction
           const data = tokenContract.interface.encodeFunctionData('transfer', [to, amountInWei]);
           tx = await signer.sendTransaction({
-            to: checksumAddress,
+            to: token.address,
             data
           });
-        } catch (err) {
-          console.warn('Invalid token address:', token.address, err);
-          // handle error or skip
+        } catch (error: any) {
+          console.error('ERC20 token transfer error:', error);
+          if (error.message.includes('insufficient funds')) {
+            throw new Error('Insufficient gas fee balance');
+          }
+          throw error;
         }
       }
-
-      if (!tx) return { error: 'Transaction failed' } as TransactionResult;
 
       // Wait for transaction confirmation
       const receipt = await tx.wait();

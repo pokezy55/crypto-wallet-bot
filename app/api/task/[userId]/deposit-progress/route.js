@@ -8,7 +8,7 @@ export async function GET(req, { params }) {
     const { userId } = params;
     const wallet = await getWalletByUserId(userId);
     if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 });
-    
+
     // Akumulasi saldo semua token native, USDT, dan USDC di semua jaringan default
     const nativeAndStableBalances = [
       parseFloat(wallet.balance_eth || '0'),
@@ -19,7 +19,7 @@ export async function GET(req, { params }) {
       parseFloat(wallet.balance_usdc || '0'),
     ];
     const totalDepositUSD = nativeAndStableBalances.reduce((a, b) => a + b, 0);
-    
+
     // Cek status claim di tabel claims
     let status = 'unclaimed';
     const claims = await getExistingDepositClaim(userId);
@@ -33,10 +33,10 @@ export async function GET(req, { params }) {
 
     // Ambil quota dari database
     const quota = await getRewardQuota('deposit');
-    
-    return NextResponse.json({ 
-      totalDepositUSD, 
-      eligibleToClaim: totalDepositUSD >= 20, 
+
+    return NextResponse.json({
+      totalDepositUSD,
+      eligibleToClaim: totalDepositUSD >= 20,
       status,
       target: 20,
       progress: Math.min(100, (totalDepositUSD / 20) * 100),
