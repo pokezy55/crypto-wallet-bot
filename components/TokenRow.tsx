@@ -10,37 +10,31 @@ interface TokenRowProps {
   onSwap: () => void;
 }
 
+const getTokenIcon = (symbol: string, fallback: string) => {
+  // Web3Icons CDN: https://cdn.web3icons.dev/tokens/{symbol}.svg
+  // symbol harus lowercase
+  return (
+    <img
+      src={`https://cdn.web3icons.dev/tokens/${symbol.toLowerCase()}.svg`}
+      alt={symbol}
+      className="w-7 h-7 rounded-full bg-white object-contain"
+      onError={(e) => { (e.target as HTMLImageElement).src = fallback; }}
+    />
+  );
+};
+
 export default function TokenRow({ token, onSend, onReceive, onSwap }: TokenRowProps) {
   const balanceUSD = token.balance * token.priceUSD;
   const changeColor = token.priceChange24h > 0 ? 'text-green-500' : token.priceChange24h < 0 ? 'text-red-500' : 'text-gray-400';
 
   return (
-    <div className="p-3 bg-crypto-card rounded-lg border border-crypto-border flex items-center justify-between">
+    <div className="flex items-center justify-between p-3 bg-crypto-dark rounded-lg">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center">
-          {token.logo ? (
-            <img src={token.logo} alt={token.symbol} className="w-6 h-6" />
-          ) : (
-            <span className="text-sm font-bold">{token.symbol.slice(0, 2)}</span>
-          )}
-        </div>
+        {/* Token Icon */}
+        {getTokenIcon(token.symbol, token.logo || '')}
         <div>
-          <div className="font-medium flex items-center gap-2">
-            <span>{token.name || token.symbol}</span>
-            {token.chains.length > 1 && (
-              <span className="text-xs bg-primary-500/20 text-primary-500 px-1.5 py-0.5 rounded-full">
-                Multi-chain
-              </span>
-            )}
-          </div>
-          <div className="text-xs text-gray-400 flex items-center gap-2">
-            <span>${token.priceUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</span>
-            {token.priceChange24h !== 0 && (
-              <span className={changeColor}>
-                {token.priceChange24h > 0 ? '+' : ''}{token.priceChange24h.toFixed(2)}%
-              </span>
-            )}
-          </div>
+          <div className="font-medium">{token.symbol}</div>
+          <div className="text-xs text-gray-400">{token.name}</div>
         </div>
       </div>
       <div className="text-right">
