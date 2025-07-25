@@ -1,13 +1,14 @@
-const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum,tether,usd-coin,binancecoin,matic-network&vs_currencies=usd&include_24hr_change=true';
+const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum,tether,usd-coin,binancecoin,matic-network,dai,wrapped-bitcoin,chainlink,aave,pepe,dogecoin,uniswap,axelar,aerodrome-finance,degen-base,toshi,brett&vs_currencies=usd&include_24hr_change=true';
 
 const TOKEN_ID_MAP = {
   ETH: 'ethereum',
+  WETH: 'ethereum',        // WETH = ETH
+  BASE: 'ethereum',        // Base ETH = ETH
   USDT: 'tether',
   USDC: 'usd-coin',
+  USDbC: 'usd-coin',       // USDbC = USDC
   BNB: 'binancecoin',
   MATIC: 'matic-network',
-  BASE: 'ethereum', // Base ETH mengikuti harga Ethereum
-  WETH: 'ethereum', // WETH sama dengan ETH
   DAI: 'dai',
   WBTC: 'wrapped-bitcoin',
   LINK: 'chainlink',
@@ -15,7 +16,7 @@ const TOKEN_ID_MAP = {
   PEPE: 'pepe',
   DOGE: 'dogecoin',
   UNI: 'uniswap',
-  ZORA: 'zora' // jika belum ada di coingecko, fallback bisa ke null
+  ZORA: 'ethereum'         // fallback ke ETH jika tidak ada
 };
 
 export async function GET() {
@@ -30,7 +31,7 @@ export async function GET() {
 
     // Map CoinGecko response to our format
     Object.entries(TOKEN_ID_MAP).forEach(([symbol, id]) => {
-      if (data[id]) {
+      if (id && data[id]) {
         prices[symbol] = {
           priceUSD: data[id].usd || 0,
           priceChange24h: data[id].usd_24h_change || 0
@@ -46,7 +47,6 @@ export async function GET() {
     return Response.json(prices);
   } catch (error) {
     console.error('Price fetch error:', error);
-    
     // Return fallback prices (all 0) on error
     const fallbackPrices = {};
     Object.keys(TOKEN_ID_MAP).forEach(symbol => {
@@ -55,7 +55,6 @@ export async function GET() {
         priceChange24h: 0
       };
     });
-
     return Response.json(fallbackPrices);
   }
 } 
