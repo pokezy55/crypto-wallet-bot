@@ -553,6 +553,11 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
 
     setSelectedTokenState(modalToken);
 
+    // Jika user klik send pada token di chain lain, set chain aktif ke chain token tersebut
+    if (action === 'send' && token.chains && token.chains[0]) {
+      setChain(token.chains[0].toLowerCase());
+    }
+
     switch (action) {
       case 'send':
         setShowSendModal(true);
