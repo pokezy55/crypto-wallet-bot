@@ -322,7 +322,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   // }, [refetch]);
 
   // --- Send Form Validasi ---
-  const selectedToken = tokenList.find(t => t.symbol === sendForm.token) || tokenList[0];
+  const selectedToken = tokenList.find((t: any) => t.symbol === sendForm.token) || tokenList[0];
   const isAddressValid = isValidAddress(sendForm.address);
   const isFormValid = isAddressValid && sendForm.amount && parseFloat(sendForm.amount) > 0 && selectedToken;
 
@@ -473,8 +473,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   };
 
     const handleSendConfirm = async () => {
-    const token = tokenList.find(t => t.symbol === sendForm.token);
-    if (!token) return;
+    const selectedToken = tokenList.find((t: any) => t.symbol === sendForm.token);
+    if (!selectedToken) return;
 
       setTxStatus('pending');
       setTxError('');
@@ -486,8 +486,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
           body: JSON.stringify({
             from: wallet.address,
             to: sendForm.address,
-          token: token.symbol,
-          chain: selectedChain,
+            token: selectedToken.symbol,
+            chain: selectedChain,
             amount: sendForm.amount
           })
         });
@@ -722,7 +722,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
             <span className="text-gray-500">|</span>
             <span className="flex items-center gap-1">
               <Eth className="w-3 h-3" />
-              {tokenList.find(t => t.symbol === 'ETH')?.balance.toFixed(4) || '0.0000'}
+              {tokenList.find((t: any) => t.symbol === 'ETH')?.balance.toFixed(4) || '0.0000'}
             </span>
           </div>
         </div>
@@ -771,7 +771,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         {/* Token List */}
         {activeTab === 'token' && (
           <div className="space-y-2">
-            {tokenList.map((token, index) => (
+            {tokenList.map((token: any, index: number) => (
               <TokenRow
                 key={`${token.symbol}-${index}`}
                 token={token}
@@ -791,7 +791,7 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
               </div>
             ) : history.length > 0 ? (
-              history.map((tx, index) => (
+              history.map((tx: any, index: number) => (
                 <div key={index} className="p-3 bg-crypto-card rounded-lg">
                   <div className="flex items-center justify-between">
                   <div>
