@@ -134,7 +134,9 @@ interface SendModalProps extends ActionModalProps {}
 
 // Tambahkan fungsi untuk format max amount
 function formatMaxAmount(amount: string) {
-  return parseFloat(amount).toFixed(8).replace(/\.0+$/, '');
+  const n = typeof amount === 'number' ? amount : parseFloat(amount);
+  if (isNaN(n) || n <= 0) return '';
+  return n.toFixed(8).replace(/\.0+$/, '');
 }
 
 export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdate }: WalletTabProps) {
@@ -579,7 +581,12 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
   <input
     type="number"
     value={sendForm.amount}
-    onChange={e => setSendForm({ ...sendForm, amount: e.target.value })}
+    onChange={e => {
+      const val = e.target.value;
+      if (/^\d*\.?\d*$/.test(val)) {
+        setSendForm({ ...sendForm, amount: val });
+      }
+    }}
     placeholder="0.0"
     className="input-field flex-1"
     min="0"
@@ -595,7 +602,8 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       if (selectedToken?.isNative) {
         max = Math.max(0, max - 0.0002);
       }
-      setSendForm({ ...sendForm, amount: formatMaxAmount(max) });
+      const formatted = formatMaxAmount(max);
+      if (formatted) setSendForm({ ...sendForm, amount: formatted });
     }}
   >
     Max
