@@ -226,9 +226,15 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
         if (!cancelled) {
           // Map balances: { symbol -> balance }
           const bals: Record<string, string> = {};
-          if (balData.balances && Array.isArray(balData.balances)) {
-            for (const b of balData.balances) {
-              bals[b.symbol] = b.balance;
+          if (balData.balances) {
+            if (Array.isArray(balData.balances)) {
+              for (const b of balData.balances) {
+                bals[b.symbol] = b.balance;
+              }
+            } else if (typeof balData.balances === 'object') {
+              for (const [symbol, balance] of Object.entries(balData.balances)) {
+                bals[symbol] = balance as string;
+              }
             }
           }
           setBalances(prev => ({ ...prev, [selectedChain]: bals }));
