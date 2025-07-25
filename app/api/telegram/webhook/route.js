@@ -34,12 +34,12 @@ export async function POST(req) {
         const chatId = cb.message.chat.id;
         const messageId = cb.message.message_id;
         // Edit message to mark as completed
-        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+        await fetch(`https://api.telegram.org/bot7350915669:AAHYKWL3URPNi0DtPDZZTmGTJXf3cse_Yak/editMessageReplyMarkup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } })
         });
-        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        await fetch(`https://api.telegram.org/bot7350915669:AAHYKWL3URPNi0DtPDZZTmGTJXf3cse_Yak/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, text: 'Claim marked as completed.' })
@@ -54,12 +54,12 @@ export async function POST(req) {
         const chatId = cb.message.chat.id;
         const messageId = cb.message.message_id;
         // Edit message to mark as completed
-        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+        await fetch(`https://api.telegram.org/bot7350915669:AAHYKWL3URPNi0DtPDZZTmGTJXf3cse_Yak/editMessageReplyMarkup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } })
         });
-        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        await fetch(`https://api.telegram.org/bot7350915669:AAHYKWL3URPNi0DtPDZZTmGTJXf3cse_Yak/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chatId, text: 'Deposit claim marked as completed.' })
@@ -111,7 +111,7 @@ export async function POST(req) {
           ]
         ]
       };
-      await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      await fetch(`https://api.telegram.org/bot7350915669:AAHYKWL3URPNi0DtPDZZTmGTJXf3cse_Yak/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
