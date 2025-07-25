@@ -102,6 +102,26 @@ export async function POST(req) {
       } else {
         console.error('Telegram user id not found in message.from');
       }
+      // Kirim pesan promosi + inline button
+      const promoText = `Cointwo – Your Crypto Hub on Telegram!\n\nCointwo isn’t just a wallet — it’s a fast, secure, and gas-efficient crypto platform built for effortless transactions, all within Telegram.\n\nWhy Cointwo?\n🔒 <b>Fully non‑custodial</b> – Your keys, your crypto.\n⚡️ <b>Instant transfers & swaps</b> – Multi‑chain support: ETH, BSC, Polygon, Base.\n🎯 <b>Earn & grow</b> – Complete tasks, invite friends, and climb the leaderboard.\n📊 <b>Smart tracking</b> – Manage and monitor wallets across chains in one place.\n\n<b>Next‑Gen Protocol</b> – Redefining crypto usability where Telegram meets DeFi.\n\n💌 <b>Cointwo Links</b> – Send Crypto, Simplified!\nNo wallet? No problem. Share crypto via secure links — fast, private, and borderless.\n\nSwap, send, receive, and earn with Cointwo.\nThe next evolution of Telegram crypto wallets is here — built for everyone.`;
+      const replyMarkup = {
+        inline_keyboard: [
+          [
+            { text: 'My Wallet', url: 'https://t.me/cointwobot/wallet' }
+          ]
+        ]
+      };
+      await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: data.message.chat.id,
+          text: promoText,
+          parse_mode: 'HTML',
+          reply_markup: replyMarkup
+        })
+      });
+      return NextResponse.json({ ok: true });
     }
 
     return NextResponse.json({ ok: true });
