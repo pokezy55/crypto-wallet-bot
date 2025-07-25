@@ -206,37 +206,22 @@ export default function TaskTab({ user }: TaskTabProps) {
               ></div>
             </div>
           )}
-        </div>
-        <div className="mt-4 pt-4 border-t border-crypto-border">
-          {loadingSwap ? (
-            <button className="w-full btn-primary" disabled>
-              <Loader2 className="animate-spin w-4 h-4 mr-2 inline" /> Loading...
-            </button>
-          ) : swapProgress?.status === 'eligible' ? (
-            <button
-              onClick={handleClaimSwap}
-              className="w-full btn-primary flex items-center justify-center gap-2"
-              disabled={claimingSwap}
-            >
-              {claimingSwap ? <Loader2 className="animate-spin w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
-              CLAIM
-            </button>
-          ) : swapProgress?.status === 'processing' ? (
-            <div className="text-center py-2 text-yellow-400">
-              <Loader2 className="animate-spin w-6 h-6 mx-auto mb-2" />
-              <span className="text-sm">Waiting for admin approval...</span>
+          {swapProgress?.status === 'claimed' && (
+            <div className="flex items-center justify-center mt-2">
+              <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
+              <span className="text-green-400 font-medium">Reward claimed successfully!</span>
             </div>
-          ) : swapProgress?.status === 'claimed' ? (
-            <div className="text-center py-2 text-green-400">
-              <CheckCircle className="w-6 h-6 mx-auto mb-2" />
-              <span className="text-sm">Reward claimed successfully!</span>
-            </div>
-          ) : (
-            <button className="w-full btn-disabled" disabled>
-              CLAIM
-            </button>
           )}
         </div>
+        {swapProgress?.status !== 'claimed' && (
+          <button
+            className="btn btn-primary w-full mt-2"
+            disabled={claimingSwap || !swapProgress?.eligibleToClaim || swapProgress?.status === 'processing'}
+            onClick={handleClaimSwap}
+          >
+            {claimingSwap ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : '$ CLAIM'}
+          </button>
+        )}
       </div>
 
       {/* Deposit Task Card */}
