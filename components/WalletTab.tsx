@@ -391,18 +391,22 @@ export default function WalletTab({ wallet, user, onWalletUpdate, onHistoryUpdat
       return;
     }
 
-    // Ambil saldo terbaru dari tokenList (bukan cache lama)
-    const freshToken = tokenList.find(t => t.symbol === sendForm.token) || selectedToken;
+    // Ambil saldo real-time dari tokenBalances (useBalance)
+    const freshToken = tokenBalances.find((t: { symbol: string; balance: string }) => t.symbol === sendForm.token);
+    const freshBalance = freshToken ? parseFloat(freshToken.balance) : 0;
     const amountNum = parseFloat(sendForm.amount);
     console.log('Selected token:', freshToken);
-    console.log('Wallet balance:', freshToken?.balance);
+    console.log('Wallet balance:', freshBalance);
     console.log('Send amount:', amountNum);
     if (!freshToken || isNaN(amountNum) || amountNum <= 0) {
       toast.error('Invalid amount');
       setIsLoadingSend(false);
       return;
     }
-    if (amountNum > (freshToken.isNative ? freshToken.balance - 0.0002 : freshToken.balance)) {
+    // Cek native token (kurangi estimasi gas)
+    const isNative = tokenList.find(t => t.symbol === sendForm.token)?.isNative;
+    const maxSend = isNative ? Math.max(0, freshBalance - 0.0002) : freshBalance;
+    if (amountNum > maxSend) {
       toast.error('Insufficient balance');
       setIsLoadingSend(false);
       return;
