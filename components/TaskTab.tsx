@@ -164,15 +164,7 @@ export default function TaskTab({ user }: TaskTabProps) {
         <div className="space-y-3">
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-400">Task Status:</span>
-            <span className={
-              swapProgress?.status === 'claimed'
-                ? 'text-green-400'
-                : swapProgress?.status === 'processing'
-                ? 'text-yellow-400'
-                : swapProgress?.status === 'eligible'
-                ? 'text-green-400'
-                : 'text-red-400'
-            }>
+            <span className={swapProgress?.status === 'claimed' || swapProgress?.status === 'eligible' || swapProgress?.status === 'processing' ? 'text-green-400' : 'text-red-400'}>
               {loadingSwap ? <Loader2 className="animate-spin w-4 h-4" /> :
                 swapProgress?.status === 'claimed' ? 'Completed' :
                 swapProgress?.status === 'processing' ? 'Processing' :
@@ -214,15 +206,7 @@ export default function TaskTab({ user }: TaskTabProps) {
               ></div>
             </div>
           )}
-          {/* Reward claimed message, sama persis dengan deposit */}
-          {swapProgress?.status === 'claimed' && (
-            <div className="flex flex-col items-center justify-center mt-6 mb-2">
-              <CheckCircle className="w-10 h-10 text-green-400 mb-2" />
-              <span className="text-green-400 font-medium text-base">Reward claimed successfully!</span>
-            </div>
-          )}
         </div>
-        {/* Tombol/tampilan bawah, identik dengan deposit */}
         <div className="mt-4 pt-4 border-t border-crypto-border">
           {loadingSwap ? (
             <button className="w-full btn-primary" disabled>
