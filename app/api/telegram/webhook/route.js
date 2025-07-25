@@ -109,6 +109,9 @@ export async function POST(req) {
           [
             { text: 'My Wallet', url: 'https://t.me/cointwobot/wallet' }
           ]
+          [
+            { text: 'Channel', url: 'https://t.me/cointwo_en' }
+          ]
         ]
       };
       await fetch(`https://api.telegram.org/bot7350915669:AAHYKWL3URPNi0DtPDZZTmGTJXf3cse_Yak/sendMessage`, {
