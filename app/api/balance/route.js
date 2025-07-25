@@ -51,33 +51,36 @@ export async function POST(request) {
       }
       try {
         let bal = '0';
-        if (token.isNative) {
+        if (!token.address) {
+          // Native token
           bal = await provider.getBalance(normalizedAddress);
           bal = formatEther(bal);
         } else {
-          if (!token.address) {
-            // Native token: skip or handle gracefully, do not throw error
+          // ERC20: always normalize address
+          let checksumAddress;
+          try {
+            checksumAddress = getAddress(token.address);
+          } catch (err) {
+            console.warn('Invalid token address (checksum error):', token.symbol, token.address, err.message);
+            errors.push({ symbol: token.symbol, error: 'Invalid address checksum' });
             continue;
           }
           try {
-            // Always normalize address
-            const checksumAddress = getAddress(token.address);
             const contract = new Contract(checksumAddress, ERC20_ABI, provider);
             bal = await contract.balanceOf(normalizedAddress);
             bal = formatUnits(bal, token.decimals || 18);
           } catch (err) {
-            console.warn('Invalid token address:', token.address, err);
-            // handle error or skip
+            console.warn('Error fetching ERC20 balance:', token.symbol, checksumAddress, err.message);
+            errors.push({ symbol: token.symbol, error: err.message });
+            bal = '0';
           }
         }
         balances.push({ symbol: token.symbol, balance: bal });
-        // Save to cache
         balanceCache[cacheKey] = { balance: bal, ts: now };
       } catch (e) {
         console.warn(`Error fetching balance for ${token.symbol}:`, e.message);
         errors.push({ symbol: token.symbol, error: e.message });
         balances.push({ symbol: token.symbol, balance: '0' });
-        // Save error to cache as 0
         balanceCache[cacheKey] = { balance: '0', ts: now };
       }
     }

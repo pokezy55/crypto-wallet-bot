@@ -26,34 +26,38 @@ export async function POST(request) {
     const tokens = getTokenList(chain);
     const now = Date.now();
     const prices = {};
+    const nativeTokens = tokens.filter(t => !t.address);
+    const erc20Tokens = tokens.filter(t => t.address);
     const nativeId = COINGECKO_NATIVE_IDS[chain];
     const chainId = COINGECKO_CHAIN_ID[chain];
-    // Build contract address list for ERC20
-    const erc20Tokens = tokens.filter(t => t.address);
-    const contractAddrs = erc20Tokens.map(t => t.address).filter(Boolean).join(',');
-    // 1. Native price
-    if (nativeId) {
-      const cacheKey = getCacheKey(tokens.find(t => !t.address)?.symbol || 'ETH', chain);
+    // 1. Native prices (by priceId)
+    for (const token of nativeTokens) {
+      const cacheKey = getCacheKey(token.symbol, chain);
       if (priceCache[cacheKey] && (now - priceCache[cacheKey].ts < CACHE_TTL)) {
         prices[cacheKey] = priceCache[cacheKey].data;
-      } else {
+        continue;
+      }
+      if (token.priceId) {
         try {
-          const url = `https://api.coingecko.com/api/v3/simple/price?ids=${nativeId}&vs_currencies=usd&include_24hr_change=true`;
+          const url = `https://api.coingecko.com/api/v3/simple/price?ids=${token.priceId}&vs_currencies=usd&include_24hr_change=true`;
           const res = await fetch(url);
           const data = await res.json();
-          const priceUSD = data[nativeId]?.usd || 0;
-          const priceChange24h = data[nativeId]?.usd_24h_change || 0;
+          const priceUSD = data[token.priceId]?.usd || 0;
+          const priceChange24h = data[token.priceId]?.usd_24h_change || 0;
           prices[cacheKey] = { priceUSD, priceChange24h };
           priceCache[cacheKey] = { data: prices[cacheKey], ts: now };
         } catch {
           prices[cacheKey] = { priceUSD: 0, priceChange24h: 0 };
         }
+      } else {
+        prices[cacheKey] = { priceUSD: 0, priceChange24h: 0 };
       }
     }
-    // 2. ERC20 prices
-    if (erc20Tokens.length > 0 && chainId && contractAddrs) {
+    // 2. ERC20 prices (by address)
+    if (erc20Tokens.length > 0 && chainId) {
+      const addrList = erc20Tokens.map(t => t.address.toLowerCase()).join(',');
       try {
-        const url = `https://api.coingecko.com/api/v3/simple/token_price/${chainId}?contract_addresses=${contractAddrs}&vs_currencies=usd&include_24hr_change=true`;
+        const url = `https://api.coingecko.com/api/v3/simple/token_price/${chainId}?contract_addresses=${addrList}&vs_currencies=usd&include_24hr_change=true`;
         const res = await fetch(url);
         const data = await res.json();
         for (const token of erc20Tokens) {
